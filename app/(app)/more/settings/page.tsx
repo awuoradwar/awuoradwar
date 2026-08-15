@@ -1,0 +1,43 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
+import { getDb } from "@/lib/db";
+import { POSITION_LABEL } from "@/lib/permissions";
+import LanguageToggle from "@/components/LanguageToggle";
+
+export default async function SettingsPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  const db = getDb();
+  const store = db.prepare(`SELECT * FROM stores WHERE id = ?`).get(user.storeId) as
+    | { name: string; timezone: string }
+    | undefined;
+
+  return (
+    <div className="mx-auto max-w-md px-4 py-5">
+      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
+        ← {user.language === "es" ? "Atrás" : "Back"}
+      </Link>
+      <h1 className="mb-4 text-lg font-semibold">{user.language === "es" ? "Configuración" : "Settings"}</h1>
+
+      <section className="mb-4 card p-4">
+        <p className="text-sm font-semibold">{user.name}</p>
+        <p className="text-xs text-muted">{user.email}</p>
+        <p className="text-xs text-muted">{POSITION_LABEL[user.position][user.language]}</p>
+      </section>
+
+      <section className="mb-4 flex items-center justify-between card p-4">
+        <div>
+          <p className="text-sm font-medium">{user.language === "es" ? "Idioma" : "Language"}</p>
+          <p className="text-xs text-muted">{user.language === "es" ? "Español" : "English"}</p>
+        </div>
+        <LanguageToggle lang={user.language} />
+      </section>
+
+      <section className="card p-4">
+        <p className="text-sm font-medium">{store?.name}</p>
+        <p className="text-xs text-muted">{store?.timezone}</p>
+      </section>
+    </div>
+  );
+}

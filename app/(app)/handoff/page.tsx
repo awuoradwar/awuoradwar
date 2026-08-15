@@ -1,0 +1,73 @@
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+import { getLatestHandoff, getSinceYouWereHere } from "@/lib/services/handoffService";
+import { t } from "@/lib/i18n";
+import HandoffActions from "@/components/HandoffActions";
+
+export default async function HandoffPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const handoff = getLatestHandoff(user.storeId);
+  const since = getSinceYouWereHere(user.storeId, user.id);
+  const summary = handoff ? JSON.parse(handoff.generated_summary) : null;
+
+  return (
+    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-5">
+      <section>
+        <h1 className="mb-1 text-lg font-semibold">{t(user.language, "handoff_title")}</h1>
+        <p className="text-xs text-muted">
+          {handoff
+            ? `${handoff.outgoing_pic_name || "—"} → ${handoff.incoming_pic_name || (user.language === "es" ? "pendiente" : "pending")}`
+            : user.language === "es"
+              ? "Aún no se ha generado ninguna entrega."
+              : "No handoff generated yet."}
+        </p>
+      </section>
+
+      <HandoffActions lang={user.language} handoff={handoff ? { id: handoff.id, status: handoff.status, outgoing_note: handoff.outgoing_note } : null} />
+
+      {summary && (
+        <>
+          <SummarySection titleKey="handoff_staffing" lang={user.language} items={summary.staffing.map((s: { employee_name: string; type: string }) => `${s.employee_name} — ${s.type.replace("_", " ")}`)} />
+          <SummarySection titleKey="handoff_completed_work" lang={user.language} items={summary.completedHighValue.map((c: { title: string; completed_by_name: string | null }) => `${c.title}${c.completed_by_name ? " · " + c.completed_by_name : ""}`)} />
+          <SummarySection titleKey="handoff_unresolved" lang={user.language} items={summary.unresolved.map((u: { title: string }) => u.title)} />
+          <SummarySection titleKey="handoff_open_items" lang={user.language} items={summary.openItems.map((o: { title: string }) => o.title)} />
+          <SummarySection titleKey="handoff_upcoming" lang={user.language} items={summary.upcoming.map((u: { title: string; due_at: string | null }) => `${u.title}${u.due_at ? " — " + new Date(u.due_at).toLocaleString() : ""}`)} />
+        </>
+      )}
+
+      <section>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "handoff_since_you_were_here")}</h2>
+        <div className="card p-3 text-xs text-muted">
+          {since.changes.length === 0 ? (
+            <p>{t(user.language, "all_clear")}</p>
+          ) : (
+            <p>
+              {since.changes.length} {user.language === "es" ? "cambios desde tu última entrega confirmada." : "changes since your last acknowledged shift."}
+            </p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SummarySection({ titleKey, lang, items }: { titleKey: string; lang: "en" | "es"; items: string[] }) {
+  return (
+    <section>
+      <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(lang, titleKey as never)}</h2>
+      {items.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted">{t(lang, "all_clear")}</p>
+      ) : (
+        <div className="card divide-y divide-border">
+          {items.map((it, i) => (
+            <p key={i} className="px-3 py-2 text-sm">
+              {it}
+            </p>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Shift Ops - Restaurant Shift Operations",
+  "short_name": "Shift Ops",
+  "description": "Fast shift execution, delegation and handoff for restaurant managers.",
+  "start_url": "/my-shift",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f7f5",
+  "theme_color": "#c8102e",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
