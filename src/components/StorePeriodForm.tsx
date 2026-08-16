@@ -81,7 +81,7 @@ export default function StorePeriodForm({ lang }: { lang: Language }) {
       </Field>
 
       {error && <p className="text-sm text-critical">{error}</p>}
-      <button type="submit" disabled={pending} className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground disabled:opacity-60">
+      <button type="submit" disabled={pending} className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60">
         {pending ? "…" : t(lang, "action_save")}
       </button>
     </form>

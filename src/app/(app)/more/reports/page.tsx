@@ -118,9 +118,9 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
           {user.language === "es" ? "Historial" : "History"}
         </h2>
         <form className="mb-3 flex gap-2">
-          <input type="date" name="start" defaultValue={start} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm" />
-          <input type="date" name="end" defaultValue={end} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm" />
-          <button type="submit" className="tap-target rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white">
+          <input type="date" name="start" defaultValue={start} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15" />
+          <input type="date" name="end" defaultValue={end} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15" />
+          <button type="submit" className="tap-target rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-foreground/85">
             {user.language === "es" ? "Ir" : "Go"}
           </button>
         </form>

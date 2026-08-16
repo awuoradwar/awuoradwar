@@ -10,7 +10,7 @@ export default async function LoginPage() {
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 bg-background">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-2xl font-bold text-accent-foreground">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent text-2xl font-bold text-accent-foreground shadow-md">
             SO
           </div>
           <h1 className="text-2xl font-semibold">Shift Ops</h1>

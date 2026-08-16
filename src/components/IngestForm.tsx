@@ -22,7 +22,11 @@ export default function IngestForm({ lang }: { lang: Language }) {
       }}
       className="card flex flex-col gap-2 p-3"
     >
-      <input name="filename" placeholder={lang === "es" ? "Nombre del documento" : "Document name"} className="tap-target w-full rounded-xl border border-border bg-background px-3 text-sm" />
+      <input
+        name="filename"
+        placeholder={lang === "es" ? "Nombre del documento" : "Document name"}
+        className="tap-target w-full rounded-xl border border-border bg-background px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+      />
       <textarea
         name="text"
         required
@@ -32,9 +36,13 @@ export default function IngestForm({ lang }: { lang: Language }) {
             ? "Pega aquí el texto del plan quincenal de la empresa (línea por línea)…"
             : "Paste the company biweekly plan text here (one item per line)…"
         }
-        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
+        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
       />
-      <button type="submit" disabled={pending} className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground disabled:opacity-60">
+      <button
+        type="submit"
+        disabled={pending}
+        className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
+      >
         {pending ? "…" : lang === "es" ? "Procesar" : "Process"}
       </button>
     </form>

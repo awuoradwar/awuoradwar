@@ -21,7 +21,7 @@ export default function LanguageToggle({ lang }: { lang: Language }) {
           router.refresh();
         })
       }
-      className="tap-target rounded-lg border border-border px-2 text-xs font-medium text-accent disabled:opacity-50"
+      className="tap-target rounded-lg border border-accent px-2 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
     >
       {t(lang, "language_toggle")}
     </button>

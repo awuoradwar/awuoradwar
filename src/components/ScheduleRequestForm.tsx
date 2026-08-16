@@ -82,7 +82,7 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
       )}
       {error && <p className="text-sm text-critical">{error}</p>}
       {saved && <p className="text-sm text-ok">{lang === "es" ? "Guardado." : "Saved."}</p>}
-      <button type="submit" disabled={pending} className="tap-target rounded-xl bg-accent font-semibold text-accent-foreground disabled:opacity-60">
+      <button type="submit" disabled={pending} className="tap-target rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60">
         {pending ? "…" : lang === "es" ? "Registrar solicitud" : "Record request"}
       </button>
     </form>

@@ -41,7 +41,7 @@ export default function GuestRecoveryDetailActions({
           <button
             disabled={pending}
             onClick={() => run(() => approveReplacementAction(id))}
-            className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+            className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {t(lang, "action_approve")}
           </button>
@@ -80,7 +80,7 @@ export default function GuestRecoveryDetailActions({
             value={followUpTitle}
             onChange={(e) => setFollowUpTitle(e.target.value)}
             placeholder={t(lang, "field_title")}
-            className="tap-target flex-1 rounded-xl border border-border bg-card px-3 text-sm outline-none focus:border-accent"
+            className="tap-target flex-1 rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
           />
           <button
             disabled={pending || !followUpTitle.trim()}
@@ -91,7 +91,7 @@ export default function GuestRecoveryDetailActions({
                 setFollowUpTitle("");
               })
             }
-            className="tap-target rounded-xl bg-zinc-900 px-4 text-sm font-semibold text-white disabled:opacity-40"
+            className="tap-target rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-foreground/85 disabled:opacity-40"
           >
             {t(lang, "action_save")}
           </button>

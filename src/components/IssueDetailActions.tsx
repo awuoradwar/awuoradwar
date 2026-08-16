@@ -81,7 +81,7 @@ export default function IssueDetailActions({ id, lang, status }: { id: string; l
             <button
               type="button"
               onClick={() => setResolving(true)}
-              className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground"
+              className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover"
             >
               {t(lang, "action_resolve")}
             </button>
@@ -103,7 +103,7 @@ export default function IssueDetailActions({ id, lang, status }: { id: string; l
                     setResolving(false);
                   })
                 }
-                className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
               >
                 {t(lang, "action_resolve")}
               </button>

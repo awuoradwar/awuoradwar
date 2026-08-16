@@ -109,7 +109,7 @@ export default function WeekAddTaskForm({
         <button
           type="submit"
           disabled={pending}
-          className="tap-target flex-1 rounded-xl bg-accent text-sm font-semibold text-accent-foreground disabled:opacity-60"
+          className="tap-target flex-1 rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {pending ? "…" : lang === "es" ? "Agregar" : "Add"}
         </button>

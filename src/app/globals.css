@@ -1,29 +1,46 @@
 @import "tailwindcss";
 
+/* Panda Express brand palette: black, red, white. Green/amber survive only
+   as small-scale status semantics (a complete checkmark and an error both
+   reading as "red" would hurt scannability more than a strict 3-color rule
+   helps) -- everything else (chrome, buttons, focus, headers) is black,
+   red, or white. */
 :root {
-  --background: #f7f7f5;
-  --foreground: #1c1c1a;
+  --background: #ffffff;
+  --foreground: #16130f;
   --card: #ffffff;
-  --border: #e5e3de;
+  --card-subtle: #f6f4f2;
+  --border: #e7e4e0;
   --accent: #c8102e;
+  --accent-hover: #a80d26;
   --accent-foreground: #ffffff;
-  --muted: #6b6a64;
-  --critical: #b3261e;
+  --muted: #68625c;
+  --critical: #a10f22;
   --warning: #a15c00;
   --ok: #1e6b3a;
+  --chrome-bg: #14110f;
+  --chrome-fg: #ffffff;
+  --chrome-muted: #a89f97;
+  --chrome-border: #2a2521;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-card-subtle: var(--card-subtle);
   --color-border: var(--border);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
   --color-critical: var(--critical);
   --color-warning: var(--warning);
   --color-ok: var(--ok);
+  --color-chrome-bg: var(--chrome-bg);
+  --color-chrome-fg: var(--chrome-fg);
+  --color-chrome-muted: var(--chrome-muted);
+  --color-chrome-border: var(--chrome-border);
 }
 
 body {
@@ -40,7 +57,16 @@ body {
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 0.9rem;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(22, 19, 15, 0.04);
+}
+
+/* One consistent, brand-red focus affordance for every interactive element
+   -- inputs, buttons, links -- instead of each component inventing its own. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar {

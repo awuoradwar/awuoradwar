@@ -56,10 +56,11 @@ export default function BottomNav({ lang }: { lang: Language }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`tap-target flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${
-                active ? "text-accent" : "text-muted"
+              className={`tap-target relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
+                active ? "text-accent" : "text-muted hover:text-foreground"
               }`}
             >
+              {active && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-accent" aria-hidden />}
               {icons[item.icon]}
               <span>{t(lang, item.key as never)}</span>
             </Link>

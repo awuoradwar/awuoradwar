@@ -58,7 +58,7 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
         </div>
         <div className="flex shrink-0 gap-1">
           {task.status === "ASSIGNED" && !needsPhotoToComplete && (
-            <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className="tap-target rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground disabled:opacity-50">
+            <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className="tap-target rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
               {t(lang, "action_complete")}
             </button>
           )}
@@ -95,7 +95,7 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
         >
           <input type="hidden" name="taskId" value={task.id} />
           <input name="photo" type="file" accept="image/*" required capture="environment" className="flex-1 text-xs" />
-          <button type="submit" disabled={pending} className="tap-target shrink-0 rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground disabled:opacity-50">
+          <button type="submit" disabled={pending} className="tap-target shrink-0 rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
             {t(lang, "action_complete")}
           </button>
         </form>

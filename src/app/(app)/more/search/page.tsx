@@ -87,7 +87,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/more/sear
           <input type="date" name="start" defaultValue={start} className={inputClass} />
           <input type="date" name="end" defaultValue={end} className={inputClass} />
         </div>
-        <button type="submit" className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground">
+        <button type="submit" className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover">
           {user.language === "es" ? "Buscar" : "Search"}
         </button>
       </form>

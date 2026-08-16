@@ -13,11 +13,11 @@ export default function TopBar({
   picName: string | null;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b-2 border-accent bg-chrome-bg text-chrome-fg">
       <div className="mx-auto flex max-w-md items-center justify-between gap-2 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{storeName}</p>
-          <p className="truncate text-xs text-muted">
+          <p className="truncate text-xs text-chrome-muted">
             {picName ? `PIC: ${picName}` : "No PIC assigned"} · {POSITION_LABEL[user.position][user.language]}
           </p>
         </div>
@@ -26,7 +26,7 @@ export default function TopBar({
           <form action={logoutAction}>
             <button
               type="submit"
-              className="tap-target rounded-lg border border-border px-2 text-xs font-medium text-muted"
+              className="tap-target rounded-lg border border-chrome-border px-2 text-xs font-medium text-chrome-muted transition-colors hover:border-chrome-muted hover:text-chrome-fg"
               aria-label="Sign out"
             >
               {user.language === "en" ? "Sign out" : "Salir"}

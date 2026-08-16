@@ -27,7 +27,7 @@ export default function HandoffActions({ lang, handoff }: { lang: Language; hand
         type="button"
         disabled={pending}
         onClick={() => startTransition(async () => { await generateHandoffAction(); router.refresh(); })}
-        className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground disabled:opacity-60"
+        className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
       >
         {lang === "es" ? "Generar entrega" : "Generate handoff"}
       </button>
@@ -42,13 +42,13 @@ export default function HandoffActions({ lang, handoff }: { lang: Language; hand
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           placeholder={t(lang, "handoff_outgoing_note")}
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none focus:border-accent"
+          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
         />
         <button
           type="button"
           disabled={pending}
           onClick={() => startTransition(async () => { await completeOutgoingHandoffAction(handoff.id, note); router.refresh(); })}
-          className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground disabled:opacity-60"
+          className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {t(lang, "action_complete_handoff")}
         </button>
@@ -64,7 +64,7 @@ export default function HandoffActions({ lang, handoff }: { lang: Language; hand
           type="button"
           disabled={pending}
           onClick={() => startTransition(async () => { await acknowledgeHandoffAction(handoff.id); router.refresh(); })}
-          className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground disabled:opacity-60"
+          className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {t(lang, "action_acknowledge")}
         </button>
