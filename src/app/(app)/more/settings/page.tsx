@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { POSITION_LABEL } from "@/lib/permissions";
 import LanguageToggle from "@/components/LanguageToggle";
 import PageHeader from "@/components/PageHeader";
+import PushNotificationToggle from "@/components/PushNotificationToggle";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -30,6 +31,8 @@ export default async function SettingsPage() {
         </div>
         <LanguageToggle lang={user.language} />
       </section>
+
+      <PushNotificationToggle lang={user.language} />
 
       <section className="card p-4">
         <p className="text-sm font-medium">{store?.name}</p>

@@ -10,6 +10,7 @@ import * as borrowingService from "@/lib/services/borrowingService";
 import * as issueService from "@/lib/services/issueService";
 import * as acknowledgementService from "@/lib/services/acknowledgementService";
 import * as taskService from "@/lib/services/taskService";
+import * as pushService from "@/lib/services/pushService";
 
 function refresh() {
   revalidatePath("/my-shift");
@@ -175,16 +176,26 @@ export async function quickAddIssueAction(formData: FormData) {
   const user = await requireCurrentUser();
   const description = fd(formData, "description");
   if (!description) return { error: "Description is required." };
+  const severity = (fd(formData, "severity") as "NORMAL" | "CRITICAL") || "NORMAL";
   issueService.createIssue({
     storeId: user.storeId,
     category: fd(formData, "category") || "EQUIPMENT",
     description,
-    severity: (fd(formData, "severity") as "NORMAL" | "CRITICAL") || "NORMAL",
+    severity,
     dueDate: dueDateForWhen(fd(formData, "when")),
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });
   refresh();
+  if (severity === "CRITICAL") {
+    pushService
+      .sendPushToStore(
+        user.storeId,
+        { title: "🔴 Critical work order", body: description, url: "/more/work-orders" },
+        user.id
+      )
+      .catch(() => {});
+  }
   return { ok: true };
 }
 

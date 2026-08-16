@@ -25,3 +25,33 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(caches.match(req).then((cached) => cached || fetch(req)));
   }
 });
+
+self.addEventListener("push", (event) => {
+  let data = { title: "Shift Ops", body: "" };
+  try {
+    data = event.data.json();
+  } catch {
+    // no-op: fall back to the default above if the payload isn't JSON
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Shift Ops", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: data.url || "/my-shift" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/my-shift";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(url) && "focus" in client) return client.focus();
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});
