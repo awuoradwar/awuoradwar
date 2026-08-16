@@ -45,3 +45,40 @@ export async function toggleTemplateActiveAction(id: string, active: boolean) {
   writeAudit({ entityType: "task_template", entityId: id, actor: user, action: "EDITED", newValue: { active } });
   revalidatePath("/more/templates");
 }
+
+/**
+ * Change when a recurring template fires -- which weekday(s) and what time.
+ * Only affects instances generated from here forward: ensureInstancesForDate
+ * (recurrenceService.ts) re-reads the template fresh on every call and only
+ * ever inserts a new row when one doesn't already exist for that
+ * template+date, so already-materialized past/today instances are never
+ * rewritten -- exactly "the schedule changed going forward," not a rewrite
+ * of history.
+ */
+export async function updateTemplateScheduleAction(id: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
+  const db = getDb();
+  const recurrenceType = String(formData.get("recurrenceType") || "WEEKLY");
+  const weekdaysRaw = formData.getAll("weekdays").map(String);
+  const dueTime = String(formData.get("dueTime") || "") || undefined;
+  const existing = db.prepare(`SELECT recurrence_config FROM task_templates WHERE id = ?`).get(id) as
+    | { recurrence_config: string | null }
+    | undefined;
+  const prevConfig = existing?.recurrence_config ? JSON.parse(existing.recurrence_config) : {};
+  const config = { ...prevConfig, weekdays: weekdaysRaw.map(Number), dueTime };
+  db.prepare(`UPDATE task_templates SET recurrence_type = ?, recurrence_config = ? WHERE id = ?`).run(
+    recurrenceType,
+    JSON.stringify(config),
+    id
+  );
+  writeAudit({
+    entityType: "task_template",
+    entityId: id,
+    actor: user,
+    action: "EDITED",
+    newValue: { recurrence_type: recurrenceType, recurrence_config: config },
+  });
+  revalidatePath("/more/templates");
+  return { ok: true };
+}
