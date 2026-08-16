@@ -1,27 +1,26 @@
 @import "tailwindcss";
 
-/* Panda Express brand palette: black, red, white. Green/amber survive only
-   as small-scale status semantics (a complete checkmark and an error both
-   reading as "red" would hurt scannability more than a strict 3-color rule
-   helps) -- everything else (chrome, buttons, focus, headers) is black,
-   red, or white. */
+/* Kiungor / CIRIS brand palette: navy, gold, white. Red is reserved purely
+   for error/critical states now that it's not the brand color; green/amber
+   survive only as small-scale status semantics -- everything else (chrome,
+   buttons, focus, headers) is navy, gold, or white. */
 :root {
   --background: #ffffff;
-  --foreground: #16130f;
+  --foreground: #10193a;
   --card: #ffffff;
-  --card-subtle: #f6f4f2;
-  --border: #e7e4e0;
-  --accent: #c8102e;
-  --accent-hover: #a80d26;
+  --card-subtle: #f5f6fa;
+  --border: #e3e6ef;
+  --accent: #a8761a;
+  --accent-hover: #8f6315;
   --accent-foreground: #ffffff;
-  --muted: #68625c;
-  --critical: #a10f22;
-  --warning: #a15c00;
+  --muted: #5b6178;
+  --critical: #c0332b;
+  --warning: #8a5a1f;
   --ok: #1e6b3a;
-  --chrome-bg: #14110f;
+  --chrome-bg: #0f1f52;
   --chrome-fg: #ffffff;
-  --chrome-muted: #a89f97;
-  --chrome-border: #2a2521;
+  --chrome-muted: #c9b076;
+  --chrome-border: #223269;
 }
 
 @theme inline {
