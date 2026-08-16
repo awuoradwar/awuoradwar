@@ -24,6 +24,9 @@ export default async function InboxPage() {
   const managers = getDb()
     .prepare(`SELECT id, name FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
     .all() as { id: string; name: string }[];
+  const cleaningAreas = getDb()
+    .prepare(`SELECT id, name FROM cleaning_areas WHERE store_id = ? ORDER BY name`)
+    .all(user.storeId) as { id: string; name: string }[];
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -61,6 +64,7 @@ export default async function InboxPage() {
                 lang={user.language}
                 managers={managers}
                 suggestedOwnerId={suggestedOwner?.id ?? null}
+                cleaningAreas={cleaningAreas}
               />
             ))}
           </div>

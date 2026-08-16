@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentUser } from "@/lib/auth";
 import * as importService from "@/lib/services/importService";
 import * as taskService from "@/lib/services/taskService";
+import * as cleaningService from "@/lib/services/cleaningService";
 
 function refresh() {
   revalidatePath("/more/inbox");
   revalidatePath("/week");
+  revalidatePath("/more/cleaning");
 }
 
 export async function ingestTextAction(formData: FormData) {
@@ -24,11 +26,24 @@ export async function approveProposalAction(
   proposalId: string,
   correctedTitle: string,
   createTask: boolean,
-  ownerId?: string | null
+  ownerId?: string | null,
+  cleaningAreaId?: string | null,
+  cleaningFrequency?: "DAILY" | "WEEKLY"
 ) {
   const user = await requireCurrentUser();
   importService.approveProposal(proposalId, correctedTitle, user);
-  if (createTask) {
+  if (createTask && cleaningAreaId) {
+    // A real cleaning task tied to an area -- trackable/verifiable on the
+    // Cleaning page -- rather than a generic task, since that's where the
+    // team expects company-provided cleaning duties to show up.
+    cleaningService.createCleaningTask({
+      areaId: cleaningAreaId,
+      title: correctedTitle,
+      frequency: cleaningFrequency || "DAILY",
+      managerOwnerId: ownerId || user.id,
+      actor: user,
+    });
+  } else if (createTask) {
     taskService.createTask({
       storeId: user.storeId,
       title: correctedTitle,

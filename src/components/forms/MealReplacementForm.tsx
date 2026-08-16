@@ -7,9 +7,9 @@ import { Language } from "@/lib/types";
 
 export default function MealReplacementForm({ lang }: { lang: Language }) {
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
-    null,
+    "guestRecovery",
     quickAddMealReplacementAction,
-    (fd) => `${lang === "es" ? "Reemplazo de comida" : "Meal replacement"}: ${fd.get("itemDescription")}`
+    (fd) => `${lang === "es" ? "Recuperación de cliente" : "Guest recovery"}: ${fd.get("issueCategory")}`
   );
 
   return (
@@ -27,6 +27,15 @@ export default function MealReplacementForm({ lang }: { lang: Language }) {
           <option value="DRIVE_THRU">Drive-Thru</option>
         </select>
       </Field>
+      <Field label={lang === "es" ? "Categoría" : "Category"}>
+        <select name="issueCategory" defaultValue="FOOD_QUALITY" className={selectClass}>
+          <option value="FOOD_QUALITY">{lang === "es" ? "Calidad de comida" : "Food quality"}</option>
+          <option value="ACCURACY">{lang === "es" ? "Precisión" : "Accuracy"}</option>
+          <option value="SERVICE">{lang === "es" ? "Servicio" : "Service"}</option>
+          <option value="CLEANLINESS">{lang === "es" ? "Limpieza" : "Cleanliness"}</option>
+          <option value="OTHER">{lang === "es" ? "Otro" : "Other"}</option>
+        </select>
+      </Field>
       <Field label={lang === "es" ? "Artículo/comida" : "Item/meal"}>
         <input name="itemDescription" className={inputClass} placeholder={lang === "es" ? "Opcional" : "Optional"} />
       </Field>
@@ -36,6 +45,11 @@ export default function MealReplacementForm({ lang }: { lang: Language }) {
       <Field label={lang === "es" ? "Descripción (opcional)" : "Description (optional)"}>
         <textarea name="description" rows={2} className={textareaClass} />
       </Field>
+      <p className="text-xs text-muted">
+        {lang === "es"
+          ? "El estado inicia como Pendiente. Un gerente autorizado puede aprobar el reemplazo después."
+          : "Starts as Pending. An authorized manager can approve a replacement later."}
+      </p>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Guardar" : "Save"} />
     </form>
   );

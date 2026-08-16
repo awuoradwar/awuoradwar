@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS cleaning_tasks (
   area_id TEXT NOT NULL REFERENCES cleaning_areas(id),
   title TEXT NOT NULL,
   title_es TEXT, -- Spanish title, shown instead of title for es-language viewers when set
+  frequency TEXT NOT NULL DEFAULT 'DAILY', -- DAILY | WEEKLY
   associate_name TEXT,
   manager_owner_id TEXT REFERENCES users(id),
   status TEXT NOT NULL DEFAULT 'ASSIGNED', -- ASSIGNED | COMPLETED | VERIFIED | REOPENED

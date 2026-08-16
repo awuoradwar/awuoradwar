@@ -109,32 +109,20 @@ export async function quickAddCleaningAction(formData: FormData) {
   const title = fd(formData, "title");
   if (!areaId || !title) return { error: "Area and title are required." };
   const id = newId();
+  const frequency = fd(formData, "frequency") === "WEEKLY" ? "WEEKLY" : "DAILY";
   db.prepare(
-    `INSERT INTO cleaning_tasks (id, area_id, title, associate_name, manager_owner_id, status, photo_required, created_at)
-     VALUES (?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
-  ).run(id, areaId, title, fd(formData, "associateName") || null, user.id, fd(formData, "photoRequired") === "on" ? 1 : 0, nowIso());
+    `INSERT INTO cleaning_tasks (id, area_id, title, frequency, associate_name, manager_owner_id, status, photo_required, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
+  ).run(id, areaId, title, frequency, fd(formData, "associateName") || null, user.id, fd(formData, "photoRequired") === "on" ? 1 : 0, nowIso());
   writeAudit({ entityType: "cleaning_task", entityId: id, actor: user, action: "CREATED" });
   refresh();
   return { ok: true };
 }
 
-export async function quickAddGuestRecoveryAction(formData: FormData) {
-  const user = await requireCurrentUser();
-  const shift = getCurrentPicForStore(user.storeId);
-  guestRecoveryService.createGuestRecovery({
-    storeId: user.storeId,
-    contactChannel: fd(formData, "contactChannel") as "PHONE" | "IN_STORE",
-    orderChannel: fd(formData, "orderChannel") as "ONLINE" | "IN_STORE" | "DRIVE_THRU",
-    issueCategory: fd(formData, "issueCategory") || "OTHER",
-    description: fd(formData, "description") || undefined,
-    actor: user,
-    picId: shift?.pic_user_id ?? null,
-    idempotencyKey: fd(formData, "idempotencyKey") || undefined,
-  });
-  refresh();
-  return { ok: true };
-}
-
+/** Single entry point for guest recovery / meal replacement -- these were
+ * always the same underlying record (issueCategory just defaults to
+ * FOOD_QUALITY for the common "meal replacement" case); one form now covers
+ * both instead of two near-identical quick-add buttons. */
 export async function quickAddMealReplacementAction(formData: FormData) {
   const user = await requireCurrentUser();
   const shift = getCurrentPicForStore(user.storeId);
@@ -149,6 +137,7 @@ export async function quickAddMealReplacementAction(formData: FormData) {
     valueEstimate: valueStr ? Number(valueStr) : null,
     actor: user,
     picId: shift?.pic_user_id ?? null,
+    idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });
   refresh();
   return { ok: true };

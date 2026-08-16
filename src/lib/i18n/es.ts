@@ -71,7 +71,6 @@ const es: Record<DictKeys, string> = {
   add_call_in: "Aviso de Ausencia",
   add_late: "Tardanza",
   add_cleaning: "Limpieza",
-  add_guest_recovery: "Recuperación de Cliente",
   add_meal_replacement: "Reemplazo de Comida",
   add_borrowed_item: "Artículo Prestado",
   add_issue: "Orden de Trabajo",
@@ -199,6 +198,8 @@ const es: Record<DictKeys, string> = {
   detail_resolution_placeholder: "¿Qué resolvió esto?",
   detail_update_placeholder: "Agregar una nota…",
 
+  cleaning_daily: "Diaria",
+  cleaning_weekly: "Semanal",
   cleaning_photo_required: "Se requiere foto para completar",
   cleaning_add_photo: "Agregar Foto",
   cleaning_view_photo: "Ver Foto",

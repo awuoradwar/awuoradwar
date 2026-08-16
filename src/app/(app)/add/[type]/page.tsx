@@ -7,7 +7,6 @@ import TaskForm from "@/components/forms/TaskForm";
 import CallInForm from "@/components/forms/CallInForm";
 import LateForm from "@/components/forms/LateForm";
 import CleaningForm from "@/components/forms/CleaningForm";
-import GuestRecoveryForm from "@/components/forms/GuestRecoveryForm";
 import MealReplacementForm from "@/components/forms/MealReplacementForm";
 import BorrowedItemForm from "@/components/forms/BorrowedItemForm";
 import IssueForm from "@/components/forms/IssueForm";
@@ -19,7 +18,6 @@ const TITLE_KEYS: Record<string, string> = {
   "call-in": "add_call_in",
   late: "add_late",
   cleaning: "add_cleaning",
-  "guest-recovery": "add_guest_recovery",
   "meal-replacement": "add_meal_replacement",
   "borrowed-item": "add_borrowed_item",
   issue: "add_issue",
@@ -49,7 +47,6 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
       {type === "call-in" && <CallInForm lang={user.language} />}
       {type === "late" && <LateForm lang={user.language} />}
       {type === "cleaning" && <CleaningForm lang={user.language} areas={areas} />}
-      {type === "guest-recovery" && <GuestRecoveryForm lang={user.language} />}
       {type === "meal-replacement" && <MealReplacementForm lang={user.language} />}
       {type === "borrowed-item" && <BorrowedItemForm lang={user.language} />}
       {type === "issue" && <IssueForm lang={user.language} />}

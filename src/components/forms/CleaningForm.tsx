@@ -35,6 +35,12 @@ export default function CleaningForm({
       <Field label={lang === "es" ? "Tarea" : "Task"}>
         <input name="title" required className={inputClass} />
       </Field>
+      <Field label={lang === "es" ? "Frecuencia" : "Frequency"}>
+        <select name="frequency" defaultValue="DAILY" className={selectClass}>
+          <option value="DAILY">{lang === "es" ? "Diaria" : "Daily"}</option>
+          <option value="WEEKLY">{lang === "es" ? "Semanal" : "Weekly"}</option>
+        </select>
+      </Field>
       <Field label={lang === "es" ? "Asociado (opcional)" : "Associate (optional)"}>
         <input name="associateName" className={inputClass} />
       </Field>

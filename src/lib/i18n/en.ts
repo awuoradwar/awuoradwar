@@ -69,7 +69,6 @@ const en = {
   add_call_in: "Call-in",
   add_late: "Late",
   add_cleaning: "Cleaning",
-  add_guest_recovery: "Guest Recovery",
   add_meal_replacement: "Meal Replacement",
   add_borrowed_item: "Borrowed Item",
   add_issue: "Work Order",
@@ -197,6 +196,8 @@ const en = {
   detail_resolution_placeholder: "What resolved this?",
   detail_update_placeholder: "Add a note…",
 
+  cleaning_daily: "Daily",
+  cleaning_weekly: "Weekly",
   cleaning_photo_required: "Photo required to complete",
   cleaning_add_photo: "Add Photo",
   cleaning_view_photo: "View Photo",

@@ -140,6 +140,7 @@ create table cleaning_tasks (
   area_id uuid not null references cleaning_areas(id),
   title text not null,
   title_es text, -- Spanish title, shown instead of title for es-language viewers when set
+  frequency text not null default 'DAILY' check (frequency in ('DAILY','WEEKLY')),
   associate_name text,
   manager_owner_id uuid references users(id),
   status text not null default 'ASSIGNED' check (status in ('ASSIGNED','COMPLETED','VERIFIED','REOPENED')),

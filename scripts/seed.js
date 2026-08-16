@@ -175,20 +175,20 @@ const fohArea = area("FOH - Dining & Front Counter", "FOH - Comedor y Mostrador"
 const bohArea = area("BOH - Cook Line & Prep", "BOH - Línea de Cocina y Preparación", "BOH", chefId);
 const facArea = area("Facilities / Exterior", "Instalaciones / Exterior", "FACILITIES", gmId);
 
-function cleaningTask(areaId, title, titleEs, associateName, managerOwnerId, photoRequired) {
+function cleaningTask(areaId, title, titleEs, frequency, associateName, managerOwnerId, photoRequired) {
   db.prepare(
-    `INSERT INTO cleaning_tasks (id, area_id, title, title_es, associate_name, manager_owner_id, status, photo_required, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
-  ).run(id(), areaId, title, titleEs || null, associateName, managerOwnerId, photoRequired ? 1 : 0, now());
+    `INSERT INTO cleaning_tasks (id, area_id, title, title_es, frequency, associate_name, manager_owner_id, status, photo_required, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
+  ).run(id(), areaId, title, titleEs || null, frequency, associateName, managerOwnerId, photoRequired ? 1 : 0, now());
 }
-cleaningTask(fohArea, "Dining room tables & floor", "Mesas y piso del comedor", "Ana R.", amId, 0);
-cleaningTask(fohArea, "Restrooms", "Baños", "Ana R.", amId, 0);
-cleaningTask(fohArea, "Beverage area", "Área de bebidas", "Luis M.", amId, 0);
-cleaningTask(bohArea, "Walk-in organization & temp check", "Organización del walk-in y control de temperatura", "Diego F.", chefId, 1);
-cleaningTask(bohArea, "Cook line deep wipe-down", "Limpieza profunda de la línea de cocina", "Diego F.", chefId, 0);
-cleaningTask(bohArea, "Dish pit", "Área de lavado de platos", "Kevin S.", chefId, 0);
-cleaningTask(facArea, "Dumpster area", "Área del contenedor de basura", "Kevin S.", gmId, 0);
-cleaningTask(facArea, "Perimeter / parking lot", "Perímetro / estacionamiento", "Luis M.", gmId, 0);
+cleaningTask(fohArea, "Dining room tables & floor", "Mesas y piso del comedor", "DAILY", "Ana R.", amId, 0);
+cleaningTask(fohArea, "Restrooms", "Baños", "DAILY", "Ana R.", amId, 0);
+cleaningTask(fohArea, "Beverage area", "Área de bebidas", "DAILY", "Luis M.", amId, 0);
+cleaningTask(bohArea, "Walk-in organization & temp check", "Organización del walk-in y control de temperatura", "DAILY", "Diego F.", chefId, 1);
+cleaningTask(bohArea, "Cook line deep wipe-down", "Limpieza profunda de la línea de cocina", "WEEKLY", "Diego F.", chefId, 0);
+cleaningTask(bohArea, "Dish pit", "Área de lavado de platos", "DAILY", "Kevin S.", chefId, 0);
+cleaningTask(facArea, "Dumpster area", "Área del contenedor de basura", "WEEKLY", "Kevin S.", gmId, 0);
+cleaningTask(facArea, "Perimeter / parking lot", "Perímetro / estacionamiento", "WEEKLY", "Luis M.", gmId, 0);
 
 // --- Today's shift with GM as PIC, plus a couple of live example records ---
 const today = new Date().toISOString().slice(0, 10);

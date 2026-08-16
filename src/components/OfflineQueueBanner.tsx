@@ -6,7 +6,7 @@ import {
   quickAddTaskAction,
   quickAddCallInAction,
   quickAddLateAction,
-  quickAddGuestRecoveryAction,
+  quickAddMealReplacementAction,
   quickAddBorrowedItemAction,
   quickAddIssueAction,
 } from "@/app/actions/quickAddActions";
@@ -17,7 +17,7 @@ const DISPATCH: Record<QueuedItem["kind"], (fd: FormData) => Promise<unknown>> =
   task: quickAddTaskAction,
   callIn: quickAddCallInAction,
   late: quickAddLateAction,
-  guestRecovery: quickAddGuestRecoveryAction,
+  guestRecovery: quickAddMealReplacementAction,
   borrowedItem: quickAddBorrowedItemAction,
   issue: quickAddIssueAction,
 };

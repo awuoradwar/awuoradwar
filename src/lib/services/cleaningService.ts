@@ -16,7 +16,16 @@ export function getAreasWithProgress(storeId: string) {
   return areas.map((area) => {
     const tasks = db
       .prepare(`SELECT * FROM cleaning_tasks WHERE area_id = ? ORDER BY created_at ASC`)
-      .all(area.id) as Array<{ id: string; title: string; title_es: string | null; status: string; associate_name: string | null; photo_required: number; photo_url: string | null }>;
+      .all(area.id) as Array<{
+      id: string;
+      title: string;
+      title_es: string | null;
+      frequency: "DAILY" | "WEEKLY";
+      status: string;
+      associate_name: string | null;
+      photo_required: number;
+      photo_url: string | null;
+    }>;
     const done = tasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").length;
     return { ...area, tasks, done, total: tasks.length };
   });
@@ -25,6 +34,7 @@ export function getAreasWithProgress(storeId: string) {
 export function createCleaningTask(params: {
   areaId: string;
   title: string;
+  frequency?: "DAILY" | "WEEKLY";
   associateName?: string;
   managerOwnerId?: string | null;
   photoRequired?: boolean;
@@ -33,9 +43,18 @@ export function createCleaningTask(params: {
   const db = getDb();
   const id = newId();
   db.prepare(
-    `INSERT INTO cleaning_tasks (id, area_id, title, associate_name, manager_owner_id, status, photo_required, created_at)
-     VALUES (?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
-  ).run(id, params.areaId, params.title, params.associateName || null, params.managerOwnerId || null, params.photoRequired ? 1 : 0, nowIso());
+    `INSERT INTO cleaning_tasks (id, area_id, title, frequency, associate_name, manager_owner_id, status, photo_required, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
+  ).run(
+    id,
+    params.areaId,
+    params.title,
+    params.frequency || "DAILY",
+    params.associateName || null,
+    params.managerOwnerId || null,
+    params.photoRequired ? 1 : 0,
+    nowIso()
+  );
   writeAudit({ entityType: "cleaning_task", entityId: id, actor: params.actor, action: "CREATED", newValue: { title: params.title } });
   return id;
 }
