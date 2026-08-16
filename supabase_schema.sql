@@ -140,7 +140,10 @@ create table cleaning_tasks (
   area_id uuid not null references cleaning_areas(id),
   title text not null,
   title_es text, -- Spanish title, shown instead of title for es-language viewers when set
+  description text, -- full checklist detail, e.g. everything a deep-clean covers
+  description_es text,
   frequency text not null default 'DAILY' check (frequency in ('DAILY','WEEKLY')),
+  weekday int check (weekday between 0 and 6), -- 0=Sun..6=Sat; which day a WEEKLY task is due. NULL = any day this week.
   associate_name text,
   manager_owner_id uuid references users(id),
   status text not null default 'ASSIGNED' check (status in ('ASSIGNED','COMPLETED','VERIFIED','REOPENED')),

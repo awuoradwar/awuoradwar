@@ -10,7 +10,10 @@ interface CleaningTask {
   id: string;
   title: string;
   title_es: string | null;
+  description: string | null;
+  description_es: string | null;
   frequency: "DAILY" | "WEEKLY";
+  weekday: number | null;
   status: string;
   associate_name: string | null;
   photo_required: number;
@@ -66,7 +69,14 @@ export default async function CleaningPage() {
 
   const areas = getAreasWithProgress(user.storeId) as CleaningArea[];
   const dailyAreas = areas.map((a) => ({ ...a, tasks: a.tasks.filter((t) => t.frequency === "DAILY") }));
-  const weeklyAreas = areas.map((a) => ({ ...a, tasks: a.tasks.filter((t) => t.frequency === "WEEKLY") }));
+  // Weekly tasks tied to a specific weekday (the deep-clean rotation) only show up
+  // on their day -- same "today's version of the schedule shows itself" principle
+  // as the recurring task engine. Weekly tasks with no fixed day stay visible all week.
+  const todayWeekday = new Date().getDay();
+  const weeklyAreas = areas.map((a) => ({
+    ...a,
+    tasks: a.tasks.filter((t) => t.frequency === "WEEKLY" && (t.weekday == null || t.weekday === todayWeekday)),
+  }));
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">

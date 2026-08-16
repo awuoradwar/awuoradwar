@@ -13,6 +13,16 @@ declare global {
   var __shiftOpsDb: Database.Database | undefined;
 }
 
+/** Add a column to an already-existing table if it isn't there yet. schema.sql's
+ * CREATE TABLE IF NOT EXISTS only covers brand-new tables -- a table that already
+ * exists on disk never picks up newly-added columns from schema.sql on its own. */
+function ensureColumn(db: Database.Database, table: string, column: string, ddl: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+  }
+}
+
 function createConnection(): Database.Database {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   const db = new Database(DB_PATH);
@@ -20,6 +30,9 @@ function createConnection(): Database.Database {
   db.pragma("foreign_keys = ON");
   const schema = fs.readFileSync(path.join(process.cwd(), "src/lib/schema.sql"), "utf-8");
   db.exec(schema);
+  ensureColumn(db, "cleaning_tasks", "description", "description TEXT");
+  ensureColumn(db, "cleaning_tasks", "description_es", "description_es TEXT");
+  ensureColumn(db, "cleaning_tasks", "weekday", "weekday INTEGER");
   return db;
 }
 

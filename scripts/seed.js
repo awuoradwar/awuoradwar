@@ -175,11 +175,11 @@ const fohArea = area("FOH - Dining & Front Counter", "FOH - Comedor y Mostrador"
 const bohArea = area("BOH - Cook Line & Prep", "BOH - Línea de Cocina y Preparación", "BOH", chefId);
 const facArea = area("Facilities / Exterior", "Instalaciones / Exterior", "FACILITIES", gmId);
 
-function cleaningTask(areaId, title, titleEs, frequency, associateName, managerOwnerId, photoRequired) {
+function cleaningTask(areaId, title, titleEs, frequency, associateName, managerOwnerId, photoRequired, description, weekday) {
   db.prepare(
-    `INSERT INTO cleaning_tasks (id, area_id, title, title_es, frequency, associate_name, manager_owner_id, status, photo_required, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
-  ).run(id(), areaId, title, titleEs || null, frequency, associateName, managerOwnerId, photoRequired ? 1 : 0, now());
+    `INSERT INTO cleaning_tasks (id, area_id, title, title_es, description, frequency, weekday, associate_name, manager_owner_id, status, photo_required, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
+  ).run(id(), areaId, title, titleEs || null, description || null, frequency, weekday ?? null, associateName, managerOwnerId, photoRequired ? 1 : 0, now());
 }
 cleaningTask(fohArea, "Dining room tables & floor", "Mesas y piso del comedor", "DAILY", "Ana R.", amId, 0);
 cleaningTask(fohArea, "Restrooms", "Baños", "DAILY", "Ana R.", amId, 0);
@@ -189,6 +189,115 @@ cleaningTask(bohArea, "Cook line deep wipe-down", "Limpieza profunda de la líne
 cleaningTask(bohArea, "Dish pit", "Área de lavado de platos", "DAILY", "Kevin S.", chefId, 0);
 cleaningTask(facArea, "Dumpster area", "Área del contenedor de basura", "WEEKLY", "Kevin S.", gmId, 0);
 cleaningTask(facArea, "Perimeter / parking lot", "Perímetro / estacionamiento", "WEEKLY", "Luis M.", gmId, 0);
+
+// --- Weekly deep-clean rotation (from the store's "5 Point 7 Action" board) --
+// One FOH + one BOH deep-clean area per weekday, 0=Sun..6=Sat. Each area's
+// single task carries the full checklist as its description.
+const deepCleanRotation = [
+  {
+    weekday: 0,
+    foh: {
+      name: "Dining Room & Entrances",
+      title: "Scrub Dining Room Floor, Entrances, Doors",
+      description: "Lobby floor/grout, including all metal parts and ledges, windows and door frame, spider web, under drink station.",
+    },
+    boh: {
+      name: "Cook Range",
+      title: "Deep Clean Cook Range",
+      description: "Hoods, lights, globes, Ansul poles and tips, faucets, blancher, wok rings, under cooking range, pipes, drains.",
+    },
+  },
+  {
+    weekday: 1,
+    foh: {
+      name: "Serving Line & DT Area",
+      title: "Deep Clean Serving Line & Drive-Thru Area",
+      description:
+        "Serving line shelves, induction unit, heat lamps, condiment cart/shelf, rice warmer, drink station, ice chute, cabinet, DT window, walls, Ironman sign, register, behind/under registers, order taker screen and cables, phones.",
+    },
+    boh: {
+      name: "Prep Cooler (Main) & Reach-in Freezer",
+      title: "Deep Clean Prep Cooler (Main) & Reach-in Freezer",
+      description: "Deep clean and polish, gaskets, wheels, vent, cables, doors, hinges, cover panel, meat drawers and sliders.",
+    },
+  },
+  {
+    weekday: 2,
+    foh: {
+      name: "Restrooms Deep Clean",
+      title: "Deep Clean Restrooms",
+      description: "Restroom door frames, doors, toe kick, walls cleaned with wet towel, baseboards, vents, lights cleaned, underside of toilet and sink.",
+    },
+    boh: {
+      name: "Prep Cooler (Side), Rice Cabinet & Condiment Cart",
+      title: "Deep Clean Prep Cooler (Side), Rice Cabinet & Condiment Cart",
+      description:
+        "Deep clean and polish, gaskets, wheels, vent, cables, doors, hinges, cover panel, warmer water reservoir, remove warmer metal parts, clean, replace, deep clean cook's condiment cart.",
+    },
+  },
+  {
+    weekday: 3,
+    foh: {
+      name: "Drive Thru Exterior, Dumpster & Parking Lot",
+      title: "Deep Clean Drive Thru Exterior, Dumpster & Parking Lot",
+      description:
+        "Canopy, metal part above the drive-thru window, splatter on building, oil and tire marks, dumpster, sweep leaves and dirt, no clutter, scrub concrete, remove oil stains.",
+    },
+    boh: {
+      name: "Prep & Dishwashing Sink",
+      title: "Deep Clean Prep & Dishwashing Sink",
+      description: "Clean top to bottom, under shelves, pipes, drains, rice bin, 3-compartment sink.",
+    },
+  },
+  {
+    weekday: 4,
+    foh: {
+      name: "Lobby Drink Station Deep Clean",
+      title: "Deep Clean Lobby Drink Station",
+      description: "Ice bin/chute, detail drink station, tea machine, under tea machine, cutlery holders cleaned, drink station drain, floor drain, cabinet doors and feet.",
+    },
+    boh: {
+      name: "BOH Floors, Walk-in Freezer & Cooler",
+      title: "Buff Floors & Deep Clean Walk-in Freezer/Cooler",
+      description:
+        "Grout, baseboards, all BOH floors, sweep & dry mop freezer floor, buff walk-in cooler floor, clean plastic curtains, gaskets, veggie display doors, doorframe, shelves wiped clean with rag.",
+    },
+  },
+  {
+    weekday: 5,
+    foh: {
+      name: "Manager Station, Air Vents & Lobby Furniture",
+      title: "Organize Manager Station & Clean Air Vents, Chairs, Tables",
+      description:
+        "Remove clutter, organize manager station, polish keyboard, mouse, monitor, lobby vents, air ducts wipe clean with wet rag, lobby chairs, highchairs, tables, table legs.",
+    },
+    boh: {
+      name: "Walls, Storage, Mop Sink & Lockers",
+      title: "Clean Walls, Storage, Mop Sink & Lockers",
+      description: "Clean walls, back door, air curtain, organize shelves, clean and organize mop sink area, clean lockers (only personal items, no food or drink).",
+    },
+  },
+  {
+    weekday: 6,
+    foh: {
+      name: "Serving Table & DT Floors",
+      title: "Buff Serving Table Floors, DT Floors, Drains",
+      description: "Baseboards, legs, detail clean drains, grout, buff floor, under serving table, walls.",
+    },
+    boh: {
+      name: "Grill Station, Oil Filter & Fryers",
+      title: "Detail Grill Station, Oil Filter Machine & Fryers",
+      description: "Including table, bottom of grill, back wall and side, deep clean both fryers inside and outside & fryer doors, filter machine clean top to bottom.",
+    },
+  },
+];
+
+for (const day of deepCleanRotation) {
+  const fohDeepArea = area(day.foh.name, null, "FOH", amId);
+  cleaningTask(fohDeepArea, day.foh.title, null, "WEEKLY", null, amId, 0, day.foh.description, day.weekday);
+  const bohDeepArea = area(day.boh.name, null, "BOH", chefId);
+  cleaningTask(bohDeepArea, day.boh.title, null, "WEEKLY", null, chefId, 0, day.boh.description, day.weekday);
+}
 
 // --- Today's shift with GM as PIC, plus a couple of live example records ---
 const today = new Date().toISOString().slice(0, 10);
