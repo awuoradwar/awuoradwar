@@ -1,11 +1,11 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import { t } from "@/lib/i18n";
 import StatusBadge from "@/components/StatusBadge";
 import GuestRecoveryDetailActions from "@/components/GuestRecoveryDetailActions";
+import PageHeader from "@/components/PageHeader";
 
 interface GuestRecoveryRow {
   id: string;
@@ -49,12 +49,11 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more/search" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="text-lg font-semibold">
-        {user.language === "es" ? "Recuperación de Cliente" : "Guest Recovery"}: {gr.issue_category}
-      </h1>
+      <PageHeader
+        backHref="/more/search"
+        lang={user.language}
+        title={`${user.language === "es" ? "Recuperación de Cliente" : "Guest Recovery"}: ${gr.issue_category}`}
+      />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={gr.replacement_status} lang={user.language} />
         <span className="text-xs text-muted">{new Date(gr.created_at).toLocaleString()}</span>

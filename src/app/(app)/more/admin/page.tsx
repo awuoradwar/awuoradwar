@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM, POSITION_LABEL } from "@/lib/permissions";
 import { getDb } from "@/lib/db";
 import UserAdminForm from "@/components/UserAdminForm";
 import DeactivateUserButton from "@/components/DeactivateUserButton";
+import PageHeader from "@/components/PageHeader";
 import { Position } from "@/lib/types";
 
 export default async function AdminPage() {
@@ -16,9 +16,7 @@ export default async function AdminPage() {
   if (!isGM(user)) {
     return (
       <div className="mx-auto max-w-md px-4 py-5">
-        <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-          ← {user.language === "es" ? "Atrás" : "Back"}
-        </Link>
+        <PageHeader backHref="/more" lang={user.language} />
         <div className="card p-6 text-center">
           <p className="text-2xl">🛡️</p>
           <p className="mt-2 text-sm font-medium">
@@ -36,11 +34,8 @@ export default async function AdminPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-1 text-lg font-semibold">{user.language === "es" ? "Administración" : "Admin"}</h1>
-      <p className="mb-4 text-xs text-muted">
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Administración" : "Admin"} />
+      <p className="-mt-3 mb-4 text-xs text-muted">
         {user.language === "es"
           ? "Recuerda: Gerente Asistente y Chef tienen exactamente los mismos permisos."
           : "Reminder: Assistant Manager and Chef always have exactly the same permissions."}

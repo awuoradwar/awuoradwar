@@ -1,10 +1,10 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
+import PageHeader from "@/components/PageHeader";
 import { TaskRow } from "@/lib/services/taskService";
 
 export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">) {
@@ -41,10 +41,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/my-shift" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="text-lg font-semibold">{title}</h1>
+      <PageHeader backHref="/my-shift" lang={user.language} title={title} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={task.status} lang={user.language} />
         {task.due_at && <span className="text-xs text-muted">⏰ {new Date(task.due_at).toLocaleString()}</span>}

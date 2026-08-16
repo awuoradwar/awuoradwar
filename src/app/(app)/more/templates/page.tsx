@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { canDo } from "@/lib/permissions";
 import TemplateToggle from "@/components/TemplateToggle";
 import TemplateForm from "@/components/TemplateForm";
+import PageHeader from "@/components/PageHeader";
 
 interface TemplateRow {
   id: string;
@@ -26,10 +26,7 @@ export default async function TemplatesPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{user.language === "es" ? "Plantillas" : "Templates"}</h1>
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Plantillas" : "Templates"} />
 
       {canManage && (
         <section className="mb-6">

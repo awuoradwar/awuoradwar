@@ -1,11 +1,11 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import { t } from "@/lib/i18n";
 import StatusBadge from "@/components/StatusBadge";
 import BorrowedItemDetailActions from "@/components/BorrowedItemDetailActions";
+import PageHeader from "@/components/PageHeader";
 
 interface BorrowedItemRow {
   id: string;
@@ -48,10 +48,7 @@ export default async function BorrowedItemDetailPage({ params }: PageProps<"/bor
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more/search" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="text-lg font-semibold">{item.item}</h1>
+      <PageHeader backHref="/more/search" lang={user.language} title={item.item} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={item.status} lang={user.language} />
         <span className="text-xs text-muted">{new Date(item.created_at).toLocaleString()}</span>
