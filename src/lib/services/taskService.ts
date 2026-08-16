@@ -186,6 +186,25 @@ export function getOpenTasksForStore(storeId: string): TaskRow[] {
     .all(storeId) as TaskRow[];
 }
 
+export interface CompletedTaskRow extends TaskRow {
+  completed_by_name: string | null;
+}
+
+/** Everything completed today, most recent first -- the record of what actually got done. */
+export function getCompletedTasksToday(storeId: string, todayStr: string): CompletedTaskRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT t.*, u.name as owner_name, tt.title_es, cu.name as completed_by_name FROM tasks t
+       LEFT JOIN users u ON u.id = t.owner_id
+       LEFT JOIN task_templates tt ON tt.id = t.template_id
+       LEFT JOIN users cu ON cu.id = t.completed_by
+       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.completed_at LIKE ?
+       ORDER BY t.completed_at DESC`
+    )
+    .all(storeId, `${todayStr}%`) as CompletedTaskRow[];
+}
+
 export function getWeekTasks(storeId: string, weekStart: string, weekEnd: string): TaskRow[] {
   const db = getDb();
   return db

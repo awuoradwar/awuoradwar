@@ -1,12 +1,13 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getOpenTasksForStore, computeSection, isBlocked, Section, getChecklistSummaries } from "@/lib/services/taskService";
+import { getOpenTasksForStore, getCompletedTasksToday, computeSection, isBlocked, Section, getChecklistSummaries } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
+import CompletedTaskRow from "@/components/CompletedTaskRow";
 import { t } from "@/lib/i18n";
 
 const OPEN_ITEM_HREF: Record<string, string> = {
@@ -41,15 +42,16 @@ export default async function MyShiftPage() {
     day: "numeric",
   });
   const completedThisShift = getCompletedThisShiftCount(user.storeId, user.id, today);
+  const completedToday = getCompletedTasksToday(user.storeId, today);
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
       <div className="flex items-baseline justify-between">
         <p className="text-xs font-medium text-muted">{dateLabel}</p>
         {completedThisShift > 0 && (
-          <p className="text-xs font-medium text-ok">
+          <a href="#completed" className="text-xs font-medium text-ok transition-opacity hover:opacity-75">
             ✓ {completedThisShift} {t(user.language, "completed_this_shift")}
-          </p>
+          </a>
         )}
       </div>
 
@@ -139,6 +141,25 @@ export default async function MyShiftPage() {
           )}
         </details>
       ))}
+
+      <details id="completed" className="card overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "section_completed")}</span>
+            <p className="text-[11px] text-muted">{t(user.language, "section_completed_sub")}</p>
+          </div>
+          <span className="shrink-0 text-xs font-semibold text-muted">{completedToday.length}</span>
+        </summary>
+        {completedToday.length === 0 ? (
+          <p className="border-t border-border p-4 text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
+        ) : (
+          <div className="divide-y divide-border border-t border-border">
+            {completedToday.map((task) => (
+              <CompletedTaskRow key={task.id} lang={user.language} task={task} />
+            ))}
+          </div>
+        )}
+      </details>
 
       <section>
         <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "section_from_last_shift" as never)}</h2>
