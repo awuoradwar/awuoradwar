@@ -69,6 +69,7 @@ create table task_templates (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
   title text not null,
+  title_es text, -- Spanish title, shown instead of title for es-language viewers when set
   description text,
   area text,
   category text,

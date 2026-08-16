@@ -17,13 +17,14 @@ export default function CompactTaskRow({ task, lang }: { task: TaskCardData; lan
   const dueLabel = task.due_at
     ? new Date(task.due_at).toLocaleTimeString(lang === "es" ? "es-MX" : "en-US", { hour: "numeric", minute: "2-digit" })
     : null;
+  const title = lang === "es" && task.title_es ? task.title_es : task.title;
 
   const canComplete = task.status !== "COMPLETE" && task.status !== "CANCELLED";
 
   return (
     <div className="flex items-center gap-2 px-3 py-2">
       <Link href={`/task/${task.id}`} className="min-w-0 flex-1">
-        <p className="truncate text-sm">{task.title}</p>
+        <p className="truncate text-sm">{title}</p>
         <p className="truncate text-[11px] text-muted">
           {dueLabel && <span>⏰ {dueLabel} </span>}
           {task.area && <span>· {task.area} </span>}

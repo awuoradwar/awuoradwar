@@ -96,7 +96,7 @@ export default async function WeekPage() {
                 <div key={t.id} className="card flex items-center justify-between p-3 text-sm">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{t.title}</p>
+                      <p className="truncate font-medium">{user.language === "es" && t.title_es ? t.title_es : t.title}</p>
                       <span
                         className={
                           "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +

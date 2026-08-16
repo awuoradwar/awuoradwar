@@ -14,9 +14,16 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
 
   const db = getDb();
   const task = db
-    .prepare(`SELECT t.*, u.name as owner_name FROM tasks t LEFT JOIN users u ON u.id = t.owner_id WHERE t.id = ?`)
+    .prepare(
+      `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
+       LEFT JOIN users u ON u.id = t.owner_id
+       LEFT JOIN task_templates tt ON tt.id = t.template_id
+       WHERE t.id = ?`
+    )
     .get(id) as (TaskRow & { owner_name: string | null }) | undefined;
   if (!task) notFound();
+
+  const title = user.language === "es" && task.title_es ? task.title_es : task.title;
 
   const managers = db
     .prepare(`SELECT id, name FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
@@ -37,7 +44,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
       <Link href="/my-shift" className="mb-3 inline-block text-sm text-muted">
         ← {user.language === "es" ? "Atrás" : "Back"}
       </Link>
-      <h1 className="text-lg font-semibold">{task.title}</h1>
+      <h1 className="text-lg font-semibold">{title}</h1>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={task.status} lang={user.language} />
         {task.due_at && <span className="text-xs text-muted">⏰ {new Date(task.due_at).toLocaleString()}</span>}

@@ -11,6 +11,7 @@ import StatusBadge from "./StatusBadge";
 export interface TaskCardData {
   id: string;
   title: string;
+  title_es?: string | null;
   area: string | null;
   owner_name: string | null;
   due_at: string | null;
@@ -27,12 +28,13 @@ export default function TaskCard({ task, lang }: { task: TaskCardData; lang: Lan
   const dueLabel = task.due_at
     ? new Date(task.due_at).toLocaleTimeString(lang === "es" ? "es-MX" : "en-US", { hour: "numeric", minute: "2-digit" })
     : null;
+  const title = lang === "es" && task.title_es ? task.title_es : task.title;
 
   return (
     <div className="card flex items-start gap-3 p-3">
       <div className="min-w-0 flex-1">
         <Link href={`/task/${task.id}`} className="block">
-          <p className="truncate text-sm font-semibold">{task.title}</p>
+          <p className="truncate text-sm font-semibold">{title}</p>
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
           {dueLabel && <span>⏰ {dueLabel}</span>}

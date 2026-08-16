@@ -71,13 +71,13 @@ console.log("Chef:", "chef@shiftops.demo (Spanish UI by default)");
 console.log("Visiting Manager:", "visiting@shiftops.demo");
 
 // --- Weekly recurring rhythm (spec section 5) -----------------------------
-function tpl({ title, description, area, category, recurrenceType, config, effort, verify, checklistRole }) {
+function tpl({ title, titleEs, description, area, category, recurrenceType, config, effort, verify, checklistRole }) {
   const tId = id();
   db.prepare(
-    `INSERT INTO task_templates (id, store_id, title, description, area, category, recurrence_type, recurrence_config,
+    `INSERT INTO task_templates (id, store_id, title, title_es, description, area, category, recurrence_type, recurrence_config,
       default_owner_position, effort, verification_required, source, active, checklist_role, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 'spec_default', 1, ?, ?)`
-  ).run(tId, storeId, title, description || null, area || null, category, recurrenceType, JSON.stringify(config || {}), effort, verify ? 1 : 0, checklistRole || null, now());
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 'spec_default', 1, ?, ?)`
+  ).run(tId, storeId, title, titleEs || null, description || null, area || null, category, recurrenceType, JSON.stringify(config || {}), effort, verify ? 1 : 0, checklistRole || null, now());
   return tId;
 }
 
@@ -87,6 +87,7 @@ function tpl({ title, description, area, category, recurrenceType, config, effor
 // "configurable Opening Ready and Closing Complete summaries."
 tpl({
   title: "Check WorkJam & action required items",
+  titleEs: "Revisar WorkJam y atender los elementos requeridos",
   category: "ROUTINE",
   recurrenceType: "DAILY",
   config: { dueTime: "10:00" },
@@ -95,6 +96,7 @@ tpl({
 });
 tpl({
   title: "Check Trends & complete/update required items",
+  titleEs: "Revisar Trends y completar/actualizar los elementos requeridos",
   category: "ROUTINE",
   recurrenceType: "DAILY",
   config: { dueTime: "10:00" },
@@ -103,6 +105,7 @@ tpl({
 });
 tpl({
   title: "Review & approve Legion timesheets",
+  titleEs: "Revisar y aprobar las hojas de horario en Legion",
   category: "ROUTINE",
   recurrenceType: "DAILY",
   config: { dueTime: "12:00" },
@@ -111,6 +114,7 @@ tpl({
 });
 tpl({
   title: "Review company email & convert follow-ups into tasks",
+  titleEs: "Revisar el correo de la empresa y convertir pendientes en tareas",
   category: "ROUTINE",
   recurrenceType: "DAILY",
   config: { dueTime: "11:00" },
@@ -119,6 +123,7 @@ tpl({
 });
 tpl({
   title: "Review daily cleaning status & outstanding acknowledgements",
+  titleEs: "Revisar el estado de limpieza diaria y las confirmaciones pendientes",
   category: "ROUTINE",
   recurrenceType: "DAILY",
   config: { dueTime: "20:00" },
@@ -127,34 +132,34 @@ tpl({
 });
 
 // Monday
-tpl({ title: "Receive truck", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [1], dueTime: "09:00" }, effort: "MAJOR", verify: true });
-tpl({ title: "Place truck order", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [1], dueTime: "14:00" }, effort: "STANDARD" });
+tpl({ title: "Receive truck", titleEs: "Recibir camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [1], dueTime: "09:00" }, effort: "MAJOR", verify: true });
+tpl({ title: "Place truck order", titleEs: "Hacer el pedido del camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [1], dueTime: "14:00" }, effort: "STANDARD" });
 
 // Tuesday
-const loomisTueId = tpl({ title: "Loomis change order", description: "Submit before 11:00 AM", category: "LOOMIS", recurrenceType: "WEEKLY", config: { weekdays: [2], dueTime: "11:00" }, effort: "QUICK" });
-tpl({ title: "GEM call (conditional)", description: "9:00-10:00 AM, required only when weekly guest-expectation survey performance triggers it", category: "MEETING", recurrenceType: "WEEKLY", config: { weekdays: [2], dueTime: "10:00", conditionalMeetingType: "GEM_CALL" }, effort: "STANDARD" });
-tpl({ title: "Area weekly meeting", description: "10:00-11:00 AM", category: "MEETING", recurrenceType: "WEEKLY", config: { weekdays: [2], dueTime: "11:00" }, effort: "STANDARD" });
+const loomisTueId = tpl({ title: "Loomis change order", titleEs: "Orden de cambio Loomis", description: "Submit before 11:00 AM", category: "LOOMIS", recurrenceType: "WEEKLY", config: { weekdays: [2], dueTime: "11:00" }, effort: "QUICK" });
+tpl({ title: "GEM call (conditional)", titleEs: "Llamada GEM (condicional)", description: "9:00-10:00 AM, required only when weekly guest-expectation survey performance triggers it", category: "MEETING", recurrenceType: "WEEKLY", config: { weekdays: [2], dueTime: "10:00", conditionalMeetingType: "GEM_CALL" }, effort: "STANDARD" });
+tpl({ title: "Area weekly meeting", titleEs: "Reunión semanal de área", description: "10:00-11:00 AM", category: "MEETING", recurrenceType: "WEEKLY", config: { weekdays: [2], dueTime: "11:00" }, effort: "STANDARD" });
 
 // Wednesday
-tpl({ title: "Receive truck", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [3], dueTime: "09:00" }, effort: "MAJOR", verify: true });
-tpl({ title: "Place truck order", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [3], dueTime: "14:00" }, effort: "STANDARD" });
-tpl({ title: "Complete & publish store schedule", description: "Must publish by 11:00 PM", category: "DEADLINE", recurrenceType: "WEEKLY", config: { weekdays: [3], dueTime: "23:00" }, effort: "MAJOR" });
+tpl({ title: "Receive truck", titleEs: "Recibir camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [3], dueTime: "09:00" }, effort: "MAJOR", verify: true });
+tpl({ title: "Place truck order", titleEs: "Hacer el pedido del camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [3], dueTime: "14:00" }, effort: "STANDARD" });
+tpl({ title: "Complete & publish store schedule", titleEs: "Completar y publicar el horario de la tienda", description: "Must publish by 11:00 PM", category: "DEADLINE", recurrenceType: "WEEKLY", config: { weekdays: [3], dueTime: "23:00" }, effort: "MAJOR" });
 
 // Thursday
-tpl({ title: "Place truck order", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [4], dueTime: "14:00" }, effort: "STANDARD" });
+tpl({ title: "Place truck order", titleEs: "Hacer el pedido del camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [4], dueTime: "14:00" }, effort: "STANDARD" });
 
 // Friday
-tpl({ title: "Receive truck", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [5], dueTime: "09:00" }, effort: "MAJOR", verify: true });
-tpl({ title: "Place truck order", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [5], dueTime: "14:00" }, effort: "STANDARD" });
+tpl({ title: "Receive truck", titleEs: "Recibir camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [5], dueTime: "09:00" }, effort: "MAJOR", verify: true });
+tpl({ title: "Place truck order", titleEs: "Hacer el pedido del camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [5], dueTime: "14:00" }, effort: "STANDARD" });
 
 // Saturday
-tpl({ title: "Receive truck", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [6], dueTime: "09:00" }, effort: "MAJOR", verify: true });
-const satInventoryId = tpl({ title: "Complete night inventory", category: "INVENTORY", recurrenceType: "WEEKLY", config: { weekdays: [6], dueTime: "23:00" }, effort: "MAJOR", verify: true });
+tpl({ title: "Receive truck", titleEs: "Recibir camión", category: "TRUCK", recurrenceType: "WEEKLY", config: { weekdays: [6], dueTime: "09:00" }, effort: "MAJOR", verify: true });
+const satInventoryId = tpl({ title: "Complete night inventory", titleEs: "Completar el inventario nocturno", category: "INVENTORY", recurrenceType: "WEEKLY", config: { weekdays: [6], dueTime: "23:00" }, effort: "MAJOR", verify: true });
 
 // Sunday
-tpl({ title: "Loomis change order", description: "Submit before 11:00 AM", category: "LOOMIS", recurrenceType: "WEEKLY", config: { weekdays: [0], dueTime: "11:00" }, effort: "QUICK" });
-tpl({ title: "Verify Saturday inventory & post", description: "Double-check Saturday inventory, correct if needed, then post.", category: "INVENTORY", recurrenceType: "WEEKLY", config: { weekdays: [0], dueTime: "12:00", dependsOnTemplateTitle: "Complete night inventory" }, effort: "STANDARD", verify: true });
-tpl({ title: "Send weekly store numbers to SCO/crew", category: "ROUTINE", recurrenceType: "WEEKLY", config: { weekdays: [0], dueTime: "18:00" }, effort: "STANDARD" });
+tpl({ title: "Loomis change order", titleEs: "Orden de cambio Loomis", description: "Submit before 11:00 AM", category: "LOOMIS", recurrenceType: "WEEKLY", config: { weekdays: [0], dueTime: "11:00" }, effort: "QUICK" });
+tpl({ title: "Verify Saturday inventory & post", titleEs: "Verificar el inventario del sábado y publicarlo", description: "Double-check Saturday inventory, correct if needed, then post.", category: "INVENTORY", recurrenceType: "WEEKLY", config: { weekdays: [0], dueTime: "12:00", dependsOnTemplateTitle: "Complete night inventory" }, effort: "STANDARD", verify: true });
+tpl({ title: "Send weekly store numbers to SCO/crew", titleEs: "Enviar los números semanales de la tienda a SCO/equipo", category: "ROUTINE", recurrenceType: "WEEKLY", config: { weekdays: [0], dueTime: "18:00" }, effort: "STANDARD" });
 
 // --- Meetings (structured, separate from generic tasks) --------------------
 db.prepare(`INSERT INTO meetings (id, store_id, type, weekday, start_time, end_time, conditional, required_state, created_at) VALUES (?, ?, 'GEM_CALL', 2, '09:00', '10:00', 1, 'REQUIRED', ?)`).run(id(), storeId, now());

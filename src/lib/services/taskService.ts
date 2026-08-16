@@ -10,6 +10,7 @@ export interface TaskRow {
   store_id: string;
   template_id: string | null;
   title: string;
+  title_es: string | null;
   description: string | null;
   area: string | null;
   category: string | null;
@@ -157,8 +158,9 @@ export function getOpenTasksForStore(storeId: string): TaskRow[] {
   const db = getDb();
   return db
     .prepare(
-      `SELECT t.*, u.name as owner_name FROM tasks t
+      `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
+       LEFT JOIN task_templates tt ON tt.id = t.template_id
        WHERE t.store_id = ? AND t.status IN ('OPEN','IN_PROGRESS')
        ORDER BY t.due_at IS NULL, t.due_at ASC`
     )
@@ -169,8 +171,9 @@ export function getWeekTasks(storeId: string, weekStart: string, weekEnd: string
   const db = getDb();
   return db
     .prepare(
-      `SELECT t.*, u.name as owner_name FROM tasks t
+      `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
+       LEFT JOIN task_templates tt ON tt.id = t.template_id
        WHERE t.store_id = ? AND t.scheduled_date BETWEEN ? AND ? AND t.status != 'CANCELLED'
        ORDER BY t.scheduled_date ASC, t.due_at IS NULL, t.due_at ASC`
     )

@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS task_templates (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
   title TEXT NOT NULL,
+  title_es TEXT, -- Spanish title, shown instead of title for es-language viewers when set
   description TEXT,
   area TEXT,
   category TEXT, -- ROUTINE | DEADLINE | MEETING | INVENTORY | TRUCK | LOOMIS | CLEANING
