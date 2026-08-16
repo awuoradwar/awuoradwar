@@ -24,7 +24,7 @@ export default async function MyShiftPage() {
   const todayShift = getTodayShift(user.storeId, today);
 
   const tasks = getOpenTasksForStore(user.storeId);
-  const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [], RECURRING: [] };
+  const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
     buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today)].push(task);
   }
@@ -117,7 +117,7 @@ export default async function MyShiftPage() {
         </section>
       ))}
 
-      {(["THIS_WEEK", "RECURRING"] as const).map((bucket) => (
+      {(["THIS_WEEK"] as const).map((bucket) => (
         <details key={bucket} className="card overflow-hidden" open={false}>
           <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
             <div>

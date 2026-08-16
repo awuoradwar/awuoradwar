@@ -8,13 +8,11 @@ const en = {
   section_now: "MY SHIFT",
   section_today: "TODAY",
   section_this_week: "THIS WEEK",
-  section_recurring: "RECURRING",
   section_from_last_shift: "FROM LAST SHIFT",
 
   section_now_sub: "Yours to handle this shift, plus anything urgent",
   section_today_sub: "Due today store-wide, any shift",
   section_this_week_sub: "Planning-level, not urgent yet",
-  section_recurring_sub: "Routine recurring work",
   section_from_last_shift_sub: "Unresolved handoff items",
 
   greeting_store_ready: "Store status in under 60 seconds",
