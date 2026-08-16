@@ -5,7 +5,7 @@ const en = {
   nav_handoff: "Handoff",
   nav_more: "More",
 
-  section_now: "NOW",
+  section_now: "MY SHIFT",
   section_today: "TODAY",
   section_this_week: "THIS WEEK",
   section_recurring: "RECURRING",

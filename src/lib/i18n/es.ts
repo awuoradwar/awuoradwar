@@ -7,7 +7,7 @@ const es: Record<DictKeys, string> = {
   nav_handoff: "Entrega",
   nav_more: "Más",
 
-  section_now: "AHORA",
+  section_now: "MI TURNO",
   section_today: "HOY",
   section_this_week: "ESTA SEMANA",
   section_recurring: "RECURRENTE",
