@@ -3,7 +3,8 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getHistoryForRange } from "@/lib/services/searchService";
-import { getQualityMetrics } from "@/lib/services/reportsService";
+import { getQualityMetrics, getCompletionStats } from "@/lib/services/reportsService";
+import { t } from "@/lib/i18n";
 
 export default async function ReportsPage({ searchParams }: PageProps<"/more/reports">) {
   const user = await getCurrentUser();
@@ -37,6 +38,8 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
 
   const history = getHistoryForRange(user.storeId, start, end);
   const quality = getQualityMetrics(user.storeId, start, end);
+  const todayStr = now.toISOString().slice(0, 10);
+  const completion = getCompletionStats(user.storeId, user.id, todayStr, start, end);
   const es = user.language === "es";
   const fmtMinutes = (m: number | null) => (m == null ? "—" : m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(1)}h`);
   const fmtDays = (d: number | null) => (d == null ? "—" : `${d.toFixed(1)}d`);
@@ -77,6 +80,24 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
           </div>
         ))}
       </div>
+
+      <section className="mt-6">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "reports_completion_title")}</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card p-3">
+            <p className="text-2xl font-bold text-ok">{completion.mine}</p>
+            <p className="text-xs text-muted">{t(user.language, "reports_completion_mine")}</p>
+          </div>
+          <div className="card p-3">
+            <p className="text-2xl font-bold text-ok">{completion.today}</p>
+            <p className="text-xs text-muted">{t(user.language, "reports_completion_today")}</p>
+          </div>
+          <div className="card p-3">
+            <p className="text-2xl font-bold text-ok">{completion.week}</p>
+            <p className="text-xs text-muted">{t(user.language, "reports_completion_week")}</p>
+          </div>
+        </div>
+      </section>
 
       <section className="mt-6">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">

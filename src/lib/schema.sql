@@ -189,7 +189,8 @@ CREATE TABLE IF NOT EXISTS issues (
   category TEXT NOT NULL,
   description TEXT NOT NULL,
   severity TEXT NOT NULL DEFAULT 'NORMAL', -- NORMAL | CRITICAL
-  status TEXT NOT NULL DEFAULT 'OPEN', -- OPEN | IN_PROGRESS | WAITING | RESOLVED | REOPENED
+  status TEXT NOT NULL DEFAULT 'OPEN', -- OPEN | IN_PROGRESS | WAITING | RESOLVED | REOPENED -- WAITING doubles as "needs follow-up" for work orders
+  due_date TEXT, -- YYYY-MM-DD, when this work order needs attention by (nullable -- no specific date)
   owner_id TEXT REFERENCES users(id),
   resolution TEXT,
   created_by TEXT REFERENCES users(id),

@@ -37,7 +37,7 @@ const es: Record<DictKeys, string> = {
   status_not_required: "No Requerido",
   status_denied: "Denegado",
   status_settled: "Saldado",
-  status_waiting: "En Espera",
+  status_waiting: "Necesita Seguimiento",
   status_settlement_selected: "Liquidación Seleccionada",
   status_return_pending: "Devolución/Transferencia Pendiente",
   status_resolved: "Resuelto",
@@ -74,7 +74,7 @@ const es: Record<DictKeys, string> = {
   add_guest_recovery: "Recuperación de Cliente",
   add_meal_replacement: "Reemplazo de Comida",
   add_borrowed_item: "Artículo Prestado",
-  add_issue: "Problema de Equipo / Operativo",
+  add_issue: "Orden de Trabajo",
   add_acknowledgement: "Confirmación",
   add_note: "Nota",
   add_schedule_request: "Solicitud de Asociado",
@@ -156,6 +156,16 @@ const es: Record<DictKeys, string> = {
   more_cleaning: "Limpieza",
   more_acknowledgements: "Confirmaciones",
   more_store_profile: "Perfil de la Tienda",
+  more_work_orders: "Órdenes de Trabajo",
+
+  work_orders_title: "Órdenes de Trabajo",
+  work_orders_needs_followup: "Necesita Seguimiento",
+  work_orders_needs_followup_sub: "Esperando a un proveedor, técnico o pieza",
+  work_orders_due_today: "Vence Hoy",
+  work_orders_due_today_sub: "Incluye las atrasadas",
+  work_orders_due_this_week: "Vence Esta Semana",
+  work_orders_no_date: "Sin Fecha Objetivo",
+  work_orders_done: "Terminadas",
 
   store_profile_title: "Perfil de la Tienda",
   store_profile_latest: "Último período",
@@ -203,6 +213,12 @@ const es: Record<DictKeys, string> = {
   checklist_opening_ready: "Listo para Abrir",
   checklist_closing_complete: "Cierre Completo",
   checklist_view_remaining: "Ver pendientes",
+
+  completed_this_shift: "Completadas este turno",
+  reports_completion_title: "Tareas Completadas",
+  reports_completion_mine: "Tuyas (este turno)",
+  reports_completion_today: "Toda la tienda (hoy)",
+  reports_completion_week: "Toda la tienda (esta semana)",
 };
 
 export default es;

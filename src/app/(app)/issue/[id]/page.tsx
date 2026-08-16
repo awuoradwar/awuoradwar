@@ -13,6 +13,7 @@ interface IssueRow {
   description: string;
   severity: string;
   status: string;
+  due_date: string | null;
   owner_name: string | null;
   resolution: string | null;
   created_at: string;
@@ -71,6 +72,12 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
       <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
         <dt className="text-muted">{t(user.language, "field_owner")}</dt>
         <dd>{issue.owner_name || "—"}</dd>
+        {issue.due_date && (
+          <>
+            <dt className="text-muted">{t(user.language, "field_due")}</dt>
+            <dd>{new Date(issue.due_date + "T00:00:00").toLocaleDateString(user.language === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}</dd>
+          </>
+        )}
         {issue.resolution && (
           <>
             <dt className="text-muted">{user.language === "es" ? "Resolución" : "Resolution"}</dt>

@@ -209,7 +209,8 @@ create table issues (
   category text not null,
   description text not null,
   severity text not null default 'NORMAL' check (severity in ('NORMAL','CRITICAL')),
-  status text not null default 'OPEN' check (status in ('OPEN','IN_PROGRESS','WAITING','RESOLVED','REOPENED')),
+  status text not null default 'OPEN' check (status in ('OPEN','IN_PROGRESS','WAITING','RESOLVED','REOPENED')), -- WAITING doubles as "needs follow-up" for work orders
+  due_date date, -- when this work order needs attention by (nullable -- no specific date)
   owner_id uuid references users(id),
   resolution text,
   created_by uuid references users(id),

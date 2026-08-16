@@ -97,3 +97,33 @@ export function getQualityMetrics(storeId: string, start: string, end: string) {
     reopenedCount: reopenedEvents.n,
   };
 }
+
+/** Lightweight count for the My Shift dashboard header -- avoids the extra
+ * queries getCompletionStats does for the fuller Reports breakdown. */
+export function getCompletedThisShiftCount(storeId: string, viewerId: string, todayStr: string): number {
+  const db = getDb();
+  const row = db
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND completed_by = ? AND status = 'COMPLETE' AND completed_at LIKE ?`)
+    .get(storeId, viewerId, `${todayStr}%`) as { n: number };
+  return row.n;
+}
+
+/** Completed-task counts for the "efficiency" view: this viewer's own shift,
+ * today store-wide, and this week store-wide. */
+export function getCompletionStats(storeId: string, viewerId: string, todayStr: string, weekStartStr: string, weekEndStr: string) {
+  const db = getDb();
+
+  const mine = db
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND completed_by = ? AND status = 'COMPLETE' AND completed_at LIKE ?`)
+    .get(storeId, viewerId, `${todayStr}%`) as { n: number };
+
+  const today = db
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at LIKE ?`)
+    .get(storeId, `${todayStr}%`) as { n: number };
+
+  const week = db
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at BETWEEN ? AND ?`)
+    .get(storeId, `${weekStartStr}T00:00:00`, `${weekEndStr}T23:59:59`) as { n: number };
+
+  return { mine: mine.n, today: today.n, week: week.n };
+}

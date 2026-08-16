@@ -13,6 +13,7 @@ function refresh() {
   revalidatePath("/more/reports");
   revalidatePath("/more/search");
   revalidatePath("/more/acknowledgements");
+  revalidatePath("/more/work-orders");
 }
 
 export async function approveReplacementAction(id: string) {

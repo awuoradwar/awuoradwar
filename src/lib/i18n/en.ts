@@ -35,7 +35,7 @@ const en = {
   status_not_required: "Not Required",
   status_denied: "Denied",
   status_settled: "Settled",
-  status_waiting: "Waiting",
+  status_waiting: "Needs Follow-up",
   status_settlement_selected: "Settlement Selected",
   status_return_pending: "Return/Transfer Pending",
   status_resolved: "Resolved",
@@ -72,7 +72,7 @@ const en = {
   add_guest_recovery: "Guest Recovery",
   add_meal_replacement: "Meal Replacement",
   add_borrowed_item: "Borrowed Item",
-  add_issue: "Equipment / Operational Issue",
+  add_issue: "Work Order",
   add_acknowledgement: "Acknowledgement",
   add_note: "Note",
   add_schedule_request: "Associate Request",
@@ -154,6 +154,16 @@ const en = {
   more_cleaning: "Cleaning",
   more_acknowledgements: "Acknowledgements",
   more_store_profile: "Store Profile",
+  more_work_orders: "Work Orders",
+
+  work_orders_title: "Work Orders",
+  work_orders_needs_followup: "Needs Follow-up",
+  work_orders_needs_followup_sub: "Waiting on a vendor, technician, or part",
+  work_orders_due_today: "Due Today",
+  work_orders_due_today_sub: "Including anything overdue",
+  work_orders_due_this_week: "Due This Week",
+  work_orders_no_date: "No Target Date",
+  work_orders_done: "Done",
 
   store_profile_title: "Store Profile",
   store_profile_latest: "Latest period",
@@ -201,6 +211,12 @@ const en = {
   checklist_opening_ready: "Opening Ready",
   checklist_closing_complete: "Closing Complete",
   checklist_view_remaining: "View remaining",
+
+  completed_this_shift: "Completed this shift",
+  reports_completion_title: "Completed Tasks",
+  reports_completion_mine: "Yours (this shift)",
+  reports_completion_today: "Store-wide (today)",
+  reports_completion_week: "Store-wide (this week)",
 } as const;
 
 export default en;

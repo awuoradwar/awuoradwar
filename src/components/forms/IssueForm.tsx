@@ -31,6 +31,13 @@ export default function IssueForm({ lang }: { lang: Language }) {
           <option value="CRITICAL">{lang === "es" ? "Crítico" : "Critical"}</option>
         </select>
       </Field>
+      <Field label={lang === "es" ? "¿Para cuándo?" : "When does this need attention?"}>
+        <select name="when" defaultValue="" className={selectClass}>
+          <option value="">{lang === "es" ? "Sin fecha específica" : "No specific date"}</option>
+          <option value="TODAY">{lang === "es" ? "Hoy" : "Today"}</option>
+          <option value="THIS_WEEK">{lang === "es" ? "Esta semana" : "This week"}</option>
+        </select>
+      </Field>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Reportar" : "Report"} />
     </form>
   );

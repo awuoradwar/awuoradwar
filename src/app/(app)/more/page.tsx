@@ -11,6 +11,7 @@ export default async function MorePage() {
   const items = [
     { href: "/more/search", key: "more_search", icon: "🔎" },
     { href: "/more/store-profile", key: "more_store_profile", icon: "🐼" },
+    { href: "/more/work-orders", key: "more_work_orders", icon: "🔧" },
     { href: "/more/cleaning", key: "more_cleaning", icon: "🧹" },
     { href: "/more/acknowledgements", key: "more_acknowledgements", icon: "✅" },
     { href: "/more/scheduling", key: "more_scheduling", icon: "🗓️" },

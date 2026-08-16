@@ -17,6 +17,7 @@ function refresh() {
   revalidatePath("/more/cleaning");
   revalidatePath("/more/acknowledgements");
   revalidatePath("/more/search");
+  revalidatePath("/more/work-orders");
 }
 
 function fd(formData: FormData, key: string): string {
@@ -171,6 +172,16 @@ export async function quickAddBorrowedItemAction(formData: FormData) {
   return { ok: true };
 }
 
+function dueDateForWhen(when: string): string | null {
+  const now = new Date();
+  if (when === "TODAY") return now.toISOString().slice(0, 10);
+  if (when === "THIS_WEEK") {
+    const end = new Date(now.getTime() + 6 * 86400000);
+    return end.toISOString().slice(0, 10);
+  }
+  return null;
+}
+
 export async function quickAddIssueAction(formData: FormData) {
   const user = await requireCurrentUser();
   const description = fd(formData, "description");
@@ -180,6 +191,7 @@ export async function quickAddIssueAction(formData: FormData) {
     category: fd(formData, "category") || "EQUIPMENT",
     description,
     severity: (fd(formData, "severity") as "NORMAL" | "CRITICAL") || "NORMAL",
+    dueDate: dueDateForWhen(fd(formData, "when")),
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });

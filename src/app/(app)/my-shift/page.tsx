@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getOpenTasksForStore, computeSection, isBlocked, Section, getChecklistSummaries } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
+import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import { t } from "@/lib/i18n";
@@ -39,10 +40,18 @@ export default async function MyShiftPage() {
     month: "long",
     day: "numeric",
   });
+  const completedThisShift = getCompletedThisShiftCount(user.storeId, user.id, today);
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
-      <p className="text-xs font-medium text-muted">{dateLabel}</p>
+      <div className="flex items-baseline justify-between">
+        <p className="text-xs font-medium text-muted">{dateLabel}</p>
+        {completedThisShift > 0 && (
+          <p className="text-xs font-medium text-ok">
+            ✓ {completedThisShift} {t(user.language, "completed_this_shift")}
+          </p>
+        )}
+      </div>
 
       {(checklists.opening.total > 0 || checklists.closing.total > 0) && (
         <section className="flex flex-col gap-2">
