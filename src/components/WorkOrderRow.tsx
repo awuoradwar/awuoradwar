@@ -9,6 +9,13 @@ const CATEGORY_ICON: Record<string, string> = {
   OTHER: "⚠️",
 };
 
+const CATEGORY_LABEL: Record<string, Record<Language, string>> = {
+  EQUIPMENT: { en: "Equipment", es: "Equipo" },
+  FACILITIES: { en: "Facilities", es: "Instalaciones" },
+  OPERATIONAL: { en: "Operational", es: "Operativo" },
+  OTHER: { en: "Other", es: "Otro" },
+};
+
 export default function WorkOrderRow({ order, lang }: { order: WorkOrderRowData; lang: Language }) {
   const dateLabel = order.due_date
     ? new Date(order.due_date + "T00:00:00").toLocaleDateString(lang === "es" ? "es-MX" : "en-US", {
@@ -23,7 +30,7 @@ export default function WorkOrderRow({ order, lang }: { order: WorkOrderRowData;
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{order.description}</p>
         <p className="truncate text-[11px] text-muted">
-          {order.category.replace(/_/g, " ")}
+          {CATEGORY_LABEL[order.category]?.[lang] || order.category.replace(/_/g, " ")}
           {dateLabel && <span> · {dateLabel}</span>}
           {order.owner_name && <span> · {order.owner_name}</span>}
         </p>

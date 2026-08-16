@@ -30,7 +30,7 @@ export default async function MyShiftPage() {
   }
 
   const checklists = getChecklistSummaries(user.storeId, today);
-  const summary = buildLiveSummary(user.storeId);
+  const summary = buildLiveSummary(user.storeId, user.language);
   const fromLastShiftCount =
     summary.staffing.length + summary.openItems.length +
     summary.unresolved.filter((u) => u.kind !== "task").length;

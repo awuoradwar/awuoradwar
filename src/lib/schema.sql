@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS cleaning_areas (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
   name TEXT NOT NULL,
+  name_es TEXT, -- Spanish name, shown instead of name for es-language viewers when set
   category TEXT NOT NULL, -- FOH | BOH | FACILITIES
   owner_id TEXT REFERENCES users(id),
   default_owner_position TEXT,
@@ -118,6 +119,7 @@ CREATE TABLE IF NOT EXISTS cleaning_tasks (
   id TEXT PRIMARY KEY,
   area_id TEXT NOT NULL REFERENCES cleaning_areas(id),
   title TEXT NOT NULL,
+  title_es TEXT, -- Spanish title, shown instead of title for es-language viewers when set
   associate_name TEXT,
   manager_owner_id TEXT REFERENCES users(id),
   status TEXT NOT NULL DEFAULT 'ASSIGNED', -- ASSIGNED | COMPLETED | VERIFIED | REOPENED

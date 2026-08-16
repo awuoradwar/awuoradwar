@@ -11,12 +11,12 @@ export function getAreasWithProgress(storeId: string) {
        LEFT JOIN users u ON u.id = a.owner_id
        WHERE a.store_id = ? ORDER BY a.category, a.name`
     )
-    .all(storeId) as Array<{ id: string; name: string; category: string; owner_id: string | null; owner_name: string | null }>;
+    .all(storeId) as Array<{ id: string; name: string; name_es: string | null; category: string; owner_id: string | null; owner_name: string | null }>;
 
   return areas.map((area) => {
     const tasks = db
       .prepare(`SELECT * FROM cleaning_tasks WHERE area_id = ? ORDER BY created_at ASC`)
-      .all(area.id) as Array<{ id: string; title: string; status: string; associate_name: string | null; photo_required: number; photo_url: string | null }>;
+      .all(area.id) as Array<{ id: string; title: string; title_es: string | null; status: string; associate_name: string | null; photo_required: number; photo_url: string | null }>;
     const done = tasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").length;
     return { ...area, tasks, done, total: tasks.length };
   });

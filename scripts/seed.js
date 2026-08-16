@@ -166,29 +166,29 @@ db.prepare(`INSERT INTO meetings (id, store_id, type, weekday, start_time, end_t
 db.prepare(`INSERT INTO meetings (id, store_id, type, weekday, start_time, end_time, conditional, required_state, created_at) VALUES (?, ?, 'AREA_WEEKLY', 2, '10:00', '11:00', 0, 'REQUIRED', ?)`).run(id(), storeId, now());
 
 // --- Cleaning areas ----------------------------------------------------
-function area(name, category, ownerId) {
+function area(name, nameEs, category, ownerId) {
   const aId = id();
-  db.prepare(`INSERT INTO cleaning_areas (id, store_id, name, category, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(aId, storeId, name, category, ownerId, now());
+  db.prepare(`INSERT INTO cleaning_areas (id, store_id, name, name_es, category, owner_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(aId, storeId, name, nameEs || null, category, ownerId, now());
   return aId;
 }
-const fohArea = area("FOH - Dining & Front Counter", "FOH", amId);
-const bohArea = area("BOH - Cook Line & Prep", "BOH", chefId);
-const facArea = area("Facilities / Exterior", "FACILITIES", gmId);
+const fohArea = area("FOH - Dining & Front Counter", "FOH - Comedor y Mostrador", "FOH", amId);
+const bohArea = area("BOH - Cook Line & Prep", "BOH - Línea de Cocina y Preparación", "BOH", chefId);
+const facArea = area("Facilities / Exterior", "Instalaciones / Exterior", "FACILITIES", gmId);
 
-function cleaningTask(areaId, title, associateName, managerOwnerId, photoRequired) {
+function cleaningTask(areaId, title, titleEs, associateName, managerOwnerId, photoRequired) {
   db.prepare(
-    `INSERT INTO cleaning_tasks (id, area_id, title, associate_name, manager_owner_id, status, photo_required, created_at)
-     VALUES (?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
-  ).run(id(), areaId, title, associateName, managerOwnerId, photoRequired ? 1 : 0, now());
+    `INSERT INTO cleaning_tasks (id, area_id, title, title_es, associate_name, manager_owner_id, status, photo_required, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
+  ).run(id(), areaId, title, titleEs || null, associateName, managerOwnerId, photoRequired ? 1 : 0, now());
 }
-cleaningTask(fohArea, "Dining room tables & floor", "Ana R.", amId, 0);
-cleaningTask(fohArea, "Restrooms", "Ana R.", amId, 0);
-cleaningTask(fohArea, "Beverage area", "Luis M.", amId, 0);
-cleaningTask(bohArea, "Walk-in organization & temp check", "Diego F.", chefId, 1);
-cleaningTask(bohArea, "Cook line deep wipe-down", "Diego F.", chefId, 0);
-cleaningTask(bohArea, "Dish pit", "Kevin S.", chefId, 0);
-cleaningTask(facArea, "Dumpster area", "Kevin S.", gmId, 0);
-cleaningTask(facArea, "Perimeter / parking lot", "Luis M.", gmId, 0);
+cleaningTask(fohArea, "Dining room tables & floor", "Mesas y piso del comedor", "Ana R.", amId, 0);
+cleaningTask(fohArea, "Restrooms", "Baños", "Ana R.", amId, 0);
+cleaningTask(fohArea, "Beverage area", "Área de bebidas", "Luis M.", amId, 0);
+cleaningTask(bohArea, "Walk-in organization & temp check", "Organización del walk-in y control de temperatura", "Diego F.", chefId, 1);
+cleaningTask(bohArea, "Cook line deep wipe-down", "Limpieza profunda de la línea de cocina", "Diego F.", chefId, 0);
+cleaningTask(bohArea, "Dish pit", "Área de lavado de platos", "Kevin S.", chefId, 0);
+cleaningTask(facArea, "Dumpster area", "Área del contenedor de basura", "Kevin S.", gmId, 0);
+cleaningTask(facArea, "Perimeter / parking lot", "Perímetro / estacionamiento", "Luis M.", gmId, 0);
 
 // --- Today's shift with GM as PIC, plus a couple of live example records ---
 const today = new Date().toISOString().slice(0, 10);

@@ -1,7 +1,29 @@
 import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
-import { SessionUser } from "../types";
+import { SessionUser, Language } from "../types";
+
+const ISSUE_CATEGORY_LABEL: Record<string, Record<Language, string>> = {
+  EQUIPMENT: { en: "Equipment", es: "Equipo" },
+  FACILITIES: { en: "Facilities", es: "Instalaciones" },
+  OPERATIONAL: { en: "Operational", es: "Operativo" },
+  OTHER: { en: "Other", es: "Otro" },
+};
+
+const GUEST_RECOVERY_CATEGORY_LABEL: Record<string, Record<Language, string>> = {
+  FOOD_QUALITY: { en: "Food Quality", es: "Calidad de Alimentos" },
+  ACCURACY: { en: "Accuracy", es: "Exactitud" },
+  SERVICE: { en: "Service", es: "Servicio" },
+  CLEANLINESS: { en: "Cleanliness", es: "Limpieza" },
+  OTHER: { en: "Other", es: "Otro" },
+};
+
+const REPLACEMENT_STATUS_LABEL: Record<string, Record<Language, string>> = {
+  PENDING: { en: "Pending", es: "Pendiente" },
+  APPROVED: { en: "Approved", es: "Aprobado" },
+  COMPLETED: { en: "Completed", es: "Completado" },
+  NOT_REQUIRED: { en: "Not Required", es: "No Requerido" },
+};
 
 export interface HandoffSummary {
   staffing: Array<{ employee_name: string; type: string; note: string | null }>;
@@ -11,7 +33,7 @@ export interface HandoffSummary {
   upcoming: Array<{ title: string; due_at: string | null }>;
 }
 
-export function buildLiveSummary(storeId: string): HandoffSummary {
+export function buildLiveSummary(storeId: string, lang: Language = "en"): HandoffSummary {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -32,10 +54,10 @@ export function buildLiveSummary(storeId: string): HandoffSummary {
     .all(storeId) as Array<{ title: string }>;
   const unresolvedCleaning = db
     .prepare(
-      `SELECT ct.title FROM cleaning_tasks ct JOIN cleaning_areas a ON a.id = ct.area_id
+      `SELECT ct.title, ct.title_es FROM cleaning_tasks ct JOIN cleaning_areas a ON a.id = ct.area_id
        WHERE a.store_id = ? AND ct.status IN ('ASSIGNED','REOPENED')`
     )
-    .all(storeId) as Array<{ title: string }>;
+    .all(storeId) as Array<{ title: string; title_es: string | null }>;
   const unresolvedAcks = db
     .prepare(
       `SELECT a.title, COUNT(*) as outstanding FROM acknowledgements a
@@ -46,8 +68,11 @@ export function buildLiveSummary(storeId: string): HandoffSummary {
 
   const unresolved = [
     ...unresolvedTasks.map((t) => ({ kind: "task", title: t.title })),
-    ...unresolvedCleaning.map((t) => ({ kind: "cleaning", title: t.title })),
-    ...unresolvedAcks.map((t) => ({ kind: "acknowledgement", title: `${t.title} (${t.outstanding} outstanding)` })),
+    ...unresolvedCleaning.map((t) => ({ kind: "cleaning", title: lang === "es" && t.title_es ? t.title_es : t.title })),
+    ...unresolvedAcks.map((t) => ({
+      kind: "acknowledgement",
+      title: `${t.title} (${t.outstanding} ${lang === "es" ? "pendientes" : "outstanding"})`,
+    })),
   ];
 
   const openGR = db
@@ -61,9 +86,23 @@ export function buildLiveSummary(storeId: string): HandoffSummary {
     .all(storeId) as Array<{ id: string; item: string; borrowed_from: string }>;
 
   const openItems = [
-    ...openGR.map((g) => ({ kind: "guest_recovery", id: g.id, title: `Guest Recovery: ${g.issue_category} (${g.replacement_status})` })),
-    ...openIssues.map((i) => ({ kind: "issue", id: i.id, title: `Issue: ${i.category} - ${i.description}` })),
-    ...openBorrowed.map((b) => ({ kind: "borrowed_item", id: b.id, title: `Borrowed: ${b.item} from ${b.borrowed_from}` })),
+    ...openGR.map((g) => ({
+      kind: "guest_recovery",
+      id: g.id,
+      title: `${lang === "es" ? "Recuperación de Cliente" : "Guest Recovery"}: ${
+        GUEST_RECOVERY_CATEGORY_LABEL[g.issue_category]?.[lang] || g.issue_category
+      } (${REPLACEMENT_STATUS_LABEL[g.replacement_status]?.[lang] || g.replacement_status})`,
+    })),
+    ...openIssues.map((i) => ({
+      kind: "issue",
+      id: i.id,
+      title: `${lang === "es" ? "Problema" : "Issue"}: ${ISSUE_CATEGORY_LABEL[i.category]?.[lang] || i.category} - ${i.description}`,
+    })),
+    ...openBorrowed.map((b) => ({
+      kind: "borrowed_item",
+      id: b.id,
+      title: `${lang === "es" ? "Prestado" : "Borrowed"}: ${b.item} ${lang === "es" ? "de" : "from"} ${b.borrowed_from}`,
+    })),
   ];
 
   const upcoming = db

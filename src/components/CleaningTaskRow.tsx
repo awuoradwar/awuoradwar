@@ -10,6 +10,7 @@ import StatusBadge from "./StatusBadge";
 interface CleaningTaskData {
   id: string;
   title: string;
+  title_es?: string | null;
   status: string;
   associate_name: string | null;
   photo_required: number;
@@ -35,12 +36,13 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
   }
 
   const needsPhotoToComplete = task.status === "ASSIGNED" && !!task.photo_required;
+  const title = lang === "es" && task.title_es ? task.title_es : task.title;
 
   return (
     <div className="card flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{task.title}</p>
+          <p className="truncate text-sm font-medium">{title}</p>
           <p className="text-xs text-muted">
             {task.associate_name || "—"}
             {task.photo_required ? ` · 📷 ${t(lang, "cleaning_photo_required")}` : ""}

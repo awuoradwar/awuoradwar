@@ -20,7 +20,7 @@ export default async function CleaningPage() {
         {areas.map((area) => (
           <section key={area.id}>
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">{area.name}</h2>
+              <h2 className="text-sm font-semibold">{user.language === "es" && area.name_es ? area.name_es : area.name}</h2>
               <span className="text-xs text-muted">
                 {area.done}/{area.total} · {area.owner_name || "—"}
               </span>

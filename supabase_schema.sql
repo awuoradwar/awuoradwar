@@ -128,6 +128,7 @@ create table cleaning_areas (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
   name text not null,
+  name_es text, -- Spanish name, shown instead of name for es-language viewers when set
   category text not null check (category in ('FOH','BOH','FACILITIES')),
   owner_id uuid references users(id),
   default_owner_position text,
@@ -138,6 +139,7 @@ create table cleaning_tasks (
   id uuid primary key default gen_random_uuid(),
   area_id uuid not null references cleaning_areas(id),
   title text not null,
+  title_es text, -- Spanish title, shown instead of title for es-language viewers when set
   associate_name text,
   manager_owner_id uuid references users(id),
   status text not null default 'ASSIGNED' check (status in ('ASSIGNED','COMPLETED','VERIFIED','REOPENED')),
