@@ -15,6 +15,17 @@ export interface ShiftRow {
   created_at: string;
 }
 
+/** Read-only lookup, no side effects -- safe to call on every dashboard load. */
+export function getTodayShift(storeId: string, dateStr: string): ShiftRow | undefined {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT s.*, u.name as pic_name FROM shifts s LEFT JOIN users u ON u.id = s.pic_user_id
+       WHERE s.store_id = ? AND s.date = ? AND s.status != 'CLOSED' ORDER BY s.created_at DESC LIMIT 1`
+    )
+    .get(storeId, dateStr) as ShiftRow | undefined;
+}
+
 export function getOrCreateTodayShift(storeId: string, actor: SessionUser): ShiftRow {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);

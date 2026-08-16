@@ -3,7 +3,7 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
 
-export type Bucket = "NOW" | "THIS_SHIFT" | "TODAY" | "THIS_WEEK";
+export type Section = "NOW" | "TODAY" | "THIS_WEEK" | "RECURRING";
 
 export interface TaskRow {
   id: string;
@@ -104,19 +104,43 @@ export function suggestOwnerForNewTask(storeId: string): SuggestedOwner | null {
   return { id: best.id, name: best.name, openCount: bestCount };
 }
 
-export function computeBucket(task: TaskRow, nowDate: Date, todayStr: string): Bucket {
-  if (task.severity === "CRITICAL") return "NOW";
-  if (task.due_at) {
-    const due = new Date(task.due_at);
-    const hoursUntil = (due.getTime() - nowDate.getTime()) / 3600000;
-    if (hoursUntil <= 2) return "NOW"; // overdue or imminent
-    const dueDay = task.due_at.slice(0, 10);
-    if (dueDay === todayStr) return "THIS_SHIFT";
-    return "THIS_WEEK";
-  }
-  if (task.scheduled_date === todayStr || task.scheduled_for === "TODAY" || task.scheduled_for === "NEXT_SHIFT") {
-    return "TODAY";
-  }
+function isDueToday(task: TaskRow, todayStr: string): boolean {
+  if (task.due_at) return task.due_at.slice(0, 10) === todayStr;
+  if (task.scheduled_date) return task.scheduled_date === todayStr;
+  return task.scheduled_for === "TODAY" || task.scheduled_for === "NEXT_SHIFT";
+}
+
+function isUrgentNow(task: TaskRow, nowDate: Date): boolean {
+  if (task.severity === "CRITICAL") return true;
+  if (!task.due_at) return false;
+  const hoursUntil = (new Date(task.due_at).getTime() - nowDate.getTime()) / 3600000;
+  return hoursUntil <= 2; // overdue or imminent
+}
+
+/**
+ * Dashboard section for a task, from this viewer's point of view:
+ *  - RECURRING: generated from a recurring template -- its own category so
+ *    routine work doesn't crowd out one-off items (spec: recurring items
+ *    grouped separately).
+ *  - NOW: this viewer's responsibility (owner, or unassigned while they're
+ *    PIC) due this shift, or urgent/overdue for anyone.
+ *  - TODAY: due today store-wide regardless of whose shift or who owns it.
+ *  - THIS_WEEK: everything else due later this week.
+ */
+export function computeSection(
+  task: TaskRow,
+  viewerId: string,
+  picUserId: string | null,
+  nowDate: Date,
+  todayStr: string
+): Section {
+  if (task.template_id) return "RECURRING";
+
+  const mine = task.owner_id ? task.owner_id === viewerId : picUserId === viewerId;
+  const dueToday = isDueToday(task, todayStr);
+
+  if (isUrgentNow(task, nowDate) || (mine && dueToday)) return "NOW";
+  if (dueToday) return "TODAY";
   return "THIS_WEEK";
 }
 

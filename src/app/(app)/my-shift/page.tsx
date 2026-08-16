@@ -1,9 +1,11 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getOpenTasksForStore, computeBucket, isBlocked, Bucket, getChecklistSummaries } from "@/lib/services/taskService";
+import { getOpenTasksForStore, computeSection, isBlocked, Section, getChecklistSummaries } from "@/lib/services/taskService";
+import { getTodayShift } from "@/lib/services/shiftService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import TaskCard from "@/components/TaskCard";
+import CompactTaskRow from "@/components/CompactTaskRow";
 import { t } from "@/lib/i18n";
 
 const OPEN_ITEM_HREF: Record<string, string> = {
@@ -16,14 +18,14 @@ export default async function MyShiftPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const tasks = getOpenTasksForStore(user.storeId);
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
+  const todayShift = getTodayShift(user.storeId, today);
 
-  const buckets: Record<Bucket, typeof tasks> = { NOW: [], THIS_SHIFT: [], TODAY: [], THIS_WEEK: [] };
+  const tasks = getOpenTasksForStore(user.storeId);
+  const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [], RECURRING: [] };
   for (const task of tasks) {
-    const bucket = computeBucket(task, now, today);
-    buckets[bucket].push(task);
+    buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today)].push(task);
   }
 
   const checklists = getChecklistSummaries(user.storeId, today);
@@ -32,15 +34,16 @@ export default async function MyShiftPage() {
     summary.staffing.length + summary.openItems.length +
     summary.unresolved.filter((u) => u.kind !== "task").length;
 
-  const sections: { key: string; subKey: string; bucket: Bucket }[] = [
-    { key: "section_now", subKey: "section_now_sub", bucket: "NOW" },
-    { key: "section_this_shift", subKey: "section_this_shift_sub", bucket: "THIS_SHIFT" },
-    { key: "section_today", subKey: "section_today_sub", bucket: "TODAY" },
-    { key: "section_this_week", subKey: "section_this_week_sub", bucket: "THIS_WEEK" },
-  ];
+  const dateLabel = now.toLocaleDateString(user.language === "es" ? "es-MX" : "en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-5">
+    <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
+      <p className="text-xs font-medium text-muted">{dateLabel}</p>
+
       {(checklists.opening.total > 0 || checklists.closing.total > 0) && (
         <section className="flex flex-col gap-2">
           {checklists.opening.total > 0 && (
@@ -84,26 +87,48 @@ export default async function MyShiftPage() {
         </section>
       )}
 
-      {sections.map((s) => (
-        <section key={s.bucket}>
-          <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, s.key as never)}</h2>
-          <p className="mb-2 text-[11px] text-muted">{t(user.language, s.subKey as never)}</p>
-          {buckets[s.bucket].length === 0 ? (
+      {(["NOW", "TODAY"] as const).map((bucket) => (
+        <section key={bucket}>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, `section_${bucket.toLowerCase()}` as never)}</h2>
+            {buckets[bucket].length > 0 && <span className="text-xs font-semibold text-muted">{buckets[bucket].length}</span>}
+          </div>
+          <p className="mb-2 text-[11px] text-muted">{t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}</p>
+          {buckets[bucket].length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">
               {t(user.language, "all_clear")}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {buckets[s.bucket].map((task) => (
-                <TaskCard
-                  key={task.id}
-                  lang={user.language}
-                  task={{ ...task, blocked: isBlocked(task) }}
-                />
+              {buckets[bucket].map((task) => (
+                <TaskCard key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} />
               ))}
             </div>
           )}
         </section>
+      ))}
+
+      {(["THIS_WEEK", "RECURRING"] as const).map((bucket) => (
+        <details key={bucket} className="card overflow-hidden" open={false}>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wide text-accent">
+                {t(user.language, `section_${bucket.toLowerCase()}` as never)}
+              </span>
+              <p className="text-[11px] text-muted">{t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}</p>
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-muted">{buckets[bucket].length}</span>
+          </summary>
+          {buckets[bucket].length === 0 ? (
+            <p className="border-t border-border p-4 text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
+          ) : (
+            <div className="divide-y divide-border border-t border-border">
+              {buckets[bucket].map((task) => (
+                <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} />
+              ))}
+            </div>
+          )}
+        </details>
       ))}
 
       <section>
