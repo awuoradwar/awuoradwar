@@ -37,23 +37,37 @@ export default async function TemplatesPage() {
         </section>
       )}
 
-      <div className="card divide-y divide-border">
-        {templates.map((tpl) => (
-          <div key={tpl.id} className="flex items-center justify-between px-3 py-2 text-sm">
-            <div className="min-w-0">
-              <p className="truncate font-medium">{tpl.title}</p>
-              <p className="text-xs text-muted">
-                {tpl.category} · {tpl.recurrence_type} · {tpl.effort}
-              </p>
-            </div>
-            {canManage ? (
-              <TemplateToggle id={tpl.id} active={!!tpl.active} lang={user.language} />
-            ) : (
-              <span className={`text-xs ${tpl.active ? "text-ok" : "text-muted"}`}>{tpl.active ? "Active" : "Off"}</span>
-            )}
+      {Object.entries(groupByCategory(templates)).map(([category, group]) => (
+        <section key={category} className="mb-4">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{category}</h2>
+          <div className="card divide-y divide-border">
+            {group.map((tpl) => (
+              <div key={tpl.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{tpl.title}</p>
+                  <p className="text-xs text-muted">
+                    {tpl.recurrence_type} · {tpl.effort}
+                  </p>
+                </div>
+                {canManage ? (
+                  <TemplateToggle id={tpl.id} active={!!tpl.active} lang={user.language} />
+                ) : (
+                  <span className={`text-xs ${tpl.active ? "text-ok" : "text-muted"}`}>{tpl.active ? "Active" : "Off"}</span>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </section>
+      ))}
     </div>
   );
+}
+
+function groupByCategory(templates: TemplateRow[]): Record<string, TemplateRow[]> {
+  const groups: Record<string, TemplateRow[]> = {};
+  for (const tpl of templates) {
+    const key = tpl.category || "OTHER";
+    (groups[key] ||= []).push(tpl);
+  }
+  return groups;
 }

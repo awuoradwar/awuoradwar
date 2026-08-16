@@ -40,9 +40,9 @@ export default function TaskCard({ task, lang }: { task: TaskCardData; lang: Lan
           {dueLabel && <span>⏰ {dueLabel}</span>}
           {task.area && <span>· {task.area}</span>}
           {task.owner_name && <span>· {task.owner_name}</span>}
-          <span className="rounded bg-zinc-100 px-1.5 py-0.5">{t(lang, `effort_${task.effort.toLowerCase()}` as never)}</span>
+          <span className="rounded bg-muted/10 px-1.5 py-0.5">{t(lang, `effort_${task.effort.toLowerCase()}` as never)}</span>
           {task.blocked && (
-            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-warning">
+            <span className="rounded bg-warning/10 px-1.5 py-0.5 text-warning">
               {lang === "es" ? "Bloqueado" : "Blocked"}
             </span>
           )}

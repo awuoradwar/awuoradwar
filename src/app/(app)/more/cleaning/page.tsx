@@ -44,7 +44,7 @@ function FrequencySection({ title, areas, lang }: { title: string; areas: Cleani
                   {done}/{area.tasks.length} · {area.owner_name || "—"}
                 </span>
               </div>
-              <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+              <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
                 <div className="h-full bg-ok" style={{ width: `${area.tasks.length ? (done / area.tasks.length) * 100 : 0}%` }} />
               </div>
               <div className="flex flex-col gap-2">

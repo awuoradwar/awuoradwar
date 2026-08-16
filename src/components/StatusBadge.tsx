@@ -2,26 +2,26 @@ import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
 const STYLES: Record<string, string> = {
-  OPEN: "bg-zinc-100 text-zinc-700",
-  IN_PROGRESS: "bg-amber-100 text-warning",
-  COMPLETE: "bg-emerald-100 text-ok",
-  COMPLETED: "bg-emerald-100 text-ok",
-  CARRIED_FORWARD: "bg-amber-100 text-warning",
-  CANCELLED: "bg-zinc-100 text-muted line-through",
-  ASSIGNED: "bg-zinc-100 text-zinc-700",
-  VERIFIED: "bg-emerald-100 text-ok",
-  REOPENED: "bg-amber-100 text-warning",
-  PENDING: "bg-amber-100 text-warning",
-  PENDING_GM_APPROVAL: "bg-amber-100 text-warning",
-  APPROVED: "bg-emerald-100 text-ok",
-  DENIED: "bg-red-100 text-critical",
-  NOT_REQUIRED: "bg-zinc-100 text-muted",
-  SETTLED: "bg-emerald-100 text-ok",
-  RESOLVED: "bg-emerald-100 text-ok",
-  CRITICAL: "bg-red-100 text-critical",
-  WAITING: "bg-amber-100 text-warning",
-  SETTLEMENT_SELECTED: "bg-amber-100 text-warning",
-  RETURN_PENDING: "bg-amber-100 text-warning",
+  OPEN: "bg-muted/10 text-muted",
+  IN_PROGRESS: "bg-warning/10 text-warning",
+  COMPLETE: "bg-ok/10 text-ok",
+  COMPLETED: "bg-ok/10 text-ok",
+  CARRIED_FORWARD: "bg-warning/10 text-warning",
+  CANCELLED: "bg-muted/10 text-muted line-through",
+  ASSIGNED: "bg-muted/10 text-muted",
+  VERIFIED: "bg-ok/10 text-ok",
+  REOPENED: "bg-warning/10 text-warning",
+  PENDING: "bg-warning/10 text-warning",
+  PENDING_GM_APPROVAL: "bg-warning/10 text-warning",
+  APPROVED: "bg-ok/10 text-ok",
+  DENIED: "bg-critical/10 text-critical",
+  NOT_REQUIRED: "bg-muted/10 text-muted",
+  SETTLED: "bg-ok/10 text-ok",
+  RESOLVED: "bg-ok/10 text-ok",
+  CRITICAL: "bg-critical/10 text-critical",
+  WAITING: "bg-warning/10 text-warning",
+  SETTLEMENT_SELECTED: "bg-warning/10 text-warning",
+  RETURN_PENDING: "bg-warning/10 text-warning",
 };
 
 const KEY_MAP: Record<string, string> = {
@@ -46,7 +46,7 @@ const KEY_MAP: Record<string, string> = {
 };
 
 export default function StatusBadge({ status, lang }: { status: string; lang: Language }) {
-  const style = STYLES[status] || "bg-zinc-100 text-zinc-700";
+  const style = STYLES[status] || "bg-muted/10 text-muted";
   const label = KEY_MAP[status] ? t(lang, KEY_MAP[status] as never) : status.replace(/_/g, " ");
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${style}`}>

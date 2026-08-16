@@ -35,7 +35,7 @@ export default function WorkOrderRow({ order, lang }: { order: WorkOrderRowData;
           {order.owner_name && <span> · {order.owner_name}</span>}
         </p>
       </div>
-      {order.severity === "CRITICAL" && <span className="shrink-0 rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-critical">!</span>}
+      {order.severity === "CRITICAL" && <span className="shrink-0 rounded bg-critical/10 px-1.5 py-0.5 text-[11px] text-critical">!</span>}
     </Link>
   );
 }

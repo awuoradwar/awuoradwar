@@ -18,7 +18,7 @@ export default function TemplateToggle({ id, active, lang }: { id: string; activ
           router.refresh();
         })
       }
-      className={`tap-target rounded-full px-3 text-xs font-semibold disabled:opacity-50 ${active ? "bg-ok/10 text-ok" : "bg-zinc-100 text-muted"}`}
+      className={`tap-target rounded-full px-3 text-xs font-semibold disabled:opacity-50 ${active ? "bg-ok/10 text-ok" : "bg-muted/10 text-muted"}`}
     >
       {active ? (lang === "es" ? "Activa" : "Active") : lang === "es" ? "Inactiva" : "Off"}
     </button>

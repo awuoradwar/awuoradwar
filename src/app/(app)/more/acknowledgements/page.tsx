@@ -38,7 +38,7 @@ export default async function AcknowledgementsPage() {
                 <span
                   className={
                     "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold " +
-                    (a.outstanding > 0 ? "bg-amber-100 text-warning" : "bg-emerald-100 text-ok")
+                    (a.outstanding > 0 ? "bg-warning/10 text-warning" : "bg-ok/10 text-ok")
                   }
                 >
                   {a.total - a.outstanding}/{a.total}

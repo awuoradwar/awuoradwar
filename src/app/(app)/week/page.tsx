@@ -63,7 +63,7 @@ export default async function WeekPage() {
                 <p className="font-medium">{m.name}</p>
                 <p className="text-xs text-muted">{POSITION_LABEL[m.position][user.language]}</p>
               </div>
-              <div className="h-2 w-24 overflow-hidden rounded-full bg-zinc-100">
+              <div className="h-2 w-24 overflow-hidden rounded-full bg-border">
                 <div
                   className="h-full bg-accent"
                   style={{ width: `${Math.min(100, m.load * 4)}%` }}
@@ -73,7 +73,7 @@ export default async function WeekPage() {
           ))}
         </div>
         {unassigned.length > 0 && (
-          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-warning">
+          <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">
             {unassigned.length} {user.language === "es" ? "elementos sin asignar esta semana" : "unassigned items this week"}
           </p>
         )}
@@ -82,18 +82,21 @@ export default async function WeekPage() {
       <WeekAddTaskForm lang={user.language} managers={managers} days={days} />
 
       {Object.entries(byDay).map(([date, dayTasks]) => (
-        <section key={date}>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
-            {dayNames[new Date(date + "T00:00:00Z").getDay()]} · {date.slice(5)}
-          </h2>
+        <details key={date} className="card overflow-hidden" open={dayTasks.length > 0}>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">
+              {dayNames[new Date(date + "T00:00:00Z").getDay()]} · {date.slice(5)}
+            </span>
+            <span className="shrink-0 text-xs font-semibold text-muted">{dayTasks.length}</span>
+          </summary>
           {dayTasks.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-3 text-center text-xs text-muted">
+            <p className="border-t border-border p-4 text-center text-xs text-muted">
               {user.language === "es" ? "Nada programado" : "Nothing scheduled"}
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="divide-y divide-border border-t border-border">
               {dayTasks.map((t) => (
-                <div key={t.id} className="card flex items-center justify-between p-3 text-sm">
+                <div key={t.id} className="flex items-center justify-between gap-2 p-3 text-sm">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium">{user.language === "es" && t.title_es ? t.title_es : t.title}</p>
@@ -101,8 +104,8 @@ export default async function WeekPage() {
                         className={
                           "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
                           (t.source === "recurring"
-                            ? "bg-blue-50 text-blue-700"
-                            : "bg-emerald-50 text-emerald-700")
+                            ? "bg-muted/10 text-muted"
+                            : "bg-accent/10 text-accent")
                         }
                       >
                         {t.source === "recurring"
@@ -121,7 +124,7 @@ export default async function WeekPage() {
               ))}
             </div>
           )}
-        </section>
+        </details>
       ))}
     </div>
   );
