@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Language } from "@/lib/types";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -20,6 +20,53 @@ const fieldBase =
 export const inputClass = fieldBase;
 export const selectClass = fieldBase;
 export const textareaClass = `${fieldBase} py-2.5 leading-snug`;
+
+/** File inputs render with the browser's own default styling, which barely
+ * changes once a file is picked -- the button and the resulting filename end
+ * up nearly the same color/weight, so it's genuinely hard to tell whether an
+ * upload registered. This makes the "chosen" state unmistakable: a clearly
+ * app-styled button, plus a status line that's a completely different color
+ * and icon depending on whether a file is actually attached. */
+export function FileField({
+  name,
+  accept,
+  required,
+  capture,
+  lang,
+}: {
+  name: string;
+  accept?: string;
+  required?: boolean;
+  capture?: boolean | "user" | "environment";
+  lang: Language;
+}) {
+  const [fileName, setFileName] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="tap-target inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-accent px-3.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/5">
+        <span aria-hidden>📎</span>
+        {lang === "es" ? "Elegir archivo" : "Choose file"}
+        <input
+          name={name}
+          type="file"
+          accept={accept}
+          required={required}
+          capture={capture}
+          className="sr-only"
+          onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+        />
+      </label>
+      {fileName ? (
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-ok">
+          <span aria-hidden>✓</span>
+          <span className="truncate">{fileName}</span>
+        </p>
+      ) : (
+        <p className="text-xs italic text-muted">{lang === "es" ? "Ningún archivo seleccionado" : "No file selected"}</p>
+      )}
+    </div>
+  );
+}
 
 export function SubmitBar({
   pending,

@@ -157,6 +157,8 @@ const es: Record<DictKeys, string> = {
   more_store_profile: "Perfil de la Tienda",
   more_work_orders: "Órdenes de Trabajo",
   more_meal_replacements: "Reemplazos de Comida",
+  more_weekly_summary: "Resumen Semanal",
+  more_training: "Capacitación de Nuevos Asociados",
 
   work_orders_title: "Órdenes de Trabajo",
   work_orders_needs_followup: "Necesita Seguimiento",

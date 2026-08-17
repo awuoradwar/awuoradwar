@@ -25,6 +25,8 @@ const ICON_PATHS: Record<string, string> = {
   shield: "M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z",
   storefront: "M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M2 9l1.5-5h17L22 9M2 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0M9 21v-6h6v6",
   utensils: "M7 2v7a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V2M9 11v11M17 2c-1.5 0-3 1.5-3 4v4a2 2 0 0 0 2 2h2v9",
+  graduationCap: "M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 10v6",
+  trendingUp: "M22 7 13.5 15.5 8.5 10.5 2 17M22 7h-6M22 7v6",
 };
 
 export default async function MorePage() {
@@ -40,6 +42,7 @@ export default async function MorePage() {
         { href: "/more/meal-replacements", key: "more_meal_replacements", icon: "utensils" },
         { href: "/more/cleaning", key: "more_cleaning", icon: "sparkle" },
         { href: "/more/acknowledgements", key: "more_acknowledgements", icon: "checkCircle" },
+        { href: "/more/training", key: "more_training", icon: "graduationCap" },
         { href: "/more/scheduling", key: "more_scheduling", icon: "calendar" },
       ],
     },
@@ -48,6 +51,7 @@ export default async function MorePage() {
       items: [
         { href: "/more/search", key: "more_search", icon: "search" },
         { href: "/more/store-profile", key: "more_store_profile", icon: "storefront" },
+        { href: "/more/weekly-summary", key: "more_weekly_summary", icon: "trendingUp" },
         { href: "/more/reports", key: "more_reports", icon: "chart" },
         { href: "/more/inbox", key: "more_inbox", icon: "inbox" },
         { href: "/more/templates", key: "more_templates", icon: "layers" },

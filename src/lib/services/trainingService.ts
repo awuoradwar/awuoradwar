@@ -1,0 +1,143 @@
+import "server-only";
+import { getDb } from "../db";
+import { newId, nowIso, writeAudit } from "../audit";
+import { SessionUser } from "../types";
+
+export type TrainingPosition = "FOH" | "BOH";
+
+export interface TrainingItem {
+  id: string;
+  position: TrainingPosition;
+  title: string;
+  title_es: string | null;
+  sort_order: number;
+}
+
+export interface TraineeRow {
+  id: string;
+  name: string;
+  position: TrainingPosition;
+  status: "IN_PROGRESS" | "COMPLETE";
+  started_at: string;
+  completed_count: number;
+  total_count: number;
+}
+
+export function getTrainingItems(storeId: string, position?: TrainingPosition): TrainingItem[] {
+  const db = getDb();
+  if (position) {
+    return db
+      .prepare(`SELECT id, position, title, title_es, sort_order FROM training_items WHERE store_id = ? AND position = ? AND active = 1 ORDER BY sort_order, title`)
+      .all(storeId, position) as TrainingItem[];
+  }
+  return db
+    .prepare(`SELECT id, position, title, title_es, sort_order FROM training_items WHERE store_id = ? AND active = 1 ORDER BY position, sort_order, title`)
+    .all(storeId) as TrainingItem[];
+}
+
+export function addTrainingItem(storeId: string, position: TrainingPosition, title: string, titleEs: string | null, actor: SessionUser): string {
+  const db = getDb();
+  const id = newId();
+  const maxOrder = db.prepare(`SELECT MAX(sort_order) as m FROM training_items WHERE store_id = ? AND position = ?`).get(storeId, position) as { m: number | null };
+  db.prepare(
+    `INSERT INTO training_items (id, store_id, position, title, title_es, sort_order, active, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+  ).run(id, storeId, position, title, titleEs, (maxOrder.m ?? -1) + 1, actor.id, nowIso());
+  writeAudit({ entityType: "training_item", entityId: id, actor, action: "CREATED", newValue: { position, title } });
+  return id;
+}
+
+export function removeTrainingItem(id: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE training_items SET active = 0 WHERE id = ?`).run(id);
+  writeAudit({ entityType: "training_item", entityId: id, actor, action: "CANCELLED" });
+}
+
+/** Trainees with a live completed/total count against the current active
+ * checklist for their position -- items added after a trainee started still
+ * count against them, since the checklist reflects what "trained" means now. */
+export function getTrainees(storeId: string): TraineeRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT tr.id, tr.name, tr.position, tr.status, tr.started_at,
+        (SELECT COUNT(*) FROM training_completions tc
+          JOIN training_items ti ON ti.id = tc.training_item_id
+          WHERE tc.trainee_id = tr.id AND ti.active = 1) as completed_count,
+        (SELECT COUNT(*) FROM training_items ti2 WHERE ti2.store_id = tr.store_id AND ti2.position = tr.position AND ti2.active = 1) as total_count
+       FROM trainees tr WHERE tr.store_id = ? ORDER BY tr.status ASC, tr.started_at DESC`
+    )
+    .all(storeId) as TraineeRow[];
+}
+
+export function createTrainee(storeId: string, name: string, position: TrainingPosition, actor: SessionUser): string {
+  const db = getDb();
+  const id = newId();
+  const ts = nowIso();
+  db.prepare(
+    `INSERT INTO trainees (id, store_id, name, position, status, started_at, created_by, created_at) VALUES (?, ?, ?, ?, 'IN_PROGRESS', ?, ?, ?)`
+  ).run(id, storeId, name, position, ts, actor.id, ts);
+  writeAudit({ entityType: "trainee", entityId: id, actor, action: "CREATED", newValue: { name, position } });
+  return id;
+}
+
+export interface TraineeDetail {
+  id: string;
+  name: string;
+  position: TrainingPosition;
+  status: "IN_PROGRESS" | "COMPLETE";
+  started_at: string;
+  store_id: string;
+}
+
+export function getTraineeDetail(traineeId: string, storeId: string): TraineeDetail | undefined {
+  const db = getDb();
+  return db.prepare(`SELECT * FROM trainees WHERE id = ? AND store_id = ?`).get(traineeId, storeId) as TraineeDetail | undefined;
+}
+
+export interface TrainingChecklistRow extends TrainingItem {
+  trained_by_name: string | null;
+  trained_at: string | null;
+}
+
+export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, u.name as trained_by_name, tc.trained_at
+       FROM training_items ti
+       LEFT JOIN training_completions tc ON tc.training_item_id = ti.id AND tc.trainee_id = ?
+       LEFT JOIN users u ON u.id = tc.trained_by
+       WHERE ti.store_id = ? AND ti.position = ? AND ti.active = 1
+       ORDER BY ti.sort_order, ti.title`
+    )
+    .all(trainee.id, trainee.store_id, trainee.position) as TrainingChecklistRow[];
+}
+
+/** Toggles one checklist item for this trainee. Any manager can do this --
+ * training happens across whoever's on shift, not one owner -- and the
+ * audit trail (trained_by/trained_at) is what lets the next manager see who
+ * covered what and when. Marking the trainee COMPLETE is a separate,
+ * explicit action rather than automatic, so a manager decides when training
+ * is actually done rather than the last checkbox silently closing it out. */
+export function toggleTrainingItem(traineeId: string, trainingItemId: string, actor: SessionUser): boolean {
+  const db = getDb();
+  const existing = db
+    .prepare(`SELECT id FROM training_completions WHERE trainee_id = ? AND training_item_id = ?`)
+    .get(traineeId, trainingItemId) as { id: string } | undefined;
+  if (existing) {
+    db.prepare(`DELETE FROM training_completions WHERE id = ?`).run(existing.id);
+    writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, trained: false } });
+    return false;
+  }
+  db.prepare(
+    `INSERT INTO training_completions (id, trainee_id, training_item_id, trained_by, trained_at) VALUES (?, ?, ?, ?, ?)`
+  ).run(newId(), traineeId, trainingItemId, actor.id, nowIso());
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, trained: true } });
+  return true;
+}
+
+export function markTraineeComplete(traineeId: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE trainees SET status = 'COMPLETE' WHERE id = ?`).run(traineeId);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "COMPLETED" });
+}

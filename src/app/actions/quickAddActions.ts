@@ -34,6 +34,7 @@ export async function quickAddTaskAction(formData: FormData) {
     title,
     scheduledFor: fd(formData, "scheduledFor") || "TODAY",
     effort: fd(formData, "effort") || "QUICK",
+    ownerId: user.id,
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });

@@ -33,6 +33,10 @@ function createConnection(): Database.Database {
   ensureColumn(db, "cleaning_tasks", "description", "description TEXT");
   ensureColumn(db, "cleaning_tasks", "description_es", "description_es TEXT");
   ensureColumn(db, "cleaning_tasks", "weekday", "weekday INTEGER");
+  ensureColumn(db, "store_pnl_periods", "gem_taste_score", "gem_taste_score REAL");
+  ensureColumn(db, "store_pnl_periods", "gem_taste_goal", "gem_taste_goal REAL");
+  ensureColumn(db, "store_pnl_periods", "gem_accuracy_score", "gem_accuracy_score REAL");
+  ensureColumn(db, "store_pnl_periods", "gem_accuracy_goal", "gem_accuracy_goal REAL");
   return db;
 }
 

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createStorePeriodAction } from "@/app/actions/storeProfileActions";
-import { Field, inputClass, textareaClass } from "./forms/FormShell";
+import { Field, inputClass, textareaClass, FileField } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -19,7 +19,6 @@ const NUMERIC_FIELDS = [
   "controllableProfitActual",
   "controllableProfitPct",
   "restaurantContribution",
-  "gemScore",
 ] as const;
 
 const NUMERIC_LABEL_KEY: Record<(typeof NUMERIC_FIELDS)[number], Parameters<typeof t>[1]> = {
@@ -34,7 +33,6 @@ const NUMERIC_LABEL_KEY: Record<(typeof NUMERIC_FIELDS)[number], Parameters<type
   controllableProfitActual: "store_profile_cp_actual",
   controllableProfitPct: "store_profile_cp_pct",
   restaurantContribution: "store_profile_restaurant_contribution",
-  gemScore: "store_profile_gem_score",
 };
 
 export default function StorePeriodForm({ lang }: { lang: Language }) {
@@ -72,8 +70,26 @@ export default function StorePeriodForm({ lang }: { lang: Language }) {
         ))}
       </div>
 
+      <div>
+        <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-accent">{t(lang, "store_profile_gem_score")}</p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={lang === "es" ? "Sabor de Comida — Puntaje" : "Taste of Food — Score"}>
+            <input name="gemTasteScore" type="number" step="any" inputMode="decimal" className={inputClass} />
+          </Field>
+          <Field label={lang === "es" ? "Sabor de Comida — Meta" : "Taste of Food — Goal"}>
+            <input name="gemTasteGoal" type="number" step="any" inputMode="decimal" className={inputClass} />
+          </Field>
+          <Field label={lang === "es" ? "Exactitud del Pedido — Puntaje" : "Accuracy of Order — Score"}>
+            <input name="gemAccuracyScore" type="number" step="any" inputMode="decimal" className={inputClass} />
+          </Field>
+          <Field label={lang === "es" ? "Exactitud del Pedido — Meta" : "Accuracy of Order — Goal"}>
+            <input name="gemAccuracyGoal" type="number" step="any" inputMode="decimal" className={inputClass} />
+          </Field>
+        </div>
+      </div>
+
       <Field label={t(lang, "store_profile_pnl_file")}>
-        <input name="pnlFile" type="file" accept="application/pdf,image/*" className="text-sm" />
+        <FileField name="pnlFile" accept="application/pdf,image/*" lang={lang} />
       </Field>
 
       <Field label={t(lang, "field_notes")}>

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createScheduleRequestAction } from "@/app/actions/schedulingActions";
-import { Field, inputClass, selectClass } from "./forms/FormShell";
+import { Field, inputClass, selectClass, FileField } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 
 export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; isGM: boolean }) {
@@ -64,7 +64,7 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "Evidencia (opcional)" : "Evidence (optional)"}>
-          <input name="attachment" type="file" accept="image/*,.pdf" className="text-xs" />
+          <FileField name="attachment" accept="image/*,.pdf" lang={lang} />
         </Field>
         <Field label={lang === "es" ? "Tipo" : "Type"}>
           <select name="attachmentType" defaultValue="SCREENSHOT" className={selectClass}>

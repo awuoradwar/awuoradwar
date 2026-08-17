@@ -41,8 +41,15 @@ export default async function StoreProfilePage() {
         { label: t(user.language, "store_profile_cp_actual"), value: fmtMoney(latest.controllable_profit_actual) },
         { label: t(user.language, "store_profile_cp_pct"), value: fmtPct(latest.controllable_profit_pct) },
         { label: t(user.language, "store_profile_restaurant_contribution"), value: fmtMoney(latest.restaurant_contribution) },
-        { label: t(user.language, "store_profile_gem_score"), value: fmtNum(latest.gem_score, 1) },
       ]
+    : [];
+
+  const es = user.language === "es";
+  const gemMetrics = latest
+    ? [
+        { label: es ? "Sabor de Comida" : "Taste of Food", score: latest.gem_taste_score, goal: latest.gem_taste_goal },
+        { label: es ? "Exactitud del Pedido" : "Accuracy of Order", score: latest.gem_accuracy_score, goal: latest.gem_accuracy_goal },
+      ].filter((m) => m.score !== null)
     : [];
 
   return (
@@ -68,6 +75,28 @@ export default async function StoreProfilePage() {
                 </div>
               ))}
             </div>
+            {gemMetrics.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_gem_score")}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {gemMetrics.map((m) => {
+                    const overGoal = m.score !== null && m.goal !== null ? m.score - m.goal : null;
+                    return (
+                      <div key={m.label} className="card p-3">
+                        <p className="text-lg font-bold">{fmtNum(m.score, 1)}</p>
+                        <p className="text-xs text-muted">{m.label}</p>
+                        {m.goal !== null && (
+                          <p className={`mt-1 text-xs font-semibold ${overGoal !== null && overGoal >= 0 ? "text-ok" : "text-critical"}`}>
+                            {es ? "Meta" : "Goal"} {fmtNum(m.goal, 1)}
+                            {overGoal !== null && ` · ${overGoal >= 0 ? "+" : ""}${overGoal.toFixed(1)}`}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {latest.pnl_file_ref && (
               <a
                 href={`/api/store-pnl/${latest.id}`}

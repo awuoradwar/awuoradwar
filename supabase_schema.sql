@@ -82,6 +82,41 @@ create table manager_shifts (
   unique (store_id, user_id, date)
 );
 
+-- New associate training: GM-editable checklist per position (FOH/BOH), so
+-- whichever manager is on shift when a step gets trained can check it off
+-- and the next manager picks up exactly where training left off.
+create table training_items (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  position text not null check (position in ('FOH','BOH')),
+  title text not null,
+  title_es text,
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
+create table trainees (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  name text not null,
+  position text not null check (position in ('FOH','BOH')),
+  status text not null default 'IN_PROGRESS' check (status in ('IN_PROGRESS','COMPLETE')),
+  started_at timestamptz not null default now(),
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
+create table training_completions (
+  id uuid primary key default gen_random_uuid(),
+  trainee_id uuid not null references trainees(id),
+  training_item_id uuid not null references training_items(id),
+  trained_by uuid references users(id),
+  trained_at timestamptz not null default now(),
+  unique (trainee_id, training_item_id)
+);
+
 create table task_templates (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
@@ -350,7 +385,11 @@ create table store_pnl_periods (
   controllable_profit_actual numeric, -- CP $
   controllable_profit_pct numeric, -- CP %
   restaurant_contribution numeric, -- RC
-  gem_score numeric,
+  gem_score numeric, -- legacy single-number field, superseded by the two headline metrics below
+  gem_taste_score numeric, -- GEM: Taste of Food, this period's score
+  gem_taste_goal numeric, -- GEM: Taste of Food, company goal
+  gem_accuracy_score numeric, -- GEM: Accuracy of Order, this period's score
+  gem_accuracy_goal numeric, -- GEM: Accuracy of Order, company goal
   storage_path text, -- Supabase Storage object path (private bucket) for the uploaded P&L document
   notes text,
   created_by uuid references users(id),
@@ -546,6 +585,9 @@ alter table schedule_conflicts enable row level security;
 alter table shift_notes enable row level security;
 alter table push_subscriptions enable row level security;
 alter table manager_shifts enable row level security;
+alter table training_items enable row level security;
+alter table trainees enable row level security;
+alter table training_completions enable row level security;
 
 -- Store-scoped tables: member read/write.
 create policy store_member_all on stores for select using (is_store_member(id));
@@ -617,6 +659,17 @@ create policy store_member_read on manager_shifts for select using (is_store_mem
 create policy gm_manage_manager_shifts on manager_shifts for insert with check (is_store_gm(store_id));
 create policy gm_update_manager_shifts on manager_shifts for update using (is_store_gm(store_id));
 create policy gm_delete_manager_shifts on manager_shifts for delete using (is_store_gm(store_id));
+
+-- Training: any manager can read/add trainees and check off completions;
+-- only the GM edits the checklist itself (adding/removing training_items).
+create policy store_member_read on training_items for select using (is_store_member(store_id));
+create policy gm_manage_training_items on training_items for insert with check (is_store_gm(store_id));
+create policy gm_update_training_items on training_items for update using (is_store_gm(store_id));
+create policy gm_delete_training_items on training_items for delete using (is_store_gm(store_id));
+create policy store_member_all on trainees for all using (is_store_member(store_id));
+create policy store_member_all on training_completions for all using (
+  exists (select 1 from trainees tr where tr.id = trainee_id and is_store_member(tr.store_id))
+);
 
 -- Users / memberships: read within your own store(s); only GM can manage
 -- membership/user rows for the store (mirrors permissions.ts "users.manage").

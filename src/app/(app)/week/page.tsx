@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getWeekTasks } from "@/lib/services/taskService";
@@ -54,8 +55,18 @@ export default async function WeekPage() {
     label: `${dayNames[new Date(d + "T00:00:00Z").getDay()]} ${d.slice(5)}`,
   }));
 
+  const lastWeekStart = new Date(startDate.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-5">
+      <Link
+        href={`/more/weekly-summary?weekStart=${lastWeekStart}`}
+        className="tap-target flex items-center justify-between rounded-xl border border-accent/30 bg-accent/5 px-4 text-sm font-semibold text-accent"
+      >
+        <span>📊 {user.language === "es" ? "Ver Resumen de la Semana Pasada" : "View Last Week's Summary"}</span>
+        <span>→</span>
+      </Link>
+
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
           {user.language === "es" ? "Carga por gerente" : "Manager capacity"}
@@ -93,7 +104,7 @@ export default async function WeekPage() {
       <WeekAddTaskForm lang={user.language} managers={managers} days={days} />
 
       {Object.entries(byDay).map(([date, dayTasks]) => (
-        <details key={date} className="card overflow-hidden" open={dayTasks.length > 0}>
+        <details key={date} className="card overflow-hidden">
           <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
             <span className="text-xs font-bold uppercase tracking-wide text-accent">
               {dayNames[new Date(date + "T00:00:00Z").getDay()]} · {date.slice(5)}

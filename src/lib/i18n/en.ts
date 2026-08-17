@@ -155,6 +155,8 @@ const en = {
   more_store_profile: "Store Profile",
   more_work_orders: "Work Orders",
   more_meal_replacements: "Meal Replacements",
+  more_weekly_summary: "Weekly Summary",
+  more_training: "New Associate Training",
 
   work_orders_title: "Work Orders",
   work_orders_needs_followup: "Needs Follow-up",

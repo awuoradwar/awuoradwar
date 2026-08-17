@@ -47,8 +47,8 @@ export default function MealReplacementForm({ lang }: { lang: Language }) {
       </Field>
       <p className="text-xs text-muted">
         {lang === "es"
-          ? "El estado inicia como Pendiente. Un gerente autorizado puede aprobar el reemplazo después."
-          : "Starts as Pending. An authorized manager can approve a replacement later."}
+          ? "Cualquier gerente puede completarlo cuando el cliente llegue -- usted mismo u otro gerente."
+          : "Any manager can complete it once the guest arrives -- you or someone else on shift."}
       </p>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Guardar" : "Save"} />
     </form>

@@ -32,6 +32,11 @@ export default function TaskForm({ lang }: { lang: Language }) {
           <option value="MAJOR">{lang === "es" ? "Mayor" : "Major"}</option>
         </select>
       </Field>
+      <p className="text-xs text-muted">
+        {lang === "es"
+          ? "Se le asignará a usted y aparecerá en Mi Turno, Hoy o Esta Semana según cuándo lo programe."
+          : "This gets assigned to you and will show up in My Shift, Today, or This Week depending on when you schedule it."}
+      </p>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Agregar tarea" : "Add task"} />
     </form>
   );

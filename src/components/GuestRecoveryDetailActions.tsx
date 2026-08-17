@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  approveReplacementAction,
   completeReplacementAction,
   markNotRequiredAction,
   addGuestRecoveryFollowUpAction,
@@ -37,20 +36,11 @@ export default function GuestRecoveryDetailActions({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
-        {status === "PENDING" && (
-          <button
-            disabled={pending}
-            onClick={() => run(() => approveReplacementAction(id))}
-            className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
-          >
-            {t(lang, "action_approve")}
-          </button>
-        )}
-        {status === "APPROVED" && (
+        {!isFinal && (
           <button
             disabled={pending}
             onClick={() => run(() => completeReplacementAction(id))}
-            className="tap-target rounded-full border-2 border-ok px-4 text-sm font-semibold text-ok disabled:opacity-50"
+            className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {t(lang, "action_complete")}
           </button>

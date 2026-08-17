@@ -6,6 +6,7 @@ import { completeCleaningAction, completeCleaningWithPhotoAction, verifyCleaning
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
+import { FileField } from "./forms/FormShell";
 
 interface CleaningTaskData {
   id: string;
@@ -113,11 +114,11 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
             const fd = new FormData(e.currentTarget);
             run(() => completeCleaningWithPhotoAction(fd));
           }}
-          className="flex items-center gap-2"
+          className="flex flex-col items-start gap-2"
         >
           <input type="hidden" name="taskId" value={task.id} />
-          <input name="photo" type="file" accept="image/*" required capture="environment" className="flex-1 text-xs" />
-          <button type="submit" disabled={pending} className="tap-target shrink-0 rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
+          <FileField name="photo" accept="image/*" required capture="environment" lang={lang} />
+          <button type="submit" disabled={pending} className="tap-target shrink-0 rounded-full bg-accent px-4 text-xs font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
             {t(lang, "action_complete")}
           </button>
         </form>

@@ -1,6 +1,8 @@
 import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
+import { windowForHour } from "./taskService";
+import { resolveShiftOwnerForWindow } from "./scheduleService";
 
 export interface RecurrenceConfig {
   weekdays?: number[]; // 0=Sun..6=Sat, used for WEEKLY/WEEKDAYS/CUSTOM
@@ -83,12 +85,13 @@ export function ensureInstancesForDate(storeId: string, dateStr: string) {
     }
 
     const dueAt = config.dueTime ? `${dateStr}T${config.dueTime}:00` : null;
+    const ownerId = dueAt ? resolveShiftOwnerForWindow(storeId, dateStr, windowForHour(new Date(dueAt).getHours())) : null;
     const id = newId();
     db.prepare(
       `INSERT INTO tasks (id, store_id, template_id, title, description, area, category, owner_id, support_ids,
         due_at, scheduled_for, scheduled_date, effort, priority, severity, status, verification_required,
         depends_on_task_id, source, checklist_role, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, 'DATE', ?, ?, 'NORMAL', 'NORMAL', 'OPEN', ?, ?, 'recurring', ?, NULL, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'DATE', ?, ?, 'NORMAL', 'NORMAL', 'OPEN', ?, ?, 'recurring', ?, NULL, ?)`
     ).run(
       id,
       storeId,
@@ -97,6 +100,7 @@ export function ensureInstancesForDate(storeId: string, dateStr: string) {
       tpl.description,
       tpl.area,
       tpl.category,
+      ownerId,
       dueAt,
       dateStr,
       tpl.effort,

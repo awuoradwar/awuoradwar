@@ -77,8 +77,12 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
             <dd>${gr.value_estimate.toFixed(2)}</dd>
           </>
         )}
-        <dt className="text-muted">{user.language === "es" ? "Aprobado Por" : "Approved By"}</dt>
-        <dd>{gr.approved_by_name || "—"}</dd>
+        {gr.approved_by_name && (
+          <>
+            <dt className="text-muted">{user.language === "es" ? "Aprobado Por" : "Approved By"}</dt>
+            <dd>{gr.approved_by_name}</dd>
+          </>
+        )}
         {gr.completed_by_name && (
           <>
             <dt className="text-muted">{user.language === "es" ? "Completado Por" : "Completed By"}</dt>

@@ -126,7 +126,7 @@ const EVENING_START_HOUR = 17;
  * (see scheduleService.getShiftTypeForUserToday) -- null when unscheduled. */
 export type ViewerShiftType = "MORNING" | "EVENING" | "DOUBLE" | null;
 
-function windowForHour(hour: number): ShiftWindow {
+export function windowForHour(hour: number): ShiftWindow {
   return hour < EVENING_START_HOUR ? "MORNING" : "EVENING";
 }
 

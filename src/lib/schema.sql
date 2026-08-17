@@ -59,6 +59,41 @@ CREATE TABLE IF NOT EXISTS manager_shifts (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_manager_shifts_unique ON manager_shifts(store_id, user_id, date);
 
+-- New associate training: GM-editable checklist per position (FOH/BOH), so
+-- whichever manager is on shift when a step gets trained can check it off
+-- and the next manager picks up exactly where training left off.
+CREATE TABLE IF NOT EXISTS training_items (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  position TEXT NOT NULL, -- FOH | BOH
+  title TEXT NOT NULL,
+  title_es TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS trainees (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  name TEXT NOT NULL,
+  position TEXT NOT NULL, -- FOH | BOH
+  status TEXT NOT NULL DEFAULT 'IN_PROGRESS', -- IN_PROGRESS | COMPLETE
+  started_at TEXT NOT NULL,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS training_completions (
+  id TEXT PRIMARY KEY,
+  trainee_id TEXT NOT NULL REFERENCES trainees(id),
+  training_item_id TEXT NOT NULL REFERENCES training_items(id),
+  trained_by TEXT REFERENCES users(id),
+  trained_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_training_completions_unique ON training_completions(trainee_id, training_item_id);
+
 CREATE TABLE IF NOT EXISTS task_templates (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
@@ -329,7 +364,11 @@ CREATE TABLE IF NOT EXISTS store_pnl_periods (
   controllable_profit_actual REAL, -- CP $
   controllable_profit_pct REAL, -- CP %
   restaurant_contribution REAL, -- RC
-  gem_score REAL,
+  gem_score REAL, -- legacy single-number field, superseded by the two headline metrics below
+  gem_taste_score REAL, -- GEM: Taste of Food, this period's score
+  gem_taste_goal REAL, -- GEM: Taste of Food, company goal
+  gem_accuracy_score REAL, -- GEM: Accuracy of Order, this period's score
+  gem_accuracy_goal REAL, -- GEM: Accuracy of Order, company goal
   pnl_file_ref TEXT, -- stored filename under data/private-uploads/store-pnl
   notes TEXT,
   created_by TEXT REFERENCES users(id),

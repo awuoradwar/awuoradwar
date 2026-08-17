@@ -18,7 +18,10 @@ export interface StorePnlPeriod {
   controllable_profit_actual: number | null;
   controllable_profit_pct: number | null;
   restaurant_contribution: number | null;
-  gem_score: number | null;
+  gem_taste_score: number | null;
+  gem_taste_goal: number | null;
+  gem_accuracy_score: number | null;
+  gem_accuracy_goal: number | null;
   pnl_file_ref: string | null;
   notes: string | null;
   created_by: string | null;
@@ -70,7 +73,10 @@ export function createPeriod(params: {
   controllableProfitActual: number | null;
   controllableProfitPct: number | null;
   restaurantContribution: number | null;
-  gemScore: number | null;
+  gemTasteScore: number | null;
+  gemTasteGoal: number | null;
+  gemAccuracyScore: number | null;
+  gemAccuracyGoal: number | null;
   pnlFileRef: string | null;
   notes: string | null;
   actor: SessionUser;
@@ -82,8 +88,9 @@ export function createPeriod(params: {
       id, store_id, period_label, net_sales_actual, net_sales_plan, net_sales_prior_year,
       sss_pct, sst_pct, check_average, cogs_pct, labor_pct,
       controllable_profit_actual, controllable_profit_pct, restaurant_contribution,
-      gem_score, pnl_file_ref, notes, created_by, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      gem_taste_score, gem_taste_goal, gem_accuracy_score, gem_accuracy_goal,
+      pnl_file_ref, notes, created_by, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -99,7 +106,10 @@ export function createPeriod(params: {
     params.controllableProfitActual,
     params.controllableProfitPct,
     params.restaurantContribution,
-    params.gemScore,
+    params.gemTasteScore,
+    params.gemTasteGoal,
+    params.gemAccuracyScore,
+    params.gemAccuracyGoal,
     params.pnlFileRef,
     params.notes,
     params.actor.id,
