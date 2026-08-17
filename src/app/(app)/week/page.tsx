@@ -10,6 +10,7 @@ import WeekTaskRow from "@/components/WeekTaskRow";
 import ShiftScheduleGrid from "@/components/ShiftScheduleGrid";
 import { POSITION_LABEL, canDo } from "@/lib/permissions";
 import { Position } from "@/lib/types";
+import { managerColor } from "@/lib/managerColor";
 
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -72,20 +73,26 @@ export default async function WeekPage() {
           {user.language === "es" ? "Carga por gerente" : "Manager capacity"}
         </h2>
         <div className="card divide-y divide-border">
-          {loadByManager.map((m) => (
-            <div key={m.id} className="flex items-center justify-between px-3 py-2 text-sm">
-              <div>
-                <p className="font-medium">{m.name}</p>
-                <p className="text-xs text-muted">{POSITION_LABEL[m.position][user.language]}</p>
+          {loadByManager.map((m) => {
+            const color = managerColor(m.id);
+            return (
+              <div key={m.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color.dot }} />
+                  <div>
+                    <p className="font-medium">{m.name}</p>
+                    <p className="text-xs text-muted">{POSITION_LABEL[m.position][user.language]}</p>
+                  </div>
+                </div>
+                <div className="h-2 w-24 overflow-hidden rounded-full bg-border">
+                  <div
+                    className="h-full"
+                    style={{ width: `${Math.min(100, m.load * 4)}%`, backgroundColor: color.dot }}
+                  />
+                </div>
               </div>
-              <div className="h-2 w-24 overflow-hidden rounded-full bg-border">
-                <div
-                  className="h-full bg-accent"
-                  style={{ width: `${Math.min(100, m.load * 4)}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {unassigned.length > 0 && (
           <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning">

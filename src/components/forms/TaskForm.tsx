@@ -1,13 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { quickAddTaskAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
 import { Language } from "@/lib/types";
 
-export default function TaskForm({ lang }: { lang: Language }) {
+const WEEKDAYS: Array<{ value: number; en: string; es: string }> = [
+  { value: 0, en: "Sun", es: "Dom" },
+  { value: 1, en: "Mon", es: "Lun" },
+  { value: 2, en: "Tue", es: "Mar" },
+  { value: 3, en: "Wed", es: "Mié" },
+  { value: 4, en: "Thu", es: "Jue" },
+  { value: 5, en: "Fri", es: "Vie" },
+  { value: 6, en: "Sat", es: "Sáb" },
+];
+
+export default function TaskForm({ lang, isGM }: { lang: Language; isGM: boolean }) {
+  const [recurring, setRecurring] = useState(false);
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
-    "task",
+    recurring ? null : "task",
     quickAddTaskAction,
     (fd) => `${lang === "es" ? "Tarea" : "Task"}: ${fd.get("title")}`
   );
@@ -17,14 +29,40 @@ export default function TaskForm({ lang }: { lang: Language }) {
       <Field label={lang === "es" ? "Título" : "Title"}>
         <input name="title" required className={inputClass} placeholder={lang === "es" ? "¿Qué hay que hacer?" : "What needs to happen?"} />
       </Field>
-      <Field label={lang === "es" ? "Cuándo" : "When"}>
-        <select name="scheduledFor" defaultValue="TODAY" className={selectClass}>
-          <option value="TODAY">{lang === "es" ? "Hoy" : "Today"}</option>
-          <option value="NEXT_SHIFT">{lang === "es" ? "Próximo turno" : "Next shift"}</option>
-          <option value="TOMORROW">{lang === "es" ? "Mañana" : "Tomorrow"}</option>
-          <option value="LATER_THIS_WEEK">{lang === "es" ? "Más tarde esta semana" : "Later this week"}</option>
-        </select>
+
+      {isGM && (
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input type="checkbox" name="recurring" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="h-4 w-4" />
+          {lang === "es" ? "Hacer esta tarea recurrente" : "Make this a recurring task"}
+        </label>
+      )}
+
+      {recurring ? (
+        <Field label={lang === "es" ? "Se repite los" : "Repeats on"}>
+          <div className="flex flex-wrap gap-2">
+            {WEEKDAYS.map((d) => (
+              <label key={d.value} className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs">
+                <input type="checkbox" name="weekdays" value={d.value} className="h-3.5 w-3.5" />
+                {lang === "es" ? d.es : d.en}
+              </label>
+            ))}
+          </div>
+        </Field>
+      ) : (
+        <Field label={lang === "es" ? "Cuándo" : "When"}>
+          <select name="scheduledFor" defaultValue="TODAY" className={selectClass}>
+            <option value="TODAY">{lang === "es" ? "Hoy" : "Today"}</option>
+            <option value="NEXT_SHIFT">{lang === "es" ? "Próximo turno" : "Next shift"}</option>
+            <option value="TOMORROW">{lang === "es" ? "Mañana" : "Tomorrow"}</option>
+            <option value="LATER_THIS_WEEK">{lang === "es" ? "Más tarde esta semana" : "Later this week"}</option>
+          </select>
+        </Field>
+      )}
+
+      <Field label={lang === "es" ? "Hora de vencimiento (opcional)" : "Due time (optional)"}>
+        <input type="time" name="dueTime" className={inputClass} />
       </Field>
+
       <Field label={lang === "es" ? "Esfuerzo" : "Effort"}>
         <select name="effort" defaultValue="QUICK" className={selectClass}>
           <option value="QUICK">{lang === "es" ? "Rápido" : "Quick"}</option>
@@ -32,10 +70,15 @@ export default function TaskForm({ lang }: { lang: Language }) {
           <option value="MAJOR">{lang === "es" ? "Mayor" : "Major"}</option>
         </select>
       </Field>
+
       <p className="text-xs text-muted">
-        {lang === "es"
-          ? "Se le asignará a usted y aparecerá en Mi Turno, Hoy o Esta Semana según cuándo lo programe."
-          : "This gets assigned to you and will show up in My Shift, Today, or This Week depending on when you schedule it."}
+        {recurring
+          ? lang === "es"
+            ? "Se creará una plantilla recurrente -- las instancias se generarán automáticamente cada día que marcó."
+            : "This creates a recurring template -- instances will be generated automatically on each day you checked."
+          : lang === "es"
+            ? "Se le asignará a usted y aparecerá en Mi Turno, Hoy o Esta Semana según cuándo lo programe."
+            : "This gets assigned to you and will show up in My Shift, Today, or This Week depending on when you schedule it."}
       </p>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Agregar tarea" : "Add task"} />
     </form>

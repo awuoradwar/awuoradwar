@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addTrainingItemAction, removeTrainingItemAction } from "@/app/actions/trainingActions";
 import { TrainingItem, TrainingPosition } from "@/lib/services/trainingService";
+import { TRAINING_POSITION_LABEL, TRAINING_POSITIONS } from "@/lib/trainingLabels";
 import { Language } from "@/lib/types";
 
 function PositionList({
@@ -72,7 +73,7 @@ function PositionList({
   );
 }
 
-export default function TrainingItemsManager({ fohItems, bohItems, lang }: { fohItems: TrainingItem[]; bohItems: TrainingItem[]; lang: Language }) {
+export default function TrainingItemsManager({ itemsByPosition, lang }: { itemsByPosition: Record<TrainingPosition, TrainingItem[]>; lang: Language }) {
   return (
     <details className="card overflow-hidden">
       <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3 text-sm font-semibold">
@@ -82,8 +83,9 @@ export default function TrainingItemsManager({ fohItems, bohItems, lang }: { foh
         </svg>
       </summary>
       <div className="flex flex-col gap-4 border-t border-border p-3">
-        <PositionList position="FOH" label="FOH (Counterhelp)" items={fohItems} lang={lang} />
-        <PositionList position="BOH" label="BOH (Kitchenhelp / COK)" items={bohItems} lang={lang} />
+        {TRAINING_POSITIONS.map((p) => (
+          <PositionList key={p} position={p} label={TRAINING_POSITION_LABEL[p][lang]} items={itemsByPosition[p]} lang={lang} />
+        ))}
       </div>
     </details>
   );

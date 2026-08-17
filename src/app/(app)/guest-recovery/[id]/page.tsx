@@ -14,6 +14,7 @@ interface GuestRecoveryRow {
   issue_category: string;
   description: string | null;
   item_description: string | null;
+  guest_name: string | null;
   value_estimate: number | null;
   replacement_status: string;
   approved_by_name: string | null;
@@ -50,7 +51,7 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader
-        backHref="/more/search"
+        backHref="/more/meal-replacements"
         lang={user.language}
         title={`${user.language === "es" ? "Reemplazo de Comida" : "Meal Replacement"}: ${gr.issue_category}`}
       />
@@ -65,6 +66,12 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
         <dd>{gr.contact_channel.replace("_", " ")}</dd>
         <dt className="text-muted">{t(user.language, "field_order_channel")}</dt>
         <dd>{gr.order_channel.replace("_", " ")}</dd>
+        {gr.guest_name && (
+          <>
+            <dt className="text-muted">{user.language === "es" ? "Nombre del Cliente" : "Guest Name"}</dt>
+            <dd>{gr.guest_name}</dd>
+          </>
+        )}
         {gr.item_description && (
           <>
             <dt className="text-muted">{t(user.language, "field_item_description")}</dt>
@@ -85,7 +92,7 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
         )}
         {gr.completed_by_name && (
           <>
-            <dt className="text-muted">{user.language === "es" ? "Completado Por" : "Completed By"}</dt>
+            <dt className="text-muted">{user.language === "es" ? "Cumplido Por" : "Fulfilled By"}</dt>
             <dd>{gr.completed_by_name}</dd>
           </>
         )}

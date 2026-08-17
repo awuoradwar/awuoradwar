@@ -11,6 +11,8 @@ import * as issueService from "@/lib/services/issueService";
 import * as acknowledgementService from "@/lib/services/acknowledgementService";
 import * as taskService from "@/lib/services/taskService";
 import * as pushService from "@/lib/services/pushService";
+import { weekStartOf } from "@/lib/services/recurrenceService";
+import { canDo } from "@/lib/permissions";
 
 function refresh() {
   revalidatePath("/my-shift");
@@ -19,20 +21,60 @@ function refresh() {
   revalidatePath("/more/acknowledgements");
   revalidatePath("/more/search");
   revalidatePath("/more/work-orders");
+  revalidatePath("/week");
+  revalidatePath("/more/templates");
 }
 
 function fd(formData: FormData, key: string): string {
   return String(formData.get(key) || "").trim();
 }
 
+/** Maps the quick-add "When" bucket to an actual scheduled_date -- without
+ * this, every task landed on today's date regardless of what was picked,
+ * so a task marked "Tomorrow" would wrongly show up under today on Week. */
+function scheduledDateForWhen(when: string): string {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  if (when === "TOMORROW") return new Date(today.getTime() + 86400000).toISOString().slice(0, 10);
+  if (when === "LATER_THIS_WEEK") {
+    const weekStart = weekStartOf(todayStr);
+    return new Date(new Date(weekStart + "T00:00:00Z").getTime() + 6 * 86400000).toISOString().slice(0, 10);
+  }
+  return todayStr; // TODAY, NEXT_SHIFT
+}
+
 export async function quickAddTaskAction(formData: FormData) {
   const user = await requireCurrentUser();
   const title = fd(formData, "title");
   if (!title) return { error: "Title is required." };
+
+  const dueTime = fd(formData, "dueTime");
+
+  if (fd(formData, "recurring") === "on") {
+    if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
+    const weekdaysRaw = formData.getAll("weekdays").map(String);
+    if (weekdaysRaw.length === 0) return { error: "Pick at least one day for a recurring task." };
+    const db = getDb();
+    const id = newId();
+    const config = { weekdays: weekdaysRaw.map(Number), dueTime: dueTime || undefined };
+    db.prepare(
+      `INSERT INTO task_templates (id, store_id, title, description, area, category, recurrence_type, recurrence_config,
+        default_owner_position, effort, verification_required, source, active, created_at)
+       VALUES (?, ?, ?, NULL, NULL, 'ROUTINE', 'WEEKLY', ?, NULL, ?, 0, 'manual', 1, ?)`
+    ).run(id, user.storeId, title, JSON.stringify(config), fd(formData, "effort") || "STANDARD", nowIso());
+    writeAudit({ entityType: "task_template", entityId: id, actor: user, action: "CREATED", newValue: { title } });
+    refresh();
+    return { ok: true };
+  }
+
+  const scheduledFor = fd(formData, "scheduledFor") || "TODAY";
+  const scheduledDate = scheduledDateForWhen(scheduledFor);
   taskService.createTask({
     storeId: user.storeId,
     title,
-    scheduledFor: fd(formData, "scheduledFor") || "TODAY",
+    scheduledFor,
+    scheduledDate,
+    dueAt: dueTime ? `${scheduledDate}T${dueTime}:00` : null,
     effort: fd(formData, "effort") || "QUICK",
     ownerId: user.id,
     actor: user,
@@ -136,6 +178,7 @@ export async function quickAddMealReplacementAction(formData: FormData) {
     issueCategory: fd(formData, "issueCategory") || "FOOD_QUALITY",
     description: fd(formData, "description") || undefined,
     itemDescription: fd(formData, "itemDescription") || undefined,
+    guestName: fd(formData, "guestName") || undefined,
     valueEstimate: valueStr ? Number(valueStr) : null,
     actor: user,
     picId: shift?.pic_user_id ?? null,

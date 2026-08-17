@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { getWeekSummary } from "@/lib/services/weekSummaryService";
+import { getWeekSummary, getWeekDetail, WeekItemRow } from "@/lib/services/weekSummaryService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import PageHeader from "@/components/PageHeader";
 
@@ -33,17 +33,38 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
   const weekEnd = addDays(weekStart, 6);
 
   const summary = getWeekSummary(user.storeId, weekStart, weekEnd);
+  const detail = getWeekDetail(user.storeId, weekStart, weekEnd);
   const isCurrentWeek = weekStart === currentWeekStart;
 
   const fmtDate = (d: string) =>
     new Date(d + "T00:00:00Z").toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "numeric" });
+  const fmtWhen = (d: string) =>
+    d ? new Date(d).toLocaleDateString(es ? "es-MX" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : "—";
 
-  const stats = [
-    { label: es ? "Tareas completadas" : "Tasks completed", value: summary.tasksCompleted, tone: "ok" as const },
-    { label: es ? "Tareas aún abiertas" : "Tasks still open", value: summary.tasksStillOpen, tone: summary.tasksStillOpen > 0 ? "warning" as const : "ok" as const },
-    { label: es ? "Limpiezas completadas" : "Cleaning completions", value: summary.cleaningCompletions, tone: "ok" as const },
-    { label: es ? "Reemplazos de comida" : "Meal replacements handled", value: summary.mealReplacementsHandled, tone: "ok" as const },
-    { label: es ? "Problemas resueltos" : "Issues resolved", value: `${summary.issuesResolved}/${summary.issuesOpened}`, tone: "ok" as const },
+  const tiles: Array<{ label: string; value: number; tone: "ok" | "warning"; items: WeekItemRow[]; href?: (id: string) => string }> = [
+    { label: es ? "Tareas completadas" : "Tasks completed", value: summary.tasksCompleted, tone: "ok", items: detail.tasksCompleted, href: (id) => `/task/${id}` },
+    {
+      label: es ? "Tareas aún abiertas" : "Tasks still open",
+      value: summary.tasksStillOpen,
+      tone: summary.tasksStillOpen > 0 ? "warning" : "ok",
+      items: detail.tasksStillOpen,
+      href: (id) => `/task/${id}`,
+    },
+    { label: es ? "Limpiezas completadas" : "Cleaning completions", value: summary.cleaningCompletions, tone: "ok", items: detail.cleaningCompletions },
+    {
+      label: es ? "Reemplazos de comida" : "Meal replacements handled",
+      value: summary.mealReplacementsHandled,
+      tone: "ok",
+      items: detail.mealReplacements,
+      href: (id) => `/guest-recovery/${id}`,
+    },
+    {
+      label: es ? "Problemas resueltos" : "Issues resolved",
+      value: summary.issuesResolved,
+      tone: "ok",
+      items: detail.issuesResolved,
+      href: (id) => `/issue/${id}`,
+    },
   ];
 
   return (
@@ -53,6 +74,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
       <div className="mb-4 flex items-center justify-between">
         <Link
           href={`/more/weekly-summary?weekStart=${addDays(weekStart, -7)}`}
+          replace
           className="tap-target rounded-full border border-border px-3 text-sm font-medium text-muted"
         >
           ← {es ? "Anterior" : "Prev"}
@@ -65,6 +87,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
         ) : (
           <Link
             href={`/more/weekly-summary?weekStart=${addDays(weekStart, 7)}`}
+            replace
             className="tap-target rounded-full border border-border px-3 text-sm font-medium text-muted"
           >
             {es ? "Siguiente" : "Next"} →
@@ -72,18 +95,46 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
         )}
       </div>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+      <section className="mb-6 flex flex-col gap-2">
+        <h2 className="mb-0 text-xs font-bold uppercase tracking-wide text-accent">
           {es ? "Actividad operativa" : "Operational activity"}
         </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {stats.map((s) => (
-            <div key={s.label} className="card p-3">
-              <p className={`text-2xl font-bold ${s.tone === "warning" ? "text-warning" : "text-ok"}`}>{s.value}</p>
-              <p className="text-xs text-muted">{s.label}</p>
-            </div>
-          ))}
-        </div>
+        {tiles.map((tile) => (
+          <details key={tile.label} className="card overflow-hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+              <span className="text-sm font-medium">{tile.label}</span>
+              <span className={`shrink-0 text-lg font-bold ${tile.tone === "warning" ? "text-warning" : "text-ok"}`}>{tile.value}</span>
+            </summary>
+            {tile.items.length === 0 ? (
+              <p className="border-t border-border p-3 text-center text-xs text-muted">
+                {es ? "Nada aquí." : "Nothing here."}
+              </p>
+            ) : (
+              <div className="divide-y divide-border border-t border-border">
+                {tile.items.map((item) => {
+                  const row = (
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate">{item.title}</p>
+                        <p className="truncate text-[11px] text-muted">
+                          {fmtWhen(item.at)}
+                          {item.subtitle && <span> · {item.subtitle}</span>}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                  return tile.href ? (
+                    <Link key={item.id} href={tile.href(item.id)} className="block hover:bg-card-subtle">
+                      {row}
+                    </Link>
+                  ) : (
+                    <div key={item.id}>{row}</div>
+                  );
+                })}
+              </div>
+            )}
+          </details>
+        ))}
       </section>
 
       <section>
@@ -92,12 +143,19 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
         </h2>
         {!summary.period ? (
           <div className="card p-4 text-center text-sm text-muted">
-            {es ? "No se registró ningún período de P&L esta semana." : "No P&L period was logged this week."}
+            {es ? "Aún no se ha registrado ningún período de P&L." : "No P&L period has been logged yet."}
           </div>
         ) : (
           <div className="card divide-y divide-border">
             <div className="px-3 py-2">
-              <p className="text-sm font-semibold">{summary.period.period_label}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">{summary.period.period_label}</p>
+                {summary.period.releasedThisWeek && (
+                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                    {es ? "PUBLICADO ESTA SEMANA" : "RELEASED THIS WEEK"}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-muted">
                 {es ? "Ventas netas" : "Net sales"}: {fmtMoney(summary.period.net_sales_actual)} · {es ? "Mano de obra" : "Labor"}: {fmtPct(summary.period.labor_pct)}
               </p>

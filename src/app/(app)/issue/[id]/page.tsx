@@ -58,7 +58,7 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref="/more/search" lang={user.language} title={issue.category.replace(/_/g, " ")} />
+      <PageHeader backHref="/more/work-orders" lang={user.language} title={issue.category.replace(/_/g, " ")} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={issue.status} lang={user.language} />
         {issue.severity === "CRITICAL" && <StatusBadge status="CRITICAL" lang={user.language} />}

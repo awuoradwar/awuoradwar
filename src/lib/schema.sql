@@ -59,13 +59,14 @@ CREATE TABLE IF NOT EXISTS manager_shifts (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_manager_shifts_unique ON manager_shifts(store_id, user_id, date);
 
--- New associate training: GM-editable checklist per position (FOH/BOH), so
+-- New associate training: GM-editable checklist per position (Counterhelp/
+-- Cook/Kitchenhelp -- Cook and Kitchenhelp are distinct BOH positions), so
 -- whichever manager is on shift when a step gets trained can check it off
 -- and the next manager picks up exactly where training left off.
 CREATE TABLE IF NOT EXISTS training_items (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
-  position TEXT NOT NULL, -- FOH | BOH
+  position TEXT NOT NULL, -- COUNTERHELP | COOK | KITCHENHELP
   title TEXT NOT NULL,
   title_es TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -78,9 +79,22 @@ CREATE TABLE IF NOT EXISTS trainees (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
   name TEXT NOT NULL,
-  position TEXT NOT NULL, -- FOH | BOH
+  position TEXT NOT NULL, -- COUNTERHELP | COOK | KITCHENHELP
   status TEXT NOT NULL DEFAULT 'IN_PROGRESS', -- IN_PROGRESS | COMPLETE
   started_at TEXT NOT NULL,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
+-- Planned training sessions: a specific day/shift and the manager who will
+-- work with the trainee, so training can be scheduled ahead of time and not
+-- just checked off ad hoc whenever someone happens to be free.
+CREATE TABLE IF NOT EXISTS training_sessions (
+  id TEXT PRIMARY KEY,
+  trainee_id TEXT NOT NULL REFERENCES trainees(id),
+  date TEXT NOT NULL,
+  shift_type TEXT NOT NULL, -- MORNING | EVENING | DOUBLE
+  manager_id TEXT REFERENCES users(id),
   created_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL
 );
@@ -213,6 +227,7 @@ CREATE TABLE IF NOT EXISTS guest_recoveries (
   issue_category TEXT NOT NULL, -- FOOD_QUALITY | ACCURACY | SERVICE | CLEANLINESS | OTHER
   description TEXT,
   item_description TEXT,
+  guest_name TEXT, -- optional, so repeat requests from the same guest can be recognized
   value_estimate REAL,
   replacement_status TEXT NOT NULL DEFAULT 'PENDING', -- PENDING | APPROVED | COMPLETED | NOT_REQUIRED
   approved_by TEXT REFERENCES users(id),

@@ -46,13 +46,28 @@ export function searchAll(storeId: string, query: string, filters: SearchFilters
   if (wantKind("guest_recovery")) {
     const gr = db
       .prepare(
-        `SELECT id, issue_category, replacement_status, created_at FROM guest_recoveries WHERE store_id = ? AND lower(issue_category) LIKE ? AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT 50`
+        `SELECT id, issue_category, replacement_status, guest_name, item_description, created_at FROM guest_recoveries
+         WHERE store_id = ? AND (lower(issue_category) LIKE ? OR lower(guest_name) LIKE ? OR lower(item_description) LIKE ?)
+         AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT 50`
       )
-      .all(storeId, q, dateFrom, dateTo) as Array<{ id: string; issue_category: string; replacement_status: string; created_at: string }>;
+      .all(storeId, q, q, q, dateFrom, dateTo) as Array<{
+      id: string;
+      issue_category: string;
+      replacement_status: string;
+      guest_name: string | null;
+      item_description: string | null;
+      created_at: string;
+    }>;
     results.push(
       ...gr
         .filter((g) => matchesStatus(g.replacement_status))
-        .map((g) => ({ kind: "guest_recovery", id: g.id, title: `Meal Replacement: ${g.issue_category}`, status: g.replacement_status, date: g.created_at }))
+        .map((g) => ({
+          kind: "guest_recovery",
+          id: g.id,
+          title: `Meal Replacement: ${g.guest_name ? `${g.guest_name} · ` : ""}${g.item_description || g.issue_category}`,
+          status: g.replacement_status,
+          date: g.created_at,
+        }))
     );
   }
 
@@ -73,6 +88,13 @@ export function searchAll(storeId: string, query: string, filters: SearchFilters
       )
       .all(storeId, q, dateFrom, dateTo) as Array<{ id: string; title: string; status: string; created_at: string }>;
     results.push(...cleaning.filter((c) => matchesStatus(c.status)).map((c) => ({ kind: "cleaning", id: c.id, title: c.title, status: c.status, date: c.created_at })));
+  }
+
+  if (wantKind("trainee")) {
+    const trainees = db
+      .prepare(`SELECT id, name, status, started_at FROM trainees WHERE store_id = ? AND lower(name) LIKE ? AND started_at BETWEEN ? AND ? ORDER BY started_at DESC LIMIT 50`)
+      .all(storeId, q, dateFrom, dateTo) as Array<{ id: string; name: string; status: string; started_at: string }>;
+    results.push(...trainees.filter((tr) => matchesStatus(tr.status)).map((tr) => ({ kind: "trainee", id: tr.id, title: tr.name, status: tr.status, date: tr.started_at })));
   }
 
   return results.sort((a, b) => (a.date < b.date ? 1 : -1));

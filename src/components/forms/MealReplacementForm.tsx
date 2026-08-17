@@ -36,6 +36,13 @@ export default function MealReplacementForm({ lang }: { lang: Language }) {
           <option value="OTHER">{lang === "es" ? "Otro" : "Other"}</option>
         </select>
       </Field>
+      <Field label={lang === "es" ? "Nombre del cliente" : "Guest name"}>
+        <input
+          name="guestName"
+          className={inputClass}
+          placeholder={lang === "es" ? "Opcional -- ayuda a identificar repeticiones" : "Optional -- helps spot repeat requests"}
+        />
+      </Field>
       <Field label={lang === "es" ? "Artículo/comida" : "Item/meal"}>
         <input name="itemDescription" className={inputClass} placeholder={lang === "es" ? "Opcional" : "Optional"} />
       </Field>

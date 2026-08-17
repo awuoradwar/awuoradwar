@@ -3,7 +3,7 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser } from "../types";
 
-export type TrainingPosition = "FOH" | "BOH";
+export type TrainingPosition = "COUNTERHELP" | "COOK" | "KITCHENHELP";
 
 export interface TrainingItem {
   id: string;
@@ -140,4 +140,50 @@ export function markTraineeComplete(traineeId: string, actor: SessionUser) {
   const db = getDb();
   db.prepare(`UPDATE trainees SET status = 'COMPLETE' WHERE id = ?`).run(traineeId);
   writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "COMPLETED" });
+}
+
+export type TrainingShiftType = "MORNING" | "EVENING" | "DOUBLE";
+
+export interface TrainingSessionRow {
+  id: string;
+  date: string;
+  shift_type: TrainingShiftType;
+  manager_id: string | null;
+  manager_name: string | null;
+}
+
+/** Planned training sessions for this trainee, soonest first -- lets a
+ * manager schedule ahead (day, shift, who's working with the trainee)
+ * instead of training only happening whenever someone's free. */
+export function getTrainingSessions(traineeId: string): TrainingSessionRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT ts.id, ts.date, ts.shift_type, ts.manager_id, u.name as manager_name
+       FROM training_sessions ts LEFT JOIN users u ON u.id = ts.manager_id
+       WHERE ts.trainee_id = ? ORDER BY ts.date ASC`
+    )
+    .all(traineeId) as TrainingSessionRow[];
+}
+
+export function scheduleTrainingSession(
+  traineeId: string,
+  date: string,
+  shiftType: TrainingShiftType,
+  managerId: string | null,
+  actor: SessionUser
+): string {
+  const db = getDb();
+  const id = newId();
+  db.prepare(
+    `INSERT INTO training_sessions (id, trainee_id, date, shift_type, manager_id, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, traineeId, date, shiftType, managerId, actor.id, nowIso());
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { scheduled_session: { date, shiftType, managerId } } });
+  return id;
+}
+
+export function removeTrainingSession(id: string, traineeId: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`DELETE FROM training_sessions WHERE id = ?`).run(id);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { removed_session: id } });
 }

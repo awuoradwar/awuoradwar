@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { isGM } from "@/lib/permissions";
 import { t } from "@/lib/i18n";
 import PageHeader from "@/components/PageHeader";
 import TaskForm from "@/components/forms/TaskForm";
@@ -40,7 +41,7 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/add" lang={user.language} title={t(user.language, TITLE_KEYS[type] as never)} />
-      {type === "task" && <TaskForm lang={user.language} />}
+      {type === "task" && <TaskForm lang={user.language} isGM={isGM(user)} />}
       {type === "call-in" && <CallInForm lang={user.language} />}
       {type === "late" && <LateForm lang={user.language} />}
       {type === "cleaning" && <CleaningForm lang={user.language} areas={areas} />}

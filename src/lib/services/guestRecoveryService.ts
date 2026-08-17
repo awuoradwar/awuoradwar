@@ -11,6 +11,7 @@ export function createGuestRecovery(params: {
   issueCategory: string;
   description?: string;
   itemDescription?: string;
+  guestName?: string;
   valueEstimate?: number | null;
   actor: SessionUser;
   picId?: string | null;
@@ -26,6 +27,7 @@ function insertGuestRecovery(params: {
   issueCategory: string;
   description?: string;
   itemDescription?: string;
+  guestName?: string;
   valueEstimate?: number | null;
   actor: SessionUser;
   picId?: string | null;
@@ -34,8 +36,8 @@ function insertGuestRecovery(params: {
   const id = newId();
   db.prepare(
     `INSERT INTO guest_recoveries (id, store_id, contact_channel, order_channel, issue_category, description,
-      item_description, value_estimate, replacement_status, created_by, pic_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`
+      item_description, guest_name, value_estimate, replacement_status, created_by, pic_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -44,6 +46,7 @@ function insertGuestRecovery(params: {
     params.issueCategory,
     params.description || null,
     params.itemDescription || null,
+    params.guestName || null,
     params.valueEstimate ?? null,
     params.actor.id,
     params.picId || null,
@@ -88,6 +91,7 @@ export interface MealReplacementRow {
   issue_category: string;
   description: string | null;
   item_description: string | null;
+  guest_name: string | null;
   replacement_status: string;
   created_by_name: string | null;
   created_at: string;
@@ -105,7 +109,7 @@ export function getMealReplacementsGrouped(storeId: string, todayStr: string) {
   const rows = db
     .prepare(
       `SELECT gr.id, gr.contact_channel, gr.order_channel, gr.issue_category, gr.description, gr.item_description,
-              gr.replacement_status, gr.created_at, gr.completed_at, u.name as created_by_name
+              gr.guest_name, gr.replacement_status, gr.created_at, gr.completed_at, u.name as created_by_name
        FROM guest_recoveries gr LEFT JOIN users u ON u.id = gr.created_by
        WHERE gr.store_id = ? AND (gr.replacement_status IN ('PENDING','APPROVED') OR gr.completed_at LIKE ?)
        ORDER BY gr.created_at ASC`

@@ -42,7 +42,7 @@ export default function GuestRecoveryDetailActions({
             onClick={() => run(() => completeReplacementAction(id))}
             className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
-            {t(lang, "action_complete")}
+            {lang === "es" ? "Marcar Cumplido" : "Mark Fulfilled"}
           </button>
         )}
         {!isFinal && (

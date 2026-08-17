@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TraineeRow as TraineeRowData } from "@/lib/services/trainingService";
+import { TRAINING_POSITION_LABEL } from "@/lib/trainingLabels";
 import { Language } from "@/lib/types";
 
 export default function TraineeRow({ item, lang }: { item: TraineeRowData; lang: Language }) {
@@ -9,7 +10,9 @@ export default function TraineeRow({ item, lang }: { item: TraineeRowData; lang:
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-semibold">{item.name}</p>
-          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">{item.position}</span>
+          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+            {TRAINING_POSITION_LABEL[item.position][lang]}
+          </span>
           {item.status === "COMPLETE" && (
             <span className="shrink-0 rounded-full bg-ok/10 px-2 py-0.5 text-[10px] font-bold text-ok">
               {lang === "es" ? "COMPLETO" : "COMPLETE"}

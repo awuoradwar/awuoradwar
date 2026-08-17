@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getTrainees, getTrainingItems } from "@/lib/services/trainingService";
+import { TRAINING_POSITIONS } from "@/lib/trainingLabels";
 import { isGM } from "@/lib/permissions";
 import PageHeader from "@/components/PageHeader";
 import AddTraineeForm from "@/components/AddTraineeForm";
@@ -15,8 +16,10 @@ export default async function TrainingPage() {
   const trainees = getTrainees(user.storeId);
   const inProgress = trainees.filter((t) => t.status === "IN_PROGRESS");
   const complete = trainees.filter((t) => t.status === "COMPLETE");
-  const fohItems = getTrainingItems(user.storeId, "FOH");
-  const bohItems = getTrainingItems(user.storeId, "BOH");
+  const itemsByPosition = Object.fromEntries(TRAINING_POSITIONS.map((p) => [p, getTrainingItems(user.storeId, p)])) as Record<
+    (typeof TRAINING_POSITIONS)[number],
+    ReturnType<typeof getTrainingItems>
+  >;
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -66,7 +69,7 @@ export default async function TrainingPage() {
 
       {isGM(user) && (
         <section>
-          <TrainingItemsManager fohItems={fohItems} bohItems={bohItems} lang={user.language} />
+          <TrainingItemsManager itemsByPosition={itemsByPosition} lang={user.language} />
         </section>
       )}
     </div>

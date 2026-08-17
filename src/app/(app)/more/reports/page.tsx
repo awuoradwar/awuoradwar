@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { getHistoryForRange } from "@/lib/services/searchService";
 import { getQualityMetrics, getCompletionStats } from "@/lib/services/reportsService";
 import PageHeader from "@/components/PageHeader";
+import FilterForm from "@/components/FilterForm";
 import { t } from "@/lib/i18n";
 
 export default async function ReportsPage({ searchParams }: PageProps<"/more/reports">) {
@@ -115,13 +116,13 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
           {user.language === "es" ? "Historial" : "History"}
         </h2>
-        <form className="mb-3 flex gap-2">
+        <FilterForm className="mb-3 flex gap-2">
           <input type="date" name="start" defaultValue={start} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15" />
           <input type="date" name="end" defaultValue={end} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15" />
           <button type="submit" className="tap-target rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-foreground/85">
             {user.language === "es" ? "Ir" : "Go"}
           </button>
-        </form>
+        </FilterForm>
         <div className="card divide-y divide-border text-sm">
           {(history.shifts as Array<{ id: string; date: string; pic_name: string | null }>).map((s) => (
             <Link key={s.id} href={`/history/${s.id}`} className="flex items-center justify-between px-3 py-2 text-accent">

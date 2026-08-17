@@ -82,13 +82,14 @@ create table manager_shifts (
   unique (store_id, user_id, date)
 );
 
--- New associate training: GM-editable checklist per position (FOH/BOH), so
+-- New associate training: GM-editable checklist per position (Counterhelp/
+-- Cook/Kitchenhelp -- Cook and Kitchenhelp are distinct BOH positions), so
 -- whichever manager is on shift when a step gets trained can check it off
 -- and the next manager picks up exactly where training left off.
 create table training_items (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
-  position text not null check (position in ('FOH','BOH')),
+  position text not null check (position in ('COUNTERHELP','COOK','KITCHENHELP')),
   title text not null,
   title_es text,
   sort_order integer not null default 0,
@@ -101,7 +102,7 @@ create table trainees (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
   name text not null,
-  position text not null check (position in ('FOH','BOH')),
+  position text not null check (position in ('COUNTERHELP','COOK','KITCHENHELP')),
   status text not null default 'IN_PROGRESS' check (status in ('IN_PROGRESS','COMPLETE')),
   started_at timestamptz not null default now(),
   created_by uuid references users(id),
@@ -115,6 +116,19 @@ create table training_completions (
   trained_by uuid references users(id),
   trained_at timestamptz not null default now(),
   unique (trainee_id, training_item_id)
+);
+
+-- Planned training sessions: a specific day/shift and the manager who will
+-- work with the trainee, so training can be scheduled ahead of time and not
+-- just checked off ad hoc whenever someone happens to be free.
+create table training_sessions (
+  id uuid primary key default gen_random_uuid(),
+  trainee_id uuid not null references trainees(id),
+  date date not null,
+  shift_type text not null check (shift_type in ('MORNING','EVENING','DOUBLE')),
+  manager_id uuid references users(id),
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
 );
 
 create table task_templates (
@@ -233,6 +247,7 @@ create table guest_recoveries (
   issue_category text not null,
   description text,
   item_description text,
+  guest_name text, -- optional, so repeat requests from the same guest can be recognized
   value_estimate numeric,
   replacement_status text not null default 'PENDING' check (replacement_status in ('PENDING','APPROVED','COMPLETED','NOT_REQUIRED')),
   approved_by uuid references users(id),
@@ -588,6 +603,7 @@ alter table manager_shifts enable row level security;
 alter table training_items enable row level security;
 alter table trainees enable row level security;
 alter table training_completions enable row level security;
+alter table training_sessions enable row level security;
 
 -- Store-scoped tables: member read/write.
 create policy store_member_all on stores for select using (is_store_member(id));
@@ -668,6 +684,9 @@ create policy gm_update_training_items on training_items for update using (is_st
 create policy gm_delete_training_items on training_items for delete using (is_store_gm(store_id));
 create policy store_member_all on trainees for all using (is_store_member(store_id));
 create policy store_member_all on training_completions for all using (
+  exists (select 1 from trainees tr where tr.id = trainee_id and is_store_member(tr.store_id))
+);
+create policy store_member_all on training_sessions for all using (
   exists (select 1 from trainees tr where tr.id = trainee_id and is_store_member(tr.store_id))
 );
 

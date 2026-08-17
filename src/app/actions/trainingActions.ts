@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentUser } from "@/lib/auth";
 import { canDo } from "@/lib/permissions";
 import * as trainingService from "@/lib/services/trainingService";
-import { TrainingPosition } from "@/lib/services/trainingService";
+import { TrainingPosition, TrainingShiftType } from "@/lib/services/trainingService";
 
 function refresh(traineeId?: string) {
   revalidatePath("/more/training");
@@ -48,5 +48,23 @@ export async function markTraineeCompleteAction(traineeId: string) {
   const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
   if (!trainee) throw new Error("NOT_FOUND");
   trainingService.markTraineeComplete(traineeId, user);
+  refresh(traineeId);
+}
+
+export async function scheduleTrainingSessionAction(traineeId: string, date: string, shiftType: TrainingShiftType, managerId: string) {
+  const user = await requireCurrentUser();
+  const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
+  if (!trainee) throw new Error("NOT_FOUND");
+  if (!date) return { error: "Date is required." };
+  trainingService.scheduleTrainingSession(traineeId, date, shiftType, managerId || null, user);
+  refresh(traineeId);
+  return { ok: true };
+}
+
+export async function removeTrainingSessionAction(sessionId: string, traineeId: string) {
+  const user = await requireCurrentUser();
+  const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
+  if (!trainee) throw new Error("NOT_FOUND");
+  trainingService.removeTrainingSession(sessionId, traineeId, user);
   refresh(traineeId);
 }

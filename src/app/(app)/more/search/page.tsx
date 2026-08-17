@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { searchAll } from "@/lib/services/searchService";
 import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
+import FilterForm from "@/components/FilterForm";
 
 const inputClass = "tap-target w-full rounded-xl border border-border bg-card px-3 text-base outline-none focus:border-accent";
 const selectClass = inputClass;
@@ -14,6 +15,7 @@ const KIND_ICON: Record<string, string> = {
   guest_recovery: "🍽️",
   borrowed_item: "📦",
   cleaning: "🧹",
+  trainee: "🎓",
 };
 
 const KIND_HREF: Record<string, string> = {
@@ -21,6 +23,7 @@ const KIND_HREF: Record<string, string> = {
   issue: "/issue",
   guest_recovery: "/guest-recovery",
   borrowed_item: "/borrowed-item",
+  trainee: "/more/training",
 };
 
 const KIND_LABEL_EN: Record<string, string> = {
@@ -29,6 +32,7 @@ const KIND_LABEL_EN: Record<string, string> = {
   guest_recovery: "Meal Replacement",
   borrowed_item: "Borrowed Item",
   cleaning: "Cleaning",
+  trainee: "Training",
 };
 const KIND_LABEL_ES: Record<string, string> = {
   task: "Tarea",
@@ -36,6 +40,7 @@ const KIND_LABEL_ES: Record<string, string> = {
   guest_recovery: "Reemplazo de Comida",
   borrowed_item: "Artículo Prestado",
   cleaning: "Limpieza",
+  trainee: "Capacitación",
 };
 
 const STATUS_OPTIONS = ["OPEN", "IN_PROGRESS", "WAITING", "COMPLETE", "COMPLETED", "VERIFIED", "PENDING", "APPROVED", "RESOLVED", "SETTLED", "CANCELLED"];
@@ -56,7 +61,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/more/sear
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Buscar" : "Search"} />
-      <form className="mb-4 flex flex-col gap-2">
+      <FilterForm className="mb-4 flex flex-col gap-2">
         <input
           name="q"
           defaultValue={q}
@@ -88,7 +93,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/more/sear
         <button type="submit" className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover">
           {user.language === "es" ? "Buscar" : "Search"}
         </button>
-      </form>
+      </FilterForm>
       {hasFilter && (
         <p className="mb-2 text-xs text-muted">
           {results.length} {user.language === "es" ? "resultados" : "results"}

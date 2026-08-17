@@ -37,6 +37,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "store_pnl_periods", "gem_taste_goal", "gem_taste_goal REAL");
   ensureColumn(db, "store_pnl_periods", "gem_accuracy_score", "gem_accuracy_score REAL");
   ensureColumn(db, "store_pnl_periods", "gem_accuracy_goal", "gem_accuracy_goal REAL");
+  ensureColumn(db, "guest_recoveries", "guest_name", "guest_name TEXT");
   return db;
 }
 

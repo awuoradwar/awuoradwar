@@ -85,7 +85,7 @@ export default async function MealReplacementsPage() {
         rows={open}
         lang={lang}
       />
-      <Section title={lang === "es" ? "Completados Hoy" : "Completed Today"} rows={completedToday} lang={lang} collapsible />
+      <Section title={lang === "es" ? "Cumplidos Hoy" : "Fulfilled Today"} rows={completedToday} lang={lang} collapsible />
     </div>
   );
 }
