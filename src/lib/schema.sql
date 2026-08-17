@@ -105,7 +105,9 @@ CREATE TABLE IF NOT EXISTS training_sessions (
 CREATE TABLE IF NOT EXISTS inventory_items (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
-  name TEXT NOT NULL,
+  name TEXT NOT NULL, -- base name, e.g. "T-Shirt" -- variants of the same name group together in the UI
+  variant TEXT, -- e.g. a size like "M" or "XL"; NULL for items with no variant
+  sort_order INTEGER NOT NULL DEFAULT 0, -- display order within a name group (so sizes list XS..3XL, not alphabetically)
   category TEXT NOT NULL, -- SUPPLIES | UNIFORMS | EQUIPMENT | TOOLS | OTHER
   notes TEXT, -- e.g. "reorder when down to 2 cases"
   status TEXT NOT NULL DEFAULT 'OK', -- OK | LOW | ORDERED

@@ -5,7 +5,7 @@ import { requireCurrentUser } from "@/lib/auth";
 import { canDo } from "@/lib/permissions";
 import * as inventoryService from "@/lib/services/inventoryService";
 import * as maintenanceService from "@/lib/services/maintenanceService";
-import { InventoryCategory } from "@/lib/services/inventoryService";
+import { InventoryCategory, InventoryStatus } from "@/lib/services/inventoryService";
 
 function refresh() {
   revalidatePath("/more/inventory");
@@ -27,21 +27,16 @@ export async function removeInventoryItemAction(id: string) {
   refresh();
 }
 
-export async function markInventoryLowAction(id: string) {
+export async function cycleInventoryStatusAction(id: string, currentStatus: InventoryStatus) {
   const user = await requireCurrentUser();
-  inventoryService.markInventoryLow(id, user);
+  const next = inventoryService.cycleInventoryStatus(id, currentStatus, user);
   refresh();
+  return { status: next };
 }
 
-export async function markInventoryOrderedAction(id: string, qty: string) {
+export async function setInventoryOrderQtyAction(id: string, qty: string) {
   const user = await requireCurrentUser();
-  inventoryService.markInventoryOrdered(id, qty || null, user);
-  refresh();
-}
-
-export async function markInventoryReceivedAction(id: string) {
-  const user = await requireCurrentUser();
-  inventoryService.markInventoryReceived(id, user);
+  inventoryService.setInventoryOrderQty(id, qty, user);
   refresh();
 }
 

@@ -38,6 +38,8 @@ function createConnection(): Database.Database {
   ensureColumn(db, "store_pnl_periods", "gem_accuracy_score", "gem_accuracy_score REAL");
   ensureColumn(db, "store_pnl_periods", "gem_accuracy_goal", "gem_accuracy_goal REAL");
   ensureColumn(db, "guest_recoveries", "guest_name", "guest_name TEXT");
+  ensureColumn(db, "inventory_items", "variant", "variant TEXT");
+  ensureColumn(db, "inventory_items", "sort_order", "sort_order INTEGER NOT NULL DEFAULT 0");
   return db;
 }
 

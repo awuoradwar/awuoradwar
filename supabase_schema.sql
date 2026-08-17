@@ -137,7 +137,9 @@ create table training_sessions (
 create table inventory_items (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
-  name text not null,
+  name text not null, -- base name, e.g. "T-Shirt" -- variants of the same name group together in the UI
+  variant text, -- e.g. a size like "M" or "XL"; null for items with no variant
+  sort_order integer not null default 0, -- display order within a name group (so sizes list XS..3XL, not alphabetically)
   category text not null check (category in ('SUPPLIES','UNIFORMS','EQUIPMENT','TOOLS','OTHER')),
   notes text,
   status text not null default 'OK' check (status in ('OK','LOW','ORDERED')),

@@ -1,13 +1,26 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getInventoryItems } from "@/lib/services/inventoryService";
+import { getInventoryItems, ensureDefaultInventoryItems, InventoryItem } from "@/lib/services/inventoryService";
 import { getMaintenanceItems, getMaintenanceHistory } from "@/lib/services/maintenanceService";
 import { canDo } from "@/lib/permissions";
 import PageHeader from "@/components/PageHeader";
-import InventoryItemRow from "@/components/InventoryItemRow";
+import InventorySupplies, { InventoryGroup } from "@/components/InventorySupplies";
 import AddInventoryItemForm from "@/components/AddInventoryItemForm";
 import MaintenanceItemRow from "@/components/MaintenanceItemRow";
 import AddMaintenanceItemForm from "@/components/AddMaintenanceItemForm";
+
+function groupItems(items: InventoryItem[]): InventoryGroup[] {
+  const groups: InventoryGroup[] = [];
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    if (last && last.name === item.name && last.category === item.category) {
+      last.items.push(item);
+    } else {
+      groups.push({ name: item.name, category: item.category, items: [item] });
+    }
+  }
+  return groups;
+}
 
 export default async function InventoryPage() {
   const user = await getCurrentUser();
@@ -15,7 +28,9 @@ export default async function InventoryPage() {
   const es = user.language === "es";
   const canManage = canDo(user, "inventory.manage");
 
+  ensureDefaultInventoryItems(user.storeId, user);
   const items = getInventoryItems(user.storeId);
+  const groups = groupItems(items);
   const maintenanceItems = getMaintenanceItems(user.storeId);
   const historyByItem = Object.fromEntries(maintenanceItems.map((m) => [m.id, getMaintenanceHistory(m.id)]));
 
@@ -29,20 +44,10 @@ export default async function InventoryPage() {
         </h2>
         <p className="mb-2 text-[11px] text-muted">
           {es
-            ? "Cualquier gerente puede marcar algo como bajo o pedido durante su turno."
-            : "Any manager can flag something as low or ordered during their shift."}
+            ? "Toca un artículo para cambiar su estado: OK → Bajo → Pedido → OK."
+            : "Tap an item to cycle its status: OK → Low → Ordered → OK."}
         </p>
-        {items.length === 0 ? (
-          <div className="card p-4 text-center text-sm text-muted">
-            {es ? "Sin artículos todavía." : "No items yet."}
-          </div>
-        ) : (
-          <div className="card divide-y divide-border">
-            {items.map((it) => (
-              <InventoryItemRow key={it.id} item={it} lang={user.language} canManage={canManage} />
-            ))}
-          </div>
-        )}
+        <InventorySupplies groups={groups} lang={user.language} canManage={canManage} />
         {canManage && (
           <details className="mt-2">
             <summary className="cursor-pointer text-xs font-semibold text-accent">
