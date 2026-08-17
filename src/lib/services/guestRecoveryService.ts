@@ -81,9 +81,42 @@ export function addFollowUpTask(id: string, storeId: string, title: string, acto
   return taskId;
 }
 
-export function getOpenGuestRecoveries(storeId: string) {
+export interface MealReplacementRow {
+  id: string;
+  contact_channel: string;
+  order_channel: string;
+  issue_category: string;
+  description: string | null;
+  item_description: string | null;
+  replacement_status: string;
+  created_by_name: string | null;
+  created_at: string;
+  completed_at: string | null;
+}
+
+/**
+ * The open queue: reported but not yet fulfilled -- one manager logs it when
+ * the guest calls or can't come in right away, any manager (the same one or
+ * someone else, whenever the guest actually shows up) pulls it up here and
+ * completes it. Also today's already-fulfilled ones, for reference.
+ */
+export function getMealReplacementsGrouped(storeId: string, todayStr: string) {
   const db = getDb();
-  return db
-    .prepare(`SELECT * FROM guest_recoveries WHERE store_id = ? AND replacement_status IN ('PENDING','APPROVED') ORDER BY created_at DESC`)
-    .all(storeId);
+  const rows = db
+    .prepare(
+      `SELECT gr.id, gr.contact_channel, gr.order_channel, gr.issue_category, gr.description, gr.item_description,
+              gr.replacement_status, gr.created_at, gr.completed_at, u.name as created_by_name
+       FROM guest_recoveries gr LEFT JOIN users u ON u.id = gr.created_by
+       WHERE gr.store_id = ? AND (gr.replacement_status IN ('PENDING','APPROVED') OR gr.completed_at LIKE ?)
+       ORDER BY gr.created_at ASC`
+    )
+    .all(storeId, `${todayStr}%`) as MealReplacementRow[];
+
+  const open: MealReplacementRow[] = [];
+  const completedToday: MealReplacementRow[] = [];
+  for (const row of rows) {
+    if (row.replacement_status === "PENDING" || row.replacement_status === "APPROVED") open.push(row);
+    else completedToday.push(row);
+  }
+  return { open, completedToday };
 }

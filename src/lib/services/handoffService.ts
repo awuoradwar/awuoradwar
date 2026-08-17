@@ -89,7 +89,7 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
     ...openGR.map((g) => ({
       kind: "guest_recovery",
       id: g.id,
-      title: `${lang === "es" ? "Recuperación de Cliente" : "Guest Recovery"}: ${
+      title: `${lang === "es" ? "Reemplazo de Comida" : "Meal Replacement"}: ${
         GUEST_RECOVERY_CATEGORY_LABEL[g.issue_category]?.[lang] || g.issue_category
       } (${REPLACEMENT_STATUS_LABEL[g.replacement_status]?.[lang] || g.replacement_status})`,
     })),

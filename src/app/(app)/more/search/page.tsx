@@ -26,14 +26,14 @@ const KIND_HREF: Record<string, string> = {
 const KIND_LABEL_EN: Record<string, string> = {
   task: "Task",
   issue: "Issue",
-  guest_recovery: "Guest Recovery",
+  guest_recovery: "Meal Replacement",
   borrowed_item: "Borrowed Item",
   cleaning: "Cleaning",
 };
 const KIND_LABEL_ES: Record<string, string> = {
   task: "Tarea",
   issue: "Problema",
-  guest_recovery: "Recuperación de Cliente",
+  guest_recovery: "Reemplazo de Comida",
   borrowed_item: "Artículo Prestado",
   cleaning: "Limpieza",
 };

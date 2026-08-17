@@ -33,9 +33,13 @@ export default async function MyShiftPage() {
   }
 
   const summary = buildLiveSummary(user.storeId, user.language);
-  const fromLastShiftCount =
-    summary.staffing.length + summary.openItems.length +
-    summary.unresolved.filter((u) => u.kind !== "task").length;
+  // Routine cleaning shows fully on its own page (Daily/Weekly, grouped by
+  // area) -- repeating "not yet done today" here just duplicates it with no
+  // way to act on it. Tasks are excluded too since MY SHIFT/TODAY above
+  // already cover every open task. What's left (acknowledgements) is
+  // genuinely handoff-relevant: something outstanding from a prior shift.
+  const unresolvedForDisplay = summary.unresolved.filter((u) => u.kind !== "task" && u.kind !== "cleaning");
+  const fromLastShiftCount = summary.staffing.length + summary.openItems.length + unresolvedForDisplay.length;
 
   const dateLabel = now.toLocaleDateString(user.language === "es" ? "es-MX" : "en-US", {
     weekday: "long",
@@ -139,10 +143,10 @@ export default async function MyShiftPage() {
                 {it.kind === "guest_recovery" ? "🍽️" : it.kind === "issue" ? "⚠️" : "📦"} {it.title}
               </Link>
             ))}
-            {summary.unresolved.filter((u) => u.kind !== "task").map((u, i) => (
-              <div key={`unres-${i}`} className="card p-3 text-sm">
-                {u.kind === "cleaning" ? "🧹" : "📋"} {u.title}
-              </div>
+            {unresolvedForDisplay.map((u, i) => (
+              <Link key={`unres-${i}`} href="/more/acknowledgements" className="card block p-3 text-sm transition-colors hover:border-accent/40">
+                📋 {u.title}
+              </Link>
             ))}
           </div>
         )}

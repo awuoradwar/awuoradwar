@@ -24,6 +24,7 @@ const ICON_PATHS: Record<string, string> = {
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z",
   shield: "M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z",
   storefront: "M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M2 9l1.5-5h17L22 9M2 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0M9 21v-6h6v6",
+  utensils: "M7 2v7a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V2M9 11v11M17 2c-1.5 0-3 1.5-3 4v4a2 2 0 0 0 2 2h2v9",
 };
 
 export default async function MorePage() {
@@ -36,6 +37,7 @@ export default async function MorePage() {
       label: lang === "es" ? "Operaciones diarias" : "Daily Operations",
       items: [
         { href: "/more/work-orders", key: "more_work_orders", icon: "wrench" },
+        { href: "/more/meal-replacements", key: "more_meal_replacements", icon: "utensils" },
         { href: "/more/cleaning", key: "more_cleaning", icon: "sparkle" },
         { href: "/more/acknowledgements", key: "more_acknowledgements", icon: "checkCircle" },
         { href: "/more/scheduling", key: "more_scheduling", icon: "calendar" },

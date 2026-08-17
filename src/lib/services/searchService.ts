@@ -52,7 +52,7 @@ export function searchAll(storeId: string, query: string, filters: SearchFilters
     results.push(
       ...gr
         .filter((g) => matchesStatus(g.replacement_status))
-        .map((g) => ({ kind: "guest_recovery", id: g.id, title: `Guest Recovery: ${g.issue_category}`, status: g.replacement_status, date: g.created_at }))
+        .map((g) => ({ kind: "guest_recovery", id: g.id, title: `Meal Replacement: ${g.issue_category}`, status: g.replacement_status, date: g.created_at }))
     );
   }
 

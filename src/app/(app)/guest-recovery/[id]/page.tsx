@@ -52,7 +52,7 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
       <PageHeader
         backHref="/more/search"
         lang={user.language}
-        title={`${user.language === "es" ? "Recuperación de Cliente" : "Guest Recovery"}: ${gr.issue_category}`}
+        title={`${user.language === "es" ? "Reemplazo de Comida" : "Meal Replacement"}: ${gr.issue_category}`}
       />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={gr.replacement_status} lang={user.language} />
