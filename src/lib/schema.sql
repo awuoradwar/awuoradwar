@@ -99,6 +99,40 @@ CREATE TABLE IF NOT EXISTS training_sessions (
   created_at TEXT NOT NULL
 );
 
+-- Supplies/equipment/uniforms/tools ordered extra of -- GM defines the item
+-- list, any manager flags something low or ordered during their shift so
+-- the next person knows whether it's already on the way.
+CREATE TABLE IF NOT EXISTS inventory_items (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  name TEXT NOT NULL,
+  category TEXT NOT NULL, -- SUPPLIES | UNIFORMS | EQUIPMENT | TOOLS | OTHER
+  notes TEXT, -- e.g. "reorder when down to 2 cases"
+  status TEXT NOT NULL DEFAULT 'OK', -- OK | LOW | ORDERED
+  last_ordered_at TEXT,
+  last_ordered_qty TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
+-- Recurring replace/service items (water filters, bulbs, HVAC filters...) --
+-- each "mark done" resets the due date and leaves a dated trail (via
+-- audit_events) of exactly when it was last switched and by whom.
+CREATE TABLE IF NOT EXISTS maintenance_items (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  name TEXT NOT NULL,
+  location TEXT, -- e.g. "Fountain machine", "Walk-in cooler"
+  interval_days INTEGER NOT NULL,
+  notes TEXT,
+  last_done_at TEXT,
+  last_done_by TEXT REFERENCES users(id),
+  active INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS training_completions (
   id TEXT PRIMARY KEY,
   trainee_id TEXT NOT NULL REFERENCES trainees(id),

@@ -159,6 +159,7 @@ const es: Record<DictKeys, string> = {
   more_meal_replacements: "Reemplazos de Comida",
   more_weekly_summary: "Resumen Semanal",
   more_training: "Capacitación de Nuevos Asociados",
+  more_inventory: "Inventario y Mantenimiento",
 
   work_orders_title: "Órdenes de Trabajo",
   work_orders_needs_followup: "Necesita Seguimiento",

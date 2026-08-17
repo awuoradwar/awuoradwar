@@ -157,6 +157,7 @@ const en = {
   more_meal_replacements: "Meal Replacements",
   more_weekly_summary: "Weekly Summary",
   more_training: "New Associate Training",
+  more_inventory: "Inventory & Maintenance",
 
   work_orders_title: "Work Orders",
   work_orders_needs_followup: "Needs Follow-up",

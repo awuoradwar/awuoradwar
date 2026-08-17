@@ -27,6 +27,7 @@ const ICON_PATHS: Record<string, string> = {
   utensils: "M7 2v7a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V2M9 11v11M17 2c-1.5 0-3 1.5-3 4v4a2 2 0 0 0 2 2h2v9",
   graduationCap: "M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 10v6",
   trendingUp: "M22 7 13.5 15.5 8.5 10.5 2 17M22 7h-6M22 7v6",
+  box: "M21 8v13H3V8M1 3h22v5H1zM10 12h4",
 };
 
 export default async function MorePage() {
@@ -43,6 +44,7 @@ export default async function MorePage() {
         { href: "/more/cleaning", key: "more_cleaning", icon: "sparkle" },
         { href: "/more/acknowledgements", key: "more_acknowledgements", icon: "checkCircle" },
         { href: "/more/training", key: "more_training", icon: "graduationCap" },
+        { href: "/more/inventory", key: "more_inventory", icon: "box" },
         { href: "/more/scheduling", key: "more_scheduling", icon: "calendar" },
       ],
     },

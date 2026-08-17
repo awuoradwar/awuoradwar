@@ -131,6 +131,40 @@ create table training_sessions (
   created_at timestamptz not null default now()
 );
 
+-- Supplies/equipment/uniforms/tools ordered extra of -- GM defines the item
+-- list, any manager flags something low or ordered during their shift so
+-- the next person knows whether it's already on the way.
+create table inventory_items (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  name text not null,
+  category text not null check (category in ('SUPPLIES','UNIFORMS','EQUIPMENT','TOOLS','OTHER')),
+  notes text,
+  status text not null default 'OK' check (status in ('OK','LOW','ORDERED')),
+  last_ordered_at timestamptz,
+  last_ordered_qty text,
+  active boolean not null default true,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
+-- Recurring replace/service items (water filters, bulbs, HVAC filters...) --
+-- each "mark done" resets the due date and leaves a dated trail (via
+-- audit_events) of exactly when it was last switched and by whom.
+create table maintenance_items (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  name text not null,
+  location text,
+  interval_days integer not null,
+  notes text,
+  last_done_at timestamptz,
+  last_done_by uuid references users(id),
+  active boolean not null default true,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
 create table task_templates (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
@@ -604,6 +638,8 @@ alter table training_items enable row level security;
 alter table trainees enable row level security;
 alter table training_completions enable row level security;
 alter table training_sessions enable row level security;
+alter table inventory_items enable row level security;
+alter table maintenance_items enable row level security;
 
 -- Store-scoped tables: member read/write.
 create policy store_member_all on stores for select using (is_store_member(id));
@@ -689,6 +725,17 @@ create policy store_member_all on training_completions for all using (
 create policy store_member_all on training_sessions for all using (
   exists (select 1 from trainees tr where tr.id = trainee_id and is_store_member(tr.store_id))
 );
+
+-- Inventory & maintenance: any manager reads and does day-to-day status
+-- updates; only the GM adds/removes items from the tracked list.
+create policy store_member_read on inventory_items for select using (is_store_member(store_id));
+create policy gm_manage_inventory_items on inventory_items for insert with check (is_store_gm(store_id));
+create policy store_member_update on inventory_items for update using (is_store_member(store_id));
+create policy gm_delete_inventory_items on inventory_items for delete using (is_store_gm(store_id));
+create policy store_member_read on maintenance_items for select using (is_store_member(store_id));
+create policy gm_manage_maintenance_items on maintenance_items for insert with check (is_store_gm(store_id));
+create policy store_member_update on maintenance_items for update using (is_store_member(store_id));
+create policy gm_delete_maintenance_items on maintenance_items for delete using (is_store_gm(store_id));
 
 -- Users / memberships: read within your own store(s); only GM can manage
 -- membership/user rows for the store (mirrors permissions.ts "users.manage").
