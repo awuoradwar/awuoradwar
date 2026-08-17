@@ -5,17 +5,18 @@ import { requireCurrentUser } from "@/lib/auth";
 import { canDo } from "@/lib/permissions";
 import * as inventoryService from "@/lib/services/inventoryService";
 import * as maintenanceService from "@/lib/services/maintenanceService";
-import { InventoryCategory, InventoryStatus } from "@/lib/services/inventoryService";
+import { InventoryCategory } from "@/lib/services/inventoryService";
 
 function refresh() {
   revalidatePath("/more/inventory");
 }
 
-export async function addInventoryItemAction(name: string, category: InventoryCategory, notes: string) {
+export async function addInventoryItemAction(name: string, category: InventoryCategory, notes: string, parLevel: string) {
   const user = await requireCurrentUser();
   if (!canDo(user, "inventory.manage")) throw new Error("FORBIDDEN");
   if (!name.trim()) return { error: "Name is required." };
-  inventoryService.createInventoryItem(user.storeId, name.trim(), category, notes.trim() || null, user);
+  const par = parLevel.trim() ? Number(parLevel) : null;
+  inventoryService.createInventoryItem(user.storeId, name.trim(), category, notes.trim() || null, par, user);
   refresh();
   return { ok: true };
 }
@@ -27,16 +28,28 @@ export async function removeInventoryItemAction(id: string) {
   refresh();
 }
 
-export async function cycleInventoryStatusAction(id: string, currentStatus: InventoryStatus) {
+export async function adjustInventoryStockAction(id: string, delta: number) {
   const user = await requireCurrentUser();
-  const next = inventoryService.cycleInventoryStatus(id, currentStatus, user);
+  const count = inventoryService.adjustInventoryStock(id, delta, user);
   refresh();
-  return { status: next };
+  return { count };
 }
 
-export async function setInventoryOrderQtyAction(id: string, qty: string) {
+export async function setInventoryStockAction(id: string, count: number) {
   const user = await requireCurrentUser();
-  inventoryService.setInventoryOrderQty(id, qty, user);
+  inventoryService.setInventoryStock(id, count, user);
+  refresh();
+}
+
+export async function markInventoryOrderedAction(id: string, qty: string) {
+  const user = await requireCurrentUser();
+  inventoryService.markInventoryOrdered(id, qty || null, user);
+  refresh();
+}
+
+export async function markInventoryReceivedAction(id: string) {
+  const user = await requireCurrentUser();
+  inventoryService.markInventoryReceived(id, user);
   refresh();
 }
 

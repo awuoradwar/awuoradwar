@@ -40,6 +40,9 @@ function createConnection(): Database.Database {
   ensureColumn(db, "guest_recoveries", "guest_name", "guest_name TEXT");
   ensureColumn(db, "inventory_items", "variant", "variant TEXT");
   ensureColumn(db, "inventory_items", "sort_order", "sort_order INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "inventory_items", "stock_count", "stock_count INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "inventory_items", "par_level", "par_level INTEGER");
+  ensureColumn(db, "inventory_items", "on_order", "on_order INTEGER NOT NULL DEFAULT 0");
   return db;
 }
 

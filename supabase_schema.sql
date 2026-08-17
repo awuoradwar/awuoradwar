@@ -132,8 +132,9 @@ create table training_sessions (
 );
 
 -- Supplies/equipment/uniforms/tools ordered extra of -- GM defines the item
--- list, any manager flags something low or ordered during their shift so
--- the next person knows whether it's already on the way.
+-- list, any manager adjusts the actual stock count or flags something as
+-- ordered during their shift so the next person knows what's on hand and
+-- what's already on the way.
 create table inventory_items (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
@@ -142,7 +143,9 @@ create table inventory_items (
   sort_order integer not null default 0, -- display order within a name group (so sizes list XS..3XL, not alphabetically)
   category text not null check (category in ('SUPPLIES','UNIFORMS','EQUIPMENT','TOOLS','OTHER')),
   notes text,
-  status text not null default 'OK' check (status in ('OK','LOW','ORDERED')),
+  stock_count integer not null default 0,
+  par_level integer,
+  on_order boolean not null default false,
   last_ordered_at timestamptz,
   last_ordered_qty text,
   active boolean not null default true,

@@ -18,6 +18,7 @@ export default function AddInventoryItemForm({ lang }: { lang: Language }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<InventoryCategory>("SUPPLIES");
   const [notes, setNotes] = useState("");
+  const [parLevel, setParLevel] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -29,13 +30,14 @@ export default function AddInventoryItemForm({ lang }: { lang: Language }) {
         if (!name.trim()) return;
         setError(null);
         startTransition(async () => {
-          const result = await addInventoryItemAction(name, category, notes);
+          const result = await addInventoryItemAction(name, category, notes, parLevel);
           if (result?.error) {
             setError(result.error);
             return;
           }
           setName("");
           setNotes("");
+          setParLevel("");
           router.refresh();
         });
       }}
@@ -60,12 +62,22 @@ export default function AddInventoryItemForm({ lang }: { lang: Language }) {
           ))}
         </select>
       </div>
-      <input
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder={lang === "es" ? "Notas (opcional, ej. reordenar con 2 cajas)" : "Notes (optional, e.g. reorder at 2 cases)"}
-        className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
-      />
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={lang === "es" ? "Notas (opcional)" : "Notes (optional)"}
+          className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+        />
+        <input
+          value={parLevel}
+          onChange={(e) => setParLevel(e.target.value)}
+          type="number"
+          min={0}
+          placeholder={lang === "es" ? "Nivel mínimo (opcional)" : "Par level (optional)"}
+          className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+        />
+      </div>
       {error && <p className="text-xs text-critical">{error}</p>}
       <button
         disabled={pending || !name.trim()}

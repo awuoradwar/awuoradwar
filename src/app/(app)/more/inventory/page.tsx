@@ -44,8 +44,8 @@ export default async function InventoryPage() {
         </h2>
         <p className="mb-2 text-[11px] text-muted">
           {es
-            ? "Toca un artículo para cambiar su estado: OK → Bajo → Pedido → OK."
-            : "Tap an item to cycle its status: OK → Low → Ordered → OK."}
+            ? "Use +/− para ajustar el conteo, o toque el número para escribirlo directamente. \"Pedir\" marca un reabastecimiento en camino."
+            : "Use +/− to adjust the count, or tap the number to type it directly. \"Order\" flags a restock as on the way."}
         </p>
         <InventorySupplies groups={groups} lang={user.language} canManage={canManage} />
         {canManage && (

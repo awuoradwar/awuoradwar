@@ -100,8 +100,9 @@ CREATE TABLE IF NOT EXISTS training_sessions (
 );
 
 -- Supplies/equipment/uniforms/tools ordered extra of -- GM defines the item
--- list, any manager flags something low or ordered during their shift so
--- the next person knows whether it's already on the way.
+-- list, any manager adjusts the actual stock count or flags something as
+-- ordered during their shift so the next person knows what's on hand and
+-- what's already on the way.
 CREATE TABLE IF NOT EXISTS inventory_items (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
@@ -109,8 +110,10 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   variant TEXT, -- e.g. a size like "M" or "XL"; NULL for items with no variant
   sort_order INTEGER NOT NULL DEFAULT 0, -- display order within a name group (so sizes list XS..3XL, not alphabetically)
   category TEXT NOT NULL, -- SUPPLIES | UNIFORMS | EQUIPMENT | TOOLS | OTHER
-  notes TEXT, -- e.g. "reorder when down to 2 cases"
-  status TEXT NOT NULL DEFAULT 'OK', -- OK | LOW | ORDERED
+  notes TEXT,
+  stock_count INTEGER NOT NULL DEFAULT 0, -- actual count on hand
+  par_level INTEGER, -- optional threshold; at/below this, the item is flagged low automatically
+  on_order INTEGER NOT NULL DEFAULT 0, -- a reorder has been placed and hasn't arrived yet
   last_ordered_at TEXT,
   last_ordered_qty TEXT,
   active INTEGER NOT NULL DEFAULT 1,
