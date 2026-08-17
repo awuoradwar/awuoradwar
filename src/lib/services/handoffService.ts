@@ -158,8 +158,10 @@ export function getLatestHandoff(storeId: string) {
     | undefined;
 }
 
-/** "Since You Were Here": material audit events since a user's last acknowledged shift. */
-export function getSinceYouWereHere(storeId: string, userId: string) {
+/** When this user last acknowledged a handoff at this store (or 7 days ago,
+ * for someone who never has) -- the natural "since you were here" boundary
+ * for the live Activity feed (see activityService.getRecentActivity). */
+export function getLastAcknowledgedAt(storeId: string, userId: string): string {
   const db = getDb();
   const lastAck = db
     .prepare(
@@ -167,15 +169,5 @@ export function getSinceYouWereHere(storeId: string, userId: string) {
        ORDER BY h.incoming_acknowledged_at DESC LIMIT 1`
     )
     .get(storeId, userId) as { ts: string } | undefined;
-
-  const since = lastAck?.ts || new Date(Date.now() - 7 * 86400000).toISOString();
-
-  const changes = db
-    .prepare(
-      `SELECT entity_type, action, created_at, actor_role FROM audit_events
-       WHERE created_at > ? ORDER BY created_at DESC LIMIT 40`
-    )
-    .all(since) as Array<{ entity_type: string; action: string; created_at: string; actor_role: string | null }>;
-
-  return { since, changes, currentPriorities: buildLiveSummary(storeId) };
+  return lastAck?.ts || new Date(Date.now() - 7 * 86400000).toISOString();
 }

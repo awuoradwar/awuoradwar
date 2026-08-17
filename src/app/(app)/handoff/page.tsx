@@ -1,15 +1,18 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getLatestHandoff, getSinceYouWereHere } from "@/lib/services/handoffService";
+import { getLatestHandoff, getLastAcknowledgedAt } from "@/lib/services/handoffService";
+import { getRecentActivity } from "@/lib/services/activityService";
 import { t } from "@/lib/i18n";
 import HandoffActions from "@/components/HandoffActions";
+import ActivityFeed from "@/components/ActivityFeed";
 
 export default async function HandoffPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const handoff = getLatestHandoff(user.storeId);
-  const since = getSinceYouWereHere(user.storeId, user.id);
+  const since = getLastAcknowledgedAt(user.storeId, user.id);
+  const activity = getRecentActivity(user.storeId, since, 50);
   const summary = handoff ? JSON.parse(handoff.generated_summary) : null;
 
   return (
@@ -25,6 +28,16 @@ export default async function HandoffPage() {
         </p>
       </section>
 
+      <section>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "handoff_since_you_were_here")}</h2>
+        <p className="mb-2 text-[11px] text-muted">
+          {user.language === "es"
+            ? "En vivo -- lo que el equipo ha hecho, sin generar ni confirmar nada."
+            : "Live -- what the team has actually done, no generating or acknowledging needed."}
+        </p>
+        <ActivityFeed items={activity} lang={user.language} />
+      </section>
+
       <HandoffActions lang={user.language} handoff={handoff ? { id: handoff.id, status: handoff.status, outgoing_note: handoff.outgoing_note } : null} />
 
       {summary && (
@@ -36,19 +49,6 @@ export default async function HandoffPage() {
           <SummarySection titleKey="handoff_upcoming" lang={user.language} items={summary.upcoming.map((u: { title: string; due_at: string | null }) => `${u.title}${u.due_at ? " — " + new Date(u.due_at).toLocaleString() : ""}`)} />
         </>
       )}
-
-      <section>
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "handoff_since_you_were_here")}</h2>
-        <div className="card p-3 text-xs text-muted">
-          {since.changes.length === 0 ? (
-            <p>{t(user.language, "all_clear")}</p>
-          ) : (
-            <p>
-              {since.changes.length} {user.language === "es" ? "cambios desde tu última entrega confirmada." : "changes since your last acknowledged shift."}
-            </p>
-          )}
-        </div>
-      </section>
     </div>
   );
 }
