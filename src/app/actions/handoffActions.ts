@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentUser } from "@/lib/auth";
 import { getOrCreateTodayShift } from "@/lib/services/shiftService";
 import * as handoffService from "@/lib/services/handoffService";
+import * as pushService from "@/lib/services/pushService";
 
 function refresh() {
   revalidatePath("/handoff");
@@ -15,6 +16,9 @@ export async function generateHandoffAction() {
   const shift = getOrCreateTodayShift(user.storeId, user);
   const id = handoffService.generateHandoff(user.storeId, shift.id, shift.pic_user_id || user.id, user);
   refresh();
+  pushService
+    .sendPushToStore(user.storeId, { title: "Handoff ready", body: "A new shift handoff is ready to review.", url: "/handoff" }, user.id)
+    .catch(() => {});
   return id;
 }
 

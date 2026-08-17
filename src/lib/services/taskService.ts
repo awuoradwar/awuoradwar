@@ -3,7 +3,7 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
 
-export type Section = "NOW" | "TODAY" | "THIS_WEEK" | "RECURRING";
+export type Section = "NOW" | "TODAY" | "THIS_WEEK";
 
 export interface TaskRow {
   id: string;
@@ -118,14 +118,30 @@ function isUrgentNow(task: TaskRow, nowDate: Date): boolean {
   return hoursUntil <= 2; // overdue or imminent
 }
 
+/** Store's two shift windows: Morning (open-5pm) and Evening (5pm-11:45pm close). A double spans both. */
+type ShiftWindow = "MORNING" | "EVENING";
+const EVENING_START_HOUR = 17;
+
+function windowForHour(hour: number): ShiftWindow {
+  return hour < EVENING_START_HOUR ? "MORNING" : "EVENING";
+}
+
+/** Whether a timed task's due time falls in the same shift window as right now. */
+function isDueThisShiftWindow(task: TaskRow, nowDate: Date): boolean {
+  if (!task.due_at) return false;
+  return windowForHour(new Date(task.due_at).getHours()) === windowForHour(nowDate.getHours());
+}
+
 /**
- * Dashboard section for a task, from this viewer's point of view:
- *  - RECURRING: generated from a recurring template -- its own category so
- *    routine work doesn't crowd out one-off items (spec: recurring items
- *    grouped separately).
+ * Dashboard section for a task, from this viewer's point of view. Recurring
+ * tasks are no longer split into their own bucket -- they flow into
+ * NOW/TODAY/THIS_WEEK by their actual scheduled day and time, same as any
+ * other task:
  *  - NOW: this viewer's responsibility (owner, or unassigned while they're
- *    PIC) due this shift, or urgent/overdue for anyone.
- *  - TODAY: due today store-wide regardless of whose shift or who owns it.
+ *    PIC), due today, and (when it has a specific time) scheduled within the
+ *    current shift window -- or urgent/overdue for anyone.
+ *  - TODAY: due today store-wide, but not this viewer's right now (not
+ *    theirs, or theirs but scheduled for the other shift window).
  *  - THIS_WEEK: everything else due later this week.
  */
 export function computeSection(
@@ -135,12 +151,15 @@ export function computeSection(
   nowDate: Date,
   todayStr: string
 ): Section {
-  if (task.template_id) return "RECURRING";
+  if (isUrgentNow(task, nowDate)) return "NOW";
 
   const mine = task.owner_id ? task.owner_id === viewerId : picUserId === viewerId;
   const dueToday = isDueToday(task, todayStr);
 
-  if (isUrgentNow(task, nowDate) || (mine && dueToday)) return "NOW";
+  if (mine && dueToday) {
+    if (!task.due_at || isDueThisShiftWindow(task, nowDate)) return "NOW";
+    return "TODAY";
+  }
   if (dueToday) return "TODAY";
   return "THIS_WEEK";
 }
@@ -165,6 +184,25 @@ export function getOpenTasksForStore(storeId: string): TaskRow[] {
        ORDER BY t.due_at IS NULL, t.due_at ASC`
     )
     .all(storeId) as TaskRow[];
+}
+
+export interface CompletedTaskRow extends TaskRow {
+  completed_by_name: string | null;
+}
+
+/** Everything completed today, most recent first -- the record of what actually got done. */
+export function getCompletedTasksToday(storeId: string, todayStr: string): CompletedTaskRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT t.*, u.name as owner_name, tt.title_es, cu.name as completed_by_name FROM tasks t
+       LEFT JOIN users u ON u.id = t.owner_id
+       LEFT JOIN task_templates tt ON tt.id = t.template_id
+       LEFT JOIN users cu ON cu.id = t.completed_by
+       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.completed_at LIKE ?
+       ORDER BY t.completed_at DESC`
+    )
+    .all(storeId, `${todayStr}%`) as CompletedTaskRow[];
 }
 
 export function getWeekTasks(storeId: string, weekStart: string, weekEnd: string): TaskRow[] {

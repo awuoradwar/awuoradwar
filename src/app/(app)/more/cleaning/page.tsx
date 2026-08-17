@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAreasWithProgress } from "@/lib/services/cleaningService";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
+import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
 
@@ -10,7 +10,10 @@ interface CleaningTask {
   id: string;
   title: string;
   title_es: string | null;
+  description: string | null;
+  description_es: string | null;
   frequency: "DAILY" | "WEEKLY";
+  weekday: number | null;
   status: string;
   associate_name: string | null;
   photo_required: number;
@@ -44,7 +47,7 @@ function FrequencySection({ title, areas, lang }: { title: string; areas: Cleani
                   {done}/{area.tasks.length} · {area.owner_name || "—"}
                 </span>
               </div>
-              <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-100">
+              <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
                 <div className="h-full bg-ok" style={{ width: `${area.tasks.length ? (done / area.tasks.length) * 100 : 0}%` }} />
               </div>
               <div className="flex flex-col gap-2">
@@ -66,14 +69,18 @@ export default async function CleaningPage() {
 
   const areas = getAreasWithProgress(user.storeId) as CleaningArea[];
   const dailyAreas = areas.map((a) => ({ ...a, tasks: a.tasks.filter((t) => t.frequency === "DAILY") }));
-  const weeklyAreas = areas.map((a) => ({ ...a, tasks: a.tasks.filter((t) => t.frequency === "WEEKLY") }));
+  // Weekly tasks tied to a specific weekday (the deep-clean rotation) only show up
+  // on their day -- same "today's version of the schedule shows itself" principle
+  // as the recurring task engine. Weekly tasks with no fixed day stay visible all week.
+  const todayWeekday = new Date().getDay();
+  const weeklyAreas = areas.map((a) => ({
+    ...a,
+    tasks: a.tasks.filter((t) => t.frequency === "WEEKLY" && (t.weekday == null || t.weekday === todayWeekday)),
+  }));
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{user.language === "es" ? "Limpieza" : "Cleaning"}</h1>
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Limpieza" : "Cleaning"} />
 
       <FrequencySection title={t(user.language, "cleaning_daily")} areas={dailyAreas} lang={user.language} />
       <FrequencySection title={t(user.language, "cleaning_weekly")} areas={weeklyAreas} lang={user.language} />

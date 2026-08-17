@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { searchAll } from "@/lib/services/searchService";
 import StatusBadge from "@/components/StatusBadge";
+import PageHeader from "@/components/PageHeader";
 
 const inputClass = "tap-target w-full rounded-xl border border-border bg-card px-3 text-base outline-none focus:border-accent";
 const selectClass = inputClass;
@@ -54,10 +55,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/more/sear
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{user.language === "es" ? "Buscar" : "Search"}</h1>
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Buscar" : "Search"} />
       <form className="mb-4 flex flex-col gap-2">
         <input
           name="q"

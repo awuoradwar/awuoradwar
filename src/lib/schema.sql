@@ -120,7 +120,10 @@ CREATE TABLE IF NOT EXISTS cleaning_tasks (
   area_id TEXT NOT NULL REFERENCES cleaning_areas(id),
   title TEXT NOT NULL,
   title_es TEXT, -- Spanish title, shown instead of title for es-language viewers when set
+  description TEXT, -- full checklist detail, e.g. everything a deep-clean covers
+  description_es TEXT,
   frequency TEXT NOT NULL DEFAULT 'DAILY', -- DAILY | WEEKLY
+  weekday INTEGER, -- 0=Sun..6=Sat; which day a WEEKLY task is due. NULL = any day this week.
   associate_name TEXT,
   manager_owner_id TEXT REFERENCES users(id),
   status TEXT NOT NULL DEFAULT 'ASSIGNED', -- ASSIGNED | COMPLETED | VERIFIED | REOPENED
@@ -423,9 +426,19 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_tasks_store ON tasks(store_id, status);
 CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_at);
 CREATE INDEX IF NOT EXISTS idx_cleaning_tasks_area ON cleaning_tasks(area_id);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_events(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_requests_status ON schedule_requests(store_id, status);
 CREATE INDEX IF NOT EXISTS idx_store_pnl_periods_store ON store_pnl_periods(store_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON push_subscriptions(user_id);

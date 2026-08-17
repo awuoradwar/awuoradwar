@@ -60,14 +60,14 @@ export default function ConflictCheckTool({ lang }: { lang: Language }) {
       {results !== null && (
         <div className="flex flex-col gap-2">
           {results.length === 0 ? (
-            <p className="rounded-lg bg-emerald-100 px-3 py-2 text-sm text-ok">{t(lang, "scheduling_no_conflicts")}</p>
+            <p className="rounded-lg bg-ok/10 px-3 py-2 text-sm text-ok">{t(lang, "scheduling_no_conflicts")}</p>
           ) : (
             results.map((c, i) => (
               <p
                 key={i}
                 className={
                   "rounded-lg px-3 py-2 text-sm " +
-                  (c.severity === "BLOCKING" ? "bg-red-100 text-critical" : "bg-amber-100 text-warning")
+                  (c.severity === "BLOCKING" ? "bg-critical/10 text-critical" : "bg-warning/10 text-warning")
                 }
               >
                 <span className="font-bold">

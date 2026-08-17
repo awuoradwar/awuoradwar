@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser, getCurrentPicForStore } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { ensureInstancesForWeek, weekStartOf } from "@/lib/services/recurrenceService";
+import { resetDueWeeklyCleaningTasks } from "@/lib/services/cleaningService";
 import BottomNav from "@/components/BottomNav";
 import TopBar from "@/components/TopBar";
 import OfflineQueueBanner from "@/components/OfflineQueueBanner";
@@ -12,6 +13,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const today = new Date().toISOString().slice(0, 10);
   ensureInstancesForWeek(user.storeId, weekStartOf(today));
+  resetDueWeeklyCleaningTasks(user.storeId);
 
   const db = getDb();
   const store = db.prepare(`SELECT * FROM stores WHERE id = ?`).get(user.storeId) as { name: string } | undefined;

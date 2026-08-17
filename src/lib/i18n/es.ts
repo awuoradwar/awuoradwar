@@ -7,16 +7,16 @@ const es: Record<DictKeys, string> = {
   nav_handoff: "Entrega",
   nav_more: "Más",
 
-  section_now: "AHORA",
+  section_now: "MI TURNO",
   section_today: "HOY",
   section_this_week: "ESTA SEMANA",
-  section_recurring: "RECURRENTE",
+  section_completed: "COMPLETADAS",
   section_from_last_shift: "DEL TURNO ANTERIOR",
 
   section_now_sub: "Lo tuyo para este turno, más lo urgente",
   section_today_sub: "Vence hoy en toda la tienda, cualquier turno",
   section_this_week_sub: "Nivel de planeación, aún no urgente",
-  section_recurring_sub: "Trabajo recurrente de rutina",
+  section_completed_sub: "Terminadas hoy, más reciente primero",
   section_from_last_shift_sub: "Pendientes de la entrega anterior",
 
   greeting_store_ready: "Estado de la tienda en menos de 60 segundos",

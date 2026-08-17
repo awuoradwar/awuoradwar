@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getHistoryForRange } from "@/lib/services/searchService";
 import { getQualityMetrics, getCompletionStats } from "@/lib/services/reportsService";
+import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
 export default async function ReportsPage({ searchParams }: PageProps<"/more/reports">) {
@@ -65,10 +66,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{user.language === "es" ? "Reportes" : "Reports"}</h1>
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Reportes" : "Reports"} />
 
       <div className="grid grid-cols-2 gap-3">
         {metrics.map((m) => (

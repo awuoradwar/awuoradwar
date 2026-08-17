@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAcknowledgementsWithStatus } from "@/lib/services/acknowledgementService";
 import { t } from "@/lib/i18n";
 import AcknowledgementRow, { CompletionRow } from "@/components/AcknowledgementRow";
+import PageHeader from "@/components/PageHeader";
 
 interface AckWithStatus {
   id: string;
@@ -23,10 +23,7 @@ export default async function AcknowledgementsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{t(user.language, "more_acknowledgements")}</h1>
+      <PageHeader backHref="/more" lang={user.language} title={t(user.language, "more_acknowledgements")} />
 
       {acks.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">
@@ -41,7 +38,7 @@ export default async function AcknowledgementsPage() {
                 <span
                   className={
                     "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold " +
-                    (a.outstanding > 0 ? "bg-amber-100 text-warning" : "bg-emerald-100 text-ok")
+                    (a.outstanding > 0 ? "bg-warning/10 text-warning" : "bg-ok/10 text-ok")
                   }
                 >
                   {a.total - a.outstanding}/{a.total}

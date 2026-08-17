@@ -11,11 +11,24 @@ interface CleaningTaskData {
   id: string;
   title: string;
   title_es?: string | null;
+  description?: string | null;
+  description_es?: string | null;
+  weekday?: number | null;
   status: string;
   associate_name: string | null;
   photo_required: number;
   photo_url?: string | null;
 }
+
+const WEEKDAY_LABEL: Record<number, { en: string; es: string }> = {
+  0: { en: "Sunday", es: "Domingo" },
+  1: { en: "Monday", es: "Lunes" },
+  2: { en: "Tuesday", es: "Martes" },
+  3: { en: "Wednesday", es: "Miércoles" },
+  4: { en: "Thursday", es: "Jueves" },
+  5: { en: "Friday", es: "Viernes" },
+  6: { en: "Saturday", es: "Sábado" },
+};
 
 export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData; lang: Language }) {
   const [pending, startTransition] = useTransition();
@@ -37,6 +50,8 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
 
   const needsPhotoToComplete = task.status === "ASSIGNED" && !!task.photo_required;
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
+  const description = lang === "es" && task.description_es ? task.description_es : task.description;
+  const dueDay = task.weekday != null ? WEEKDAY_LABEL[task.weekday]?.[lang] : null;
 
   return (
     <div className="card flex flex-col gap-2 p-3">
@@ -44,9 +59,16 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{title}</p>
           <p className="text-xs text-muted">
-            {task.associate_name || "—"}
+            {dueDay && <span>{lang === "es" ? "Vence" : "Due"}: {dueDay}{task.associate_name ? " · " : ""}</span>}
+            {task.associate_name || (dueDay ? "" : "—")}
             {task.photo_required ? ` · 📷 ${t(lang, "cleaning_photo_required")}` : ""}
           </p>
+          {description && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-xs text-accent">{lang === "es" ? "Ver detalle" : "View checklist"}</summary>
+              <p className="mt-1 text-xs text-muted">{description}</p>
+            </details>
+          )}
           <div className="mt-1 flex items-center gap-2">
             <StatusBadge status={task.status} lang={lang} />
             {task.photo_url && (

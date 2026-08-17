@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { POSITION_LABEL } from "@/lib/permissions";
 import LanguageToggle from "@/components/LanguageToggle";
+import PageHeader from "@/components/PageHeader";
+import PushNotificationToggle from "@/components/PushNotificationToggle";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -15,10 +16,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{user.language === "es" ? "Configuración" : "Settings"}</h1>
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Configuración" : "Settings"} />
 
       <section className="mb-4 card p-4">
         <p className="text-sm font-semibold">{user.name}</p>
@@ -33,6 +31,8 @@ export default async function SettingsPage() {
         </div>
         <LanguageToggle lang={user.language} />
       </section>
+
+      <PushNotificationToggle lang={user.language} />
 
       <section className="card p-4">
         <p className="text-sm font-medium">{store?.name}</p>

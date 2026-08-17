@@ -73,7 +73,7 @@ export default function HandoffActions({ lang, handoff }: { lang: Language; hand
   }
 
   return (
-    <div className="rounded-xl bg-emerald-50 p-3 text-sm text-ok">
+    <div className="rounded-xl bg-ok/10 p-3 text-sm text-ok">
       {lang === "es" ? "Entrega confirmada." : "Handoff acknowledged."}
     </div>
   );

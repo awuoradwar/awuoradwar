@@ -140,7 +140,10 @@ create table cleaning_tasks (
   area_id uuid not null references cleaning_areas(id),
   title text not null,
   title_es text, -- Spanish title, shown instead of title for es-language viewers when set
+  description text, -- full checklist detail, e.g. everything a deep-clean covers
+  description_es text,
   frequency text not null default 'DAILY' check (frequency in ('DAILY','WEEKLY')),
+  weekday int check (weekday between 0 and 6), -- 0=Sun..6=Sat; which day a WEEKLY task is due. NULL = any day this week.
   associate_name text,
   manager_owner_id uuid references users(id),
   status text not null default 'ASSIGNED' check (status in ('ASSIGNED','COMPLETED','VERIFIED','REOPENED')),
@@ -446,11 +449,23 @@ create table idempotency_keys (
   created_at timestamptz not null default now()
 );
 
+-- Web Push subscriptions, one row per browser/device the user opted in on.
+-- User-scoped, not store-scoped -- a manager's phone isn't tied to a store.
+create table push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+
 create index idx_tasks_store on tasks(store_id, status);
 create index idx_tasks_due on tasks(due_at);
 create index idx_cleaning_tasks_area on cleaning_tasks(area_id);
 create index idx_audit_entity on audit_events(entity_type, entity_id);
 create index idx_schedule_requests_status on schedule_requests(store_id, status);
+create index idx_push_subscriptions_user on push_subscriptions(user_id);
 
 -- ============================================================
 -- Row Level Security
@@ -512,6 +527,7 @@ alter table schedule_request_attachments enable row level security;
 alter table schedule_request_events enable row level security;
 alter table schedule_conflicts enable row level security;
 alter table shift_notes enable row level security;
+alter table push_subscriptions enable row level security;
 
 -- Store-scoped tables: member read/write.
 create policy store_member_all on stores for select using (is_store_member(id));
@@ -572,6 +588,10 @@ create policy store_member_read on schedule_request_events for select using (
 );
 create policy store_member_all on schedule_conflicts for select using (is_store_member(store_id));
 create policy store_member_all on shift_notes for all using (is_store_member(store_id));
+
+-- Push subscriptions: strictly own-row. Nobody, not even another manager
+-- at the same store, can read or write someone else's push endpoint.
+create policy own_push_subscriptions on push_subscriptions for all using (user_id = auth.uid());
 
 -- Users / memberships: read within your own store(s); only GM can manage
 -- membership/user rows for the store (mirrors permissions.ts "users.manage").

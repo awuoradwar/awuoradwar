@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getInboxProposals } from "@/lib/services/importService";
 import { suggestOwnerForNewTask } from "@/lib/services/taskService";
 import { getDb } from "@/lib/db";
 import IngestForm from "@/components/IngestForm";
 import ProposalRow from "@/components/ProposalRow";
+import PageHeader from "@/components/PageHeader";
 
 interface ProposalRowData {
   id: string;
@@ -30,11 +30,8 @@ export default async function InboxPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-1 text-lg font-semibold">{user.language === "es" ? "Bandeja / Importaciones" : "Inbox / Imports"}</h1>
-      <p className="mb-4 text-xs text-muted">
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Bandeja / Importaciones" : "Inbox / Imports"} />
+      <p className="-mt-3 mb-4 text-xs text-muted">
         {user.language === "es"
           ? "Nada de lo extraído por IA se activa hasta que un gerente lo revisa y aprueba."
           : "Nothing extracted by AI becomes active until a manager reviews and approves it."}

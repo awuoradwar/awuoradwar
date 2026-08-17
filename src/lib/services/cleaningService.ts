@@ -20,7 +20,10 @@ export function getAreasWithProgress(storeId: string) {
       id: string;
       title: string;
       title_es: string | null;
+      description: string | null;
+      description_es: string | null;
       frequency: "DAILY" | "WEEKLY";
+      weekday: number | null;
       status: string;
       associate_name: string | null;
       photo_required: number;
@@ -34,7 +37,9 @@ export function getAreasWithProgress(storeId: string) {
 export function createCleaningTask(params: {
   areaId: string;
   title: string;
+  description?: string;
   frequency?: "DAILY" | "WEEKLY";
+  weekday?: number | null;
   associateName?: string;
   managerOwnerId?: string | null;
   photoRequired?: boolean;
@@ -43,13 +48,15 @@ export function createCleaningTask(params: {
   const db = getDb();
   const id = newId();
   db.prepare(
-    `INSERT INTO cleaning_tasks (id, area_id, title, frequency, associate_name, manager_owner_id, status, photo_required, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
+    `INSERT INTO cleaning_tasks (id, area_id, title, description, frequency, weekday, associate_name, manager_owner_id, status, photo_required, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
   ).run(
     id,
     params.areaId,
     params.title,
+    params.description || null,
     params.frequency || "DAILY",
+    params.weekday ?? null,
     params.associateName || null,
     params.managerOwnerId || null,
     params.photoRequired ? 1 : 0,
@@ -57,6 +64,36 @@ export function createCleaningTask(params: {
   );
   writeAudit({ entityType: "cleaning_task", entityId: id, actor: params.actor, action: "CREATED", newValue: { title: params.title } });
   return id;
+}
+
+/**
+ * Weekly cleaning tasks tied to a specific weekday (e.g. "Cook Range, every
+ * Sunday") behave like a recurring checklist, not a one-time task: once that
+ * weekday comes back around, a completion from a previous week no longer
+ * counts. Safe to call on every page load -- it only resets a task when its
+ * due weekday is today AND its last completion predates this week, so it
+ * never touches a task that's already been done this week.
+ */
+export function resetDueWeeklyCleaningTasks(storeId: string) {
+  const db = getDb();
+  const now = new Date();
+  const todayWeekday = now.getDay();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - todayWeekday);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartIso = weekStart.toISOString();
+
+  db.prepare(
+    `UPDATE cleaning_tasks
+     SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL, photo_url = NULL
+     WHERE id IN (
+       SELECT ct.id FROM cleaning_tasks ct
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       WHERE a.store_id = ? AND ct.frequency = 'WEEKLY' AND ct.weekday = ?
+         AND ct.status IN ('COMPLETED','VERIFIED')
+         AND (ct.completed_at IS NULL OR ct.completed_at < ?)
+     )`
+  ).run(storeId, todayWeekday, weekStartIso);
 }
 
 export function completeCleaningTask(id: string, actor: SessionUser, photoUrl?: string | null) {

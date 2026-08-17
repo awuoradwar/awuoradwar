@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
 import { getLatestPeriod, getPeriodHistory } from "@/lib/services/storeProfileService";
 import StorePeriodForm from "@/components/StorePeriodForm";
+import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
 function fmtMoney(n: number | null): string {
@@ -47,11 +47,8 @@ export default async function StoreProfilePage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-1 text-lg font-semibold">{t(user.language, "store_profile_title")}</h1>
-      <p className="mb-4 text-xs text-muted">{t(user.language, "store_profile_gm_only_note")}</p>
+      <PageHeader backHref="/more" lang={user.language} title={t(user.language, "store_profile_title")} />
+      <p className="-mt-3 mb-4 text-xs text-muted">{t(user.language, "store_profile_gm_only_note")}</p>
 
       <section className="mb-6">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">

@@ -1,8 +1,8 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getShiftHistory } from "@/lib/services/searchService";
 import StatusBadge from "@/components/StatusBadge";
+import PageHeader from "@/components/PageHeader";
 
 export default async function ShiftHistoryPage({ params }: PageProps<"/history/[shiftId]">) {
   const { shiftId } = await params;
@@ -16,11 +16,8 @@ export default async function ShiftHistoryPage({ params }: PageProps<"/history/[
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more/reports" className="mb-3 inline-block text-sm text-muted">
-        ← {es ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="text-lg font-semibold">{shift.date}</h1>
-      <p className="mt-1 flex items-center gap-1 text-xs text-muted">
+      <PageHeader backHref="/more/reports" lang={user.language} title={shift.date} />
+      <p className="-mt-2 mb-1 flex items-center gap-1 text-xs text-muted">
         PIC: {shift.pic_name || "—"} · <StatusBadge status={shift.status} lang={user.language} />
       </p>
 

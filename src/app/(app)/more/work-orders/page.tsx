@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getWorkOrdersGrouped, WorkOrderRow as WorkOrderRowData } from "@/lib/services/issueService";
 import WorkOrderRow from "@/components/WorkOrderRow";
+import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
 
@@ -77,12 +77,7 @@ export default async function WorkOrdersPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
-      <div>
-        <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-          ← {lang === "es" ? "Atrás" : "Back"}
-        </Link>
-        <h1 className="text-lg font-semibold">{t(lang, "work_orders_title")}</h1>
-      </div>
+      <PageHeader backHref="/more" lang={lang} title={t(lang, "work_orders_title")} />
 
       <Section title={t(lang, "work_orders_needs_followup")} sub={t(lang, "work_orders_needs_followup_sub")} rows={groups.needsFollowUp} lang={lang} />
       <Section title={t(lang, "work_orders_due_today")} sub={t(lang, "work_orders_due_today_sub")} rows={groups.dueToday} lang={lang} />

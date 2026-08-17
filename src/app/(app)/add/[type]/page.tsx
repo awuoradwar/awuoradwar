@@ -1,8 +1,8 @@
 import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { t } from "@/lib/i18n";
+import PageHeader from "@/components/PageHeader";
 import TaskForm from "@/components/forms/TaskForm";
 import CallInForm from "@/components/forms/CallInForm";
 import LateForm from "@/components/forms/LateForm";
@@ -39,10 +39,7 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/add" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{t(user.language, TITLE_KEYS[type] as never)}</h1>
+      <PageHeader backHref="/add" lang={user.language} title={t(user.language, TITLE_KEYS[type] as never)} />
       {type === "task" && <TaskForm lang={user.language} />}
       {type === "call-in" && <CallInForm lang={user.language} />}
       {type === "late" && <LateForm lang={user.language} />}

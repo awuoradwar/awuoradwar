@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
 import { getPendingQueue, getAllRequests } from "@/lib/services/schedulingService";
@@ -7,6 +6,7 @@ import ScheduleRequestForm from "@/components/ScheduleRequestForm";
 import ApprovalQueueRow from "@/components/ApprovalQueueRow";
 import ConflictCheckTool from "@/components/ConflictCheckTool";
 import StatusBadge from "@/components/StatusBadge";
+import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
 interface RequestRow {
@@ -29,10 +29,7 @@ export default async function SchedulingPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <Link href="/more" className="mb-3 inline-block text-sm text-muted">
-        ← {user.language === "es" ? "Atrás" : "Back"}
-      </Link>
-      <h1 className="mb-4 text-lg font-semibold">{user.language === "es" ? "Solicitudes de Horario" : "Scheduling Requests"}</h1>
+      <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Solicitudes de Horario" : "Scheduling Requests"} />
 
       <section className="mb-6">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
