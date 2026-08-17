@@ -42,6 +42,23 @@ CREATE TABLE IF NOT EXISTS shifts (
   created_at TEXT NOT NULL
 );
 
+-- The weekly staffing roster: which manager is working which shift on which
+-- day (MORNING ~8/9am-5pm, EVENING 5pm-11:45pm, or DOUBLE spanning both).
+-- Separate from `shifts` above, which tracks the single active PIC/handoff
+-- record for a given date -- this is forward-looking planning input, one row
+-- per manager per day, that the dashboard's MY SHIFT bucketing reads to know
+-- which window a given viewer is actually working today.
+CREATE TABLE IF NOT EXISTS manager_shifts (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  date TEXT NOT NULL,
+  shift_type TEXT NOT NULL, -- MORNING | EVENING | DOUBLE
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_manager_shifts_unique ON manager_shifts(store_id, user_id, date);
+
 CREATE TABLE IF NOT EXISTS task_templates (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),

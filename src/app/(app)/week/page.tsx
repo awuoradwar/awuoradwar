@@ -3,9 +3,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getWeekTasks } from "@/lib/services/taskService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
-import StatusBadge from "@/components/StatusBadge";
+import { getWeekManagerSchedule } from "@/lib/services/scheduleService";
 import WeekAddTaskForm from "@/components/WeekAddTaskForm";
-import { POSITION_LABEL } from "@/lib/permissions";
+import WeekTaskRow from "@/components/WeekTaskRow";
+import ShiftScheduleGrid from "@/components/ShiftScheduleGrid";
+import { POSITION_LABEL, canDo } from "@/lib/permissions";
 import { Position } from "@/lib/types";
 
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -26,6 +28,8 @@ export default async function WeekPage() {
   const managers = db
     .prepare(`SELECT id, name, position FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
     .all() as Array<{ id: string; name: string; position: Position }>;
+  const managerSchedule = getWeekManagerSchedule(user.storeId, start, end);
+  const canEditSchedule = canDo(user, "manager_shifts.manage");
 
   const byDay: Record<string, typeof tasks> = {};
   for (let i = 0; i < 7; i++) {
@@ -79,6 +83,13 @@ export default async function WeekPage() {
         )}
       </section>
 
+      <section>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+          {user.language === "es" ? "Quién trabaja esta semana" : "Who's Working This Week"}
+        </h2>
+        <ShiftScheduleGrid managers={managers} days={days} schedule={managerSchedule} canEdit={canEditSchedule} lang={user.language} />
+      </section>
+
       <WeekAddTaskForm lang={user.language} managers={managers} days={days} />
 
       {Object.entries(byDay).map(([date, dayTasks]) => (
@@ -96,31 +107,7 @@ export default async function WeekPage() {
           ) : (
             <div className="divide-y divide-border border-t border-border">
               {dayTasks.map((t) => (
-                <div key={t.id} className="flex items-center justify-between gap-2 p-3 text-sm">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{user.language === "es" && t.title_es ? t.title_es : t.title}</p>
-                      <span
-                        className={
-                          "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
-                          (t.source === "recurring"
-                            ? "bg-muted/10 text-muted"
-                            : "bg-accent/10 text-accent")
-                        }
-                      >
-                        {t.source === "recurring"
-                          ? user.language === "es"
-                            ? "Recurrente"
-                            : "Recurring"
-                          : user.language === "es"
-                            ? "Agregada"
-                            : "Added"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted">{t.owner_name || (user.language === "es" ? "Sin asignar" : "Unassigned")}</p>
-                  </div>
-                  <StatusBadge status={t.status} lang={user.language} />
-                </div>
+                <WeekTaskRow key={t.id} task={t} managers={managers} lang={user.language} />
               ))}
             </div>
           )}

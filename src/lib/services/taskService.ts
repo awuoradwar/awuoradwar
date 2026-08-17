@@ -122,14 +122,28 @@ function isUrgentNow(task: TaskRow, nowDate: Date): boolean {
 type ShiftWindow = "MORNING" | "EVENING";
 const EVENING_START_HOUR = 17;
 
+/** The viewer's actual scheduled shift for today, if the GM has planned one
+ * (see scheduleService.getShiftTypeForUserToday) -- null when unscheduled. */
+export type ViewerShiftType = "MORNING" | "EVENING" | "DOUBLE" | null;
+
 function windowForHour(hour: number): ShiftWindow {
   return hour < EVENING_START_HOUR ? "MORNING" : "EVENING";
 }
 
-/** Whether a timed task's due time falls in the same shift window as right now. */
-function isDueThisShiftWindow(task: TaskRow, nowDate: Date): boolean {
+/**
+ * Whether a timed task's due time falls within this viewer's current shift
+ * window. When the GM has scheduled them for a specific shift today, that
+ * schedule wins outright -- a DOUBLE always matches (they're on for the
+ * whole day), MORNING/EVENING only matches tasks due in that window,
+ * regardless of the wall-clock hour right now. Unscheduled viewers fall back
+ * to comparing against the actual current time.
+ */
+function isDueThisShiftWindow(task: TaskRow, nowDate: Date, viewerShiftType: ViewerShiftType): boolean {
   if (!task.due_at) return false;
-  return windowForHour(new Date(task.due_at).getHours()) === windowForHour(nowDate.getHours());
+  if (viewerShiftType === "DOUBLE") return true;
+  const taskWindow = windowForHour(new Date(task.due_at).getHours());
+  if (viewerShiftType === "MORNING" || viewerShiftType === "EVENING") return taskWindow === viewerShiftType;
+  return taskWindow === windowForHour(nowDate.getHours());
 }
 
 /**
@@ -149,7 +163,8 @@ export function computeSection(
   viewerId: string,
   picUserId: string | null,
   nowDate: Date,
-  todayStr: string
+  todayStr: string,
+  viewerShiftType: ViewerShiftType = null
 ): Section {
   if (isUrgentNow(task, nowDate)) return "NOW";
 
@@ -157,7 +172,7 @@ export function computeSection(
   const dueToday = isDueToday(task, todayStr);
 
   if (mine && dueToday) {
-    if (!task.due_at || isDueThisShiftWindow(task, nowDate)) return "NOW";
+    if (!task.due_at || isDueThisShiftWindow(task, nowDate, viewerShiftType)) return "NOW";
     return "TODAY";
   }
   if (dueToday) return "TODAY";
@@ -284,6 +299,34 @@ function insertTask(params: {
     newValue: { title: params.title },
   });
   return id;
+}
+
+/** Edit a task's own fields (title, description, due date/time, effort,
+ * severity) -- distinct from reassign/carry-forward/cancel, which change
+ * status/ownership/scheduling but never the task's content. GM and any
+ * manager may correct a mistake or update details after creation. */
+export function updateTask(
+  taskId: string,
+  params: { title: string; description?: string | null; dueAt?: string | null; effort: string; severity: string },
+  actor: SessionUser
+) {
+  const db = getDb();
+  const task = db.prepare(`SELECT title, description, due_at, effort, severity FROM tasks WHERE id = ?`).get(taskId) as
+    | { title: string; description: string | null; due_at: string | null; effort: string; severity: string }
+    | undefined;
+  if (!task) throw new Error("Task not found");
+  const ts = nowIso();
+  db.prepare(
+    `UPDATE tasks SET title = ?, description = ?, due_at = ?, effort = ?, severity = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`
+  ).run(params.title, params.description || null, params.dueAt || null, params.effort, params.severity, actor.id, ts, taskId);
+  writeAudit({
+    entityType: "task",
+    entityId: taskId,
+    actor,
+    action: "EDITED",
+    oldValue: task,
+    newValue: params,
+  });
 }
 
 export function completeTask(taskId: string, actor: SessionUser, picId: string | null) {

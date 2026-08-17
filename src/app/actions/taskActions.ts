@@ -43,6 +43,28 @@ export async function cancelTaskAction(taskId: string, reason: string) {
   refresh();
 }
 
+export async function updateTaskAction(taskId: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const title = String(formData.get("title") || "").trim();
+  if (!title) return { error: "Title is required." };
+  const dueDate = String(formData.get("dueDate") || "");
+  const dueTime = String(formData.get("dueTime") || "");
+  taskService.updateTask(
+    taskId,
+    {
+      title,
+      description: String(formData.get("description") || "") || null,
+      dueAt: dueDate ? `${dueDate}T${dueTime || "00:00"}:00` : null,
+      effort: String(formData.get("effort") || "STANDARD"),
+      severity: String(formData.get("severity") || "NORMAL"),
+    },
+    user
+  );
+  refresh();
+  revalidatePath(`/task/${taskId}`);
+  return { ok: true };
+}
+
 export async function createTaskAction(formData: FormData) {
   const user = await requireCurrentUser();
   const title = String(formData.get("title") || "").trim();

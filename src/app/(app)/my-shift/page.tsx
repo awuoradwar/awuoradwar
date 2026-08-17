@@ -1,8 +1,9 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getOpenTasksForStore, getCompletedTasksToday, computeSection, isBlocked, Section, getChecklistSummaries } from "@/lib/services/taskService";
+import { getOpenTasksForStore, getCompletedTasksToday, computeSection, isBlocked, Section } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
+import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import TaskCard from "@/components/TaskCard";
@@ -23,14 +24,14 @@ export default async function MyShiftPage() {
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const todayShift = getTodayShift(user.storeId, today);
+  const viewerShiftType = getShiftTypeForUserToday(user.storeId, user.id, today);
 
   const tasks = getOpenTasksForStore(user.storeId);
   const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
-    buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today)].push(task);
+    buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today, viewerShiftType)].push(task);
   }
 
-  const checklists = getChecklistSummaries(user.storeId, today);
   const summary = buildLiveSummary(user.storeId, user.language);
   const fromLastShiftCount =
     summary.staffing.length + summary.openItems.length +
@@ -54,49 +55,6 @@ export default async function MyShiftPage() {
           </a>
         )}
       </div>
-
-      {(checklists.opening.total > 0 || checklists.closing.total > 0) && (
-        <section className="flex flex-col gap-2">
-          {checklists.opening.total > 0 && (
-            <details className="card p-3 text-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between font-semibold">
-                <span>{t(user.language, "checklist_opening_ready")}</span>
-                <span className="text-xs font-normal text-muted">
-                  {checklists.opening.done}/{checklists.opening.total}
-                </span>
-              </summary>
-              {checklists.opening.remaining.length > 0 ? (
-                <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
-                  {checklists.opening.remaining.map((r) => (
-                    <li key={r.id}>• {r.title}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-xs text-muted">{t(user.language, "all_clear")}</p>
-              )}
-            </details>
-          )}
-          {checklists.closing.total > 0 && (
-            <details className="card p-3 text-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between font-semibold">
-                <span>{t(user.language, "checklist_closing_complete")}</span>
-                <span className="text-xs font-normal text-muted">
-                  {checklists.closing.done}/{checklists.closing.total}
-                </span>
-              </summary>
-              {checklists.closing.remaining.length > 0 ? (
-                <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
-                  {checklists.closing.remaining.map((r) => (
-                    <li key={r.id}>• {r.title}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-xs text-muted">{t(user.language, "all_clear")}</p>
-              )}
-            </details>
-          )}
-        </section>
-      )}
 
       {(["NOW", "TODAY"] as const).map((bucket) => (
         <section key={bucket}>

@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
+import TaskEditForm from "@/components/TaskEditForm";
 import PageHeader from "@/components/PageHeader";
 import { TaskRow } from "@/lib/services/taskService";
 
@@ -67,6 +68,18 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
       <div className="mt-5">
         <TaskDetailActions taskId={task.id} lang={user.language} managers={managers} status={task.status} verificationRequired={!!task.verification_required} />
       </div>
+
+      {task.status !== "COMPLETE" && task.status !== "CANCELLED" && (
+        <TaskEditForm
+          taskId={task.id}
+          title={task.title}
+          description={task.description}
+          dueAt={task.due_at}
+          effort={task.effort}
+          severity={task.severity}
+          lang={user.language}
+        />
+      )}
 
       <details className="mt-6">
         <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-accent">

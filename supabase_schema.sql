@@ -65,6 +65,23 @@ create table shifts (
   created_at timestamptz not null default now()
 );
 
+-- The weekly staffing roster: which manager is working which shift on which
+-- day (MORNING ~8/9am-5pm, EVENING 5pm-11:45pm, or DOUBLE spanning both).
+-- Separate from `shifts` above, which tracks the single active PIC/handoff
+-- record for a given date -- this is forward-looking planning input the
+-- dashboard's MY SHIFT bucketing reads to know which window a given viewer
+-- is actually working today.
+create table manager_shifts (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  user_id uuid not null references users(id),
+  date date not null,
+  shift_type text not null check (shift_type in ('MORNING','EVENING','DOUBLE')),
+  created_by uuid references users(id),
+  created_at timestamptz not null default now(),
+  unique (store_id, user_id, date)
+);
+
 create table task_templates (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
@@ -528,6 +545,7 @@ alter table schedule_request_events enable row level security;
 alter table schedule_conflicts enable row level security;
 alter table shift_notes enable row level security;
 alter table push_subscriptions enable row level security;
+alter table manager_shifts enable row level security;
 
 -- Store-scoped tables: member read/write.
 create policy store_member_all on stores for select using (is_store_member(id));
@@ -592,6 +610,13 @@ create policy store_member_all on shift_notes for all using (is_store_member(sto
 -- Push subscriptions: strictly own-row. Nobody, not even another manager
 -- at the same store, can read or write someone else's push endpoint.
 create policy own_push_subscriptions on push_subscriptions for all using (user_id = auth.uid());
+
+-- Manager shift roster: any store member can read the week's staffing plan
+-- (they need to see their own assignment); only the GM can plan/edit it.
+create policy store_member_read on manager_shifts for select using (is_store_member(store_id));
+create policy gm_manage_manager_shifts on manager_shifts for insert with check (is_store_gm(store_id));
+create policy gm_update_manager_shifts on manager_shifts for update using (is_store_gm(store_id));
+create policy gm_delete_manager_shifts on manager_shifts for delete using (is_store_gm(store_id));
 
 -- Users / memberships: read within your own store(s); only GM can manage
 -- membership/user rows for the store (mirrors permissions.ts "users.manage").

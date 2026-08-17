@@ -12,7 +12,8 @@ export type GmOnlyAction =
   | "templates.manage"
   | "store.configure"
   | "import.approve_publish"
-  | "store_profile.manage";
+  | "store_profile.manage"
+  | "manager_shifts.manage";
 
 const GM_ONLY: GmOnlyAction[] = [
   "schedule_request.decide",
@@ -21,6 +22,7 @@ const GM_ONLY: GmOnlyAction[] = [
   "store.configure",
   "import.approve_publish",
   "store_profile.manage",
+  "manager_shifts.manage",
 ];
 
 export function canDo(user: Pick<SessionUser, "position">, action: GmOnlyAction): boolean {
