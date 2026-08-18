@@ -1,7 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getOpenTasksForStore, getCompletedTasksToday, computeSection, isBlocked, Section, windowForHour } from "@/lib/services/taskService";
+import { getMyShiftTasks, getCompletedTasksToday, computeSection, isBlocked, Section, windowForHour } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
@@ -89,7 +89,7 @@ export default async function MyShiftPage() {
   const todayShift = getTodayShift(user.storeId, today);
   const viewerShiftType = getShiftTypeForUserToday(user.storeId, user.id, today);
 
-  const tasks = getOpenTasksForStore(user.storeId);
+  const tasks = getMyShiftTasks(user.storeId, today);
   const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
     buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today, viewerShiftType)].push(task);

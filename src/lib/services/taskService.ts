@@ -210,6 +210,24 @@ export function getOpenTasksForStore(storeId: string): TaskRow[] {
     .all(storeId) as TaskRow[];
 }
 
+/** Same as getOpenTasksForStore, but a task completed earlier today stays
+ * in the list (in whatever NOW/TODAY/THIS_WEEK spot it already had) instead
+ * of vanishing the moment it's marked done -- tapping Complete should read
+ * as "confirmed, still right here," not "poof, go dig it out of a
+ * different collapsed section to be sure it saved." */
+export function getMyShiftTasks(storeId: string, todayStr: string): TaskRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
+       LEFT JOIN users u ON u.id = t.owner_id
+       LEFT JOIN task_templates tt ON tt.id = t.template_id
+       WHERE t.store_id = ? AND (t.status IN ('OPEN','IN_PROGRESS') OR (t.status = 'COMPLETE' AND t.completed_at LIKE ?))
+       ORDER BY t.due_at IS NULL, t.due_at ASC`
+    )
+    .all(storeId, `${todayStr}%`) as TaskRow[];
+}
+
 export interface CompletedTaskRow extends TaskRow {
   completed_by_name: string | null;
 }
