@@ -41,6 +41,9 @@ export default function CleaningForm({
       <Field label={lang === "es" ? "Tarea" : "Task"}>
         <input name="title" required className={inputClass} />
       </Field>
+      <Field label={lang === "es" ? "Detalle de la lista de verificación (opcional)" : "Checklist details (optional)"}>
+        <textarea name="description" rows={3} className={inputClass} />
+      </Field>
       <Field label={lang === "es" ? "Frecuencia (se repite)" : "Frequency (recurring)"}>
         <select name="frequency" value={frequency} onChange={(e) => setFrequency(e.target.value)} className={selectClass}>
           <option value="DAILY">{lang === "es" ? "Diaria" : "Daily"}</option>

@@ -12,6 +12,22 @@ export function deleteCleaningTask(taskId: string, actor: SessionUser) {
   writeAudit({ entityType: "cleaning_task", entityId: taskId, actor, action: "CANCELLED" });
 }
 
+/** Full edit of a cleaning task's own fields -- title, checklist description,
+ * frequency/day, and whether an after photo is required. Separate from
+ * setCleaningTaskAssociate (who's doing it) and setCleaningAreaOwner (which
+ * manager owns the area), which stay their own single-purpose actions. */
+export function updateCleaningTask(
+  id: string,
+  params: { title: string; description: string | null; frequency: "DAILY" | "WEEKLY"; weekday: number | null; photoRequired: boolean },
+  actor: SessionUser
+) {
+  const db = getDb();
+  db.prepare(
+    `UPDATE cleaning_tasks SET title = ?, description = ?, frequency = ?, weekday = ?, photo_required = ? WHERE id = ?`
+  ).run(params.title, params.description, params.frequency, params.weekday, params.photoRequired ? 1 : 0, id);
+  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "EDITED", newValue: params });
+}
+
 export function setCleaningAreaOwner(areaId: string, ownerId: string | null, actor: SessionUser) {
   const db = getDb();
   db.prepare(`UPDATE cleaning_areas SET owner_id = ? WHERE id = ?`).run(ownerId, areaId);

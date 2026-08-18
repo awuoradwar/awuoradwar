@@ -9,10 +9,12 @@ import {
   reopenCleaningAction,
   setCleaningTaskAssociateAction,
   deleteCleaningTaskAction,
+  updateCleaningTaskAction,
 } from "@/app/actions/cleaningActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
+import { Field, inputClass, selectClass } from "./forms/FormShell";
 
 interface CleaningTaskData {
   id: string;
@@ -21,6 +23,7 @@ interface CleaningTaskData {
   description?: string | null;
   description_es?: string | null;
   weekday?: number | null;
+  frequency?: "DAILY" | "WEEKLY";
   status: string;
   associate_name: string | null;
   photo_required: number;
@@ -141,9 +144,83 @@ function AssociateEditor({ taskId, associateName, lang }: { taskId: string; asso
   );
 }
 
+/** Full edit of the task itself -- title, checklist description, day/frequency,
+ * and whether an after photo is required -- same fields as the add form, so
+ * anything typed in wrong (or that the company chart changes) can be fixed
+ * in place instead of deleting and re-adding. */
+function EditTaskForm({ task, lang, onDone }: { task: CleaningTaskData; lang: Language; onDone: () => void }) {
+  const [frequency, setFrequency] = useState<"DAILY" | "WEEKLY">(task.frequency || "DAILY");
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const weekdayLabels = lang === "es"
+    ? ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        startTransition(async () => {
+          const result = await updateCleaningTaskAction(fd);
+          if (result && "error" in result && result.error) {
+            setError(result.error);
+            return;
+          }
+          setError(null);
+          onDone();
+          router.refresh();
+        });
+      }}
+      className="flex flex-col gap-2 border-t border-border pt-2"
+    >
+      <input type="hidden" name="id" value={task.id} />
+      <Field label={lang === "es" ? "Tarea" : "Task"}>
+        <input name="title" defaultValue={task.title} required className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Detalle de la lista de verificación (opcional)" : "Checklist details (optional)"}>
+        <textarea name="description" defaultValue={task.description || ""} rows={3} className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Frecuencia (se repite)" : "Frequency (recurring)"}>
+        <select name="frequency" value={frequency} onChange={(e) => setFrequency(e.target.value as "DAILY" | "WEEKLY")} className={selectClass}>
+          <option value="DAILY">{lang === "es" ? "Diaria" : "Daily"}</option>
+          <option value="WEEKLY">{lang === "es" ? "Semanal" : "Weekly"}</option>
+        </select>
+      </Field>
+      {frequency === "WEEKLY" && (
+        <Field label={lang === "es" ? "Día" : "Day"}>
+          <select name="weekday" defaultValue={task.weekday ?? ""} className={selectClass}>
+            <option value="">{lang === "es" ? "Cualquier día" : "Any day"}</option>
+            {weekdayLabels.map((d, idx) => (
+              <option key={idx} value={idx}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+      <label className="flex items-center gap-2 text-base">
+        <input type="checkbox" name="photoRequired" defaultChecked={!!task.photo_required} className="h-5 w-5" />
+        {lang === "es" ? "Requiere foto" : "Photo required"}
+      </label>
+      {error && <p className="text-sm text-critical">{error}</p>}
+      <div className="flex items-center gap-3">
+        <button type="submit" disabled={pending} className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground disabled:opacity-50">
+          {lang === "es" ? "Guardar" : "Save"}
+        </button>
+        <button type="button" onClick={onDone} disabled={pending} className="text-sm font-medium text-muted">
+          {lang === "es" ? "Cancelar" : "Cancel"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData; lang: Language }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
   const router = useRouter();
 
   function run(fn: () => Promise<{ error?: string } | void>) {
@@ -162,6 +239,14 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
   const description = lang === "es" && task.description_es ? task.description_es : task.description;
   const dueDay = task.weekday != null ? WEEKDAY_LABEL[task.weekday]?.[lang] : null;
+
+  if (editing) {
+    return (
+      <div className="card p-3">
+        <EditTaskForm task={task} lang={lang} onDone={() => setEditing(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="card flex flex-col gap-2 p-3">
@@ -202,15 +287,26 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
               {lang === "es" ? "Reabrir" : "Reopen"}
             </button>
           )}
-          <button
-            type="button"
-            disabled={pending}
-            title={lang === "es" ? "Eliminar" : "Delete"}
-            onClick={() => run(() => deleteCleaningTaskAction(task.id))}
-            className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-critical disabled:opacity-40"
-          >
-            🗑
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={pending}
+              title={lang === "es" ? "Editar" : "Edit"}
+              onClick={() => setEditing(true)}
+              className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-accent disabled:opacity-40"
+            >
+              ✎
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              title={lang === "es" ? "Eliminar" : "Delete"}
+              onClick={() => run(() => deleteCleaningTaskAction(task.id))}
+              className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-critical disabled:opacity-40"
+            >
+              🗑
+            </button>
+          </div>
         </div>
       </div>
 

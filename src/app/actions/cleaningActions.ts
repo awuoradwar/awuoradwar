@@ -89,6 +89,23 @@ export async function loadWeeklyCleaningRotationAction(): Promise<{ added: numbe
   return { added };
 }
 
+export async function updateCleaningTaskAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const id = String(formData.get("id") || "");
+  const title = String(formData.get("title") || "").trim();
+  if (!id || !title) return { error: "Title is required." };
+  const frequency = String(formData.get("frequency") || "DAILY") === "WEEKLY" ? "WEEKLY" : "DAILY";
+  const weekdayRaw = String(formData.get("weekday") || "");
+  const weekday = frequency === "WEEKLY" && weekdayRaw !== "" ? Number(weekdayRaw) : null;
+  cleaningService.updateCleaningTask(
+    id,
+    { title, description: String(formData.get("description") || "").trim() || null, frequency, weekday, photoRequired: formData.get("photoRequired") === "on" },
+    user
+  );
+  refresh();
+  return { ok: true };
+}
+
 export async function setCleaningAreaOwnerAction(areaId: string, ownerId: string) {
   const user = await requireCurrentUser();
   cleaningService.setCleaningAreaOwner(areaId, ownerId || null, user);

@@ -89,6 +89,12 @@ function FrequencySection({
     if (!byCategory.has(cat)) byCategory.set(cat, []);
     byCategory.get(cat)!.push(area);
   }
+  // Order by due day (Sun..Sat), not alphabetically by area name, so the
+  // weekly rotation reads the same order as the physical chart.
+  const minWeekday = (area: CleaningArea) => Math.min(...area.tasks.map((t) => t.weekday ?? 7));
+  for (const list of byCategory.values()) {
+    list.sort((a, b) => minWeekday(a) - minWeekday(b));
+  }
 
   return (
     <section className="mb-6">
