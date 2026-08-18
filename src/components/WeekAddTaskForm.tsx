@@ -4,11 +4,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTaskAction } from "@/app/actions/taskActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
-import { Language } from "@/lib/types";
+import { Language, Position } from "@/lib/types";
 
 interface ManagerOption {
   id: string;
   name: string;
+  position: Position;
 }
 
 interface DayOption {
@@ -16,18 +17,42 @@ interface DayOption {
   label: string;
 }
 
+interface ScheduleEntry {
+  user_id: string;
+  date: string;
+  shift_type: string;
+}
+
+/** Same GM-outranks-everyone rule as PIC resolution: a scheduled GM is
+ * always the suggested owner; otherwise the sole manager scheduled that
+ * day; otherwise leave it for the person adding the task to decide (two or
+ * more non-GM managers scheduled that day is genuinely ambiguous). */
+function suggestOwnerForDate(date: string, managers: ManagerOption[], schedule: ScheduleEntry[]): string {
+  const scheduledIds = new Set(schedule.filter((s) => s.date === date).map((s) => s.user_id));
+  const candidates = managers.filter((m) => scheduledIds.has(m.id));
+  if (candidates.length === 0) return "";
+  const gm = candidates.find((m) => m.position === "GM");
+  if (gm) return gm.id;
+  return candidates.length === 1 ? candidates[0].id : "";
+}
+
 export default function WeekAddTaskForm({
   lang,
   managers,
   days,
+  managerSchedule,
 }: {
   lang: Language;
   managers: ManagerOption[];
   days: DayOption[];
+  managerSchedule: ScheduleEntry[];
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [scheduledDate, setScheduledDate] = useState(days[0]?.date ?? "");
+  const [ownerId, setOwnerId] = useState(() => suggestOwnerForDate(days[0]?.date ?? "", managers, managerSchedule));
+  const [ownerTouched, setOwnerTouched] = useState(false);
   const router = useRouter();
 
   if (!open) {
@@ -71,7 +96,15 @@ export default function WeekAddTaskForm({
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "Día" : "Day"}>
-          <select name="scheduledDate" defaultValue={days[0]?.date} className={selectClass}>
+          <select
+            name="scheduledDate"
+            value={scheduledDate}
+            onChange={(e) => {
+              setScheduledDate(e.target.value);
+              if (!ownerTouched) setOwnerId(suggestOwnerForDate(e.target.value, managers, managerSchedule));
+            }}
+            className={selectClass}
+          >
             {days.map((d) => (
               <option key={d.date} value={d.date}>
                 {d.label}
@@ -80,7 +113,15 @@ export default function WeekAddTaskForm({
           </select>
         </Field>
         <Field label={lang === "es" ? "Responsable" : "Owner"}>
-          <select name="ownerId" defaultValue="" className={selectClass}>
+          <select
+            name="ownerId"
+            value={ownerId}
+            onChange={(e) => {
+              setOwnerId(e.target.value);
+              setOwnerTouched(true);
+            }}
+            className={selectClass}
+          >
             <option value="">{lang === "es" ? "Sin asignar" : "Unassigned"}</option>
             {managers.map((m) => (
               <option key={m.id} value={m.id}>
@@ -88,6 +129,11 @@ export default function WeekAddTaskForm({
               </option>
             ))}
           </select>
+          {!ownerTouched && ownerId && (
+            <p className="mt-1 text-xs text-muted">
+              {lang === "es" ? "Sugerido según quién está programado ese día" : "Suggested from who's scheduled that day"}
+            </p>
+          )}
         </Field>
       </div>
       <Field label={lang === "es" ? "Esfuerzo" : "Effort"}>

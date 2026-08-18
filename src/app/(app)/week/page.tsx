@@ -110,7 +110,7 @@ export default async function WeekPage() {
         <ShiftScheduleGrid managers={managers} days={days} schedule={managerSchedule} canEdit={canEditSchedule} lang={user.language} />
       </section>
 
-      <WeekAddTaskForm lang={user.language} managers={managers} days={days} />
+      <WeekAddTaskForm lang={user.language} managers={managers} days={days} managerSchedule={managerSchedule} />
 
       {Object.entries(byDay).map(([date, dayTasks]) => (
         <details key={date} className="card overflow-hidden">
