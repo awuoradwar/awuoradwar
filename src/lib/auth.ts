@@ -12,7 +12,7 @@ const COOKIE_NAME = "shiftops_session";
 const SECRET = new TextEncoder().encode(
   process.env.SESSION_SECRET || "dev-only-secret-change-in-production-0001"
 );
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14; // 14 days
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days -- store devices stay signed in to cut down on re-login friction
 
 export async function hashPassword(pw: string): Promise<string> {
   return bcrypt.hash(pw, 10);
