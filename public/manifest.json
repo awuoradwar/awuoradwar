@@ -1,6 +1,6 @@
 {
-  "name": "Shift Ops - Restaurant Shift Operations",
-  "short_name": "Shift Ops",
+  "name": "Moshe - Restaurant Shift Operations",
+  "short_name": "Moshe",
   "description": "Fast shift execution, delegation and handoff for restaurant managers.",
   "start_url": "/my-shift",
   "scope": "/",

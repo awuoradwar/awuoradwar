@@ -10,13 +10,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Shift Ops",
+  title: "Moshe",
   description: "Restaurant shift execution, accountability, delegation and handoff.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Shift Ops",
+    title: "Moshe",
   },
 };
 
