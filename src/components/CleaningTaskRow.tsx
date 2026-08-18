@@ -204,26 +204,30 @@ function ChecklistItemAssociateEditor({ itemId, associateName, lang }: { itemId:
  * own associate, independent of the task's overall Complete button. */
 function ChecklistItemRow({ item, lang }: { item: ChecklistItemData; lang: Language }) {
   const [pending, startTransition] = useTransition();
+  const [optimisticDone, setOptimisticDone] = useState(!!item.done);
   const router = useRouter();
+  const done = pending ? optimisticDone : !!item.done;
 
   return (
     <div className="flex items-center gap-2 py-1">
       <button
         type="button"
         disabled={pending}
-        onClick={() =>
+        onClick={() => {
+          const next = !done;
+          setOptimisticDone(next);
           startTransition(async () => {
-            await toggleChecklistItemDoneAction(item.id, !item.done);
+            await toggleChecklistItemDoneAction(item.id, next);
             router.refresh();
-          })
-        }
+          });
+        }}
         className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold disabled:opacity-50 ${
-          item.done ? "border-ok bg-ok text-white" : "border-border text-transparent"
+          done ? "border-ok bg-ok text-white" : "border-border text-transparent"
         }`}
       >
         ✓
       </button>
-      <span className={`flex-1 text-sm ${item.done ? "text-muted line-through" : ""}`}>{item.text}</span>
+      <span className={`flex-1 text-sm ${done ? "text-muted line-through" : ""}`}>{item.text}</span>
       <ChecklistItemAssociateEditor itemId={item.id} associateName={item.associate_name} lang={lang} />
     </div>
   );

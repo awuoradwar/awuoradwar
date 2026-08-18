@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { completeTaskAction } from "@/app/actions/taskActions";
@@ -23,6 +23,7 @@ export interface TaskCardData {
 
 export default function TaskCard({ task, lang }: { task: TaskCardData; lang: Language }) {
   const [pending, startTransition] = useTransition();
+  const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
 
   const dueLabel = task.due_at
@@ -48,19 +49,28 @@ export default function TaskCard({ task, lang }: { task: TaskCardData; lang: Lan
           )}
         </div>
         <div className="mt-2">
-          <StatusBadge status={task.status} lang={lang} />
+          <StatusBadge status={optimisticallyDone ? "COMPLETE" : task.status} lang={lang} />
         </div>
       </div>
-      {task.status !== "COMPLETE" && task.status !== "CANCELLED" && (
+      {task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyDone && (
         <button
           type="button"
           disabled={pending || task.blocked}
-          onClick={() =>
+          onClick={() => {
+            // Flip the visible state immediately -- the actual round trip
+            // to the server (action + full-page refresh) still takes real
+            // network time, but the tap shouldn't feel like it did nothing
+            // until that finishes.
+            setOptimisticallyDone(true);
             startTransition(async () => {
-              await completeTaskAction(task.id);
+              try {
+                await completeTaskAction(task.id);
+              } catch {
+                setOptimisticallyDone(false);
+              }
               router.refresh();
-            })
-          }
+            });
+          }}
           className="tap-target shrink-0 rounded-full border-2 border-accent px-4 text-xs font-semibold text-accent disabled:opacity-40"
         >
           {pending ? "…" : `✓ ${t(lang, "action_complete")}`}
