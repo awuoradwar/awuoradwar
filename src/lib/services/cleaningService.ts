@@ -223,6 +223,30 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
   ).run(storeId, todayWeekday, weekStartIso);
 }
 
+/**
+ * A DAILY cleaning task is a fresh checklist every day, not a one-time task:
+ * yesterday's completion shouldn't leave it permanently done. Safe to call
+ * on every page load -- it only resets a task whose last completion
+ * predates today (store-local), so a task already done today stays done.
+ */
+export function resetDueDailyCleaningTasks(storeId: string) {
+  const db = getDb();
+  const todayIso = storeToday(storeId) + "T00:00:00.000Z";
+
+  db.prepare(
+    `UPDATE cleaning_tasks
+     SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
+         photo_before_url = NULL, photo_after_url = NULL
+     WHERE id IN (
+       SELECT ct.id FROM cleaning_tasks ct
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       WHERE a.store_id = ? AND ct.frequency = 'DAILY'
+         AND ct.status IN ('COMPLETED','VERIFIED')
+         AND (ct.completed_at IS NULL OR ct.completed_at < ?)
+     )`
+  ).run(storeId, todayIso);
+}
+
 export function completeCleaningTask(id: string, actor: SessionUser, afterPhotoUrl?: string | null) {
   const db = getDb();
   const task = db.prepare(`SELECT photo_required, photo_after_url FROM cleaning_tasks WHERE id = ?`).get(id) as
