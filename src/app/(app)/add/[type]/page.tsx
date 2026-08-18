@@ -46,11 +46,16 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
     const db = getDb();
     areas = db.prepare(`SELECT id, name FROM cleaning_areas WHERE store_id = ? ORDER BY name`).all(user.storeId) as never;
   }
+  let managers: Array<{ id: string; name: string }> = [];
+  if (type === "task") {
+    const db = getDb();
+    managers = db.prepare(`SELECT id, name FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`).all() as never;
+  }
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref={BACK_HREF[type] || "/add"} lang={user.language} title={t(user.language, TITLE_KEYS[type] as never)} />
-      {type === "task" && <TaskForm lang={user.language} isGM={isGM(user)} />}
+      {type === "task" && <TaskForm lang={user.language} isGM={isGM(user)} managers={managers} currentUserId={user.id} />}
       {type === "call-in" && <CallInForm lang={user.language} />}
       {type === "late" && <LateForm lang={user.language} />}
       {type === "cleaning" && <CleaningForm lang={user.language} areas={areas} />}

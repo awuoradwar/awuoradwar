@@ -16,7 +16,17 @@ const WEEKDAYS: Array<{ value: number; en: string; es: string }> = [
   { value: 6, en: "Sat", es: "Sáb" },
 ];
 
-export default function TaskForm({ lang, isGM }: { lang: Language; isGM: boolean }) {
+export default function TaskForm({
+  lang,
+  isGM,
+  managers,
+  currentUserId,
+}: {
+  lang: Language;
+  isGM: boolean;
+  managers: Array<{ id: string; name: string }>;
+  currentUserId: string;
+}) {
   const [recurring, setRecurring] = useState(false);
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     recurring ? null : "task",
@@ -63,6 +73,19 @@ export default function TaskForm({ lang, isGM }: { lang: Language; isGM: boolean
         <input type="time" name="dueTime" className={inputClass} />
       </Field>
 
+      {!recurring && (
+        <Field label={lang === "es" ? "Responsable" : "Owner"}>
+          <select name="ownerId" defaultValue={currentUserId} className={selectClass}>
+            <option value="">{lang === "es" ? "Sin asignar" : "Unassigned"}</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.id === currentUserId ? (lang === "es" ? "Yo" : "Me") : m.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+
       <Field label={lang === "es" ? "Esfuerzo" : "Effort"}>
         <select name="effort" defaultValue="QUICK" className={selectClass}>
           <option value="QUICK">{lang === "es" ? "Rápido" : "Quick"}</option>
@@ -77,8 +100,8 @@ export default function TaskForm({ lang, isGM }: { lang: Language; isGM: boolean
             ? "Se creará una plantilla recurrente -- las instancias se generarán automáticamente cada día que marcó."
             : "This creates a recurring template -- instances will be generated automatically on each day you checked."
           : lang === "es"
-            ? "Se le asignará a usted y aparecerá en Mi Turno, Hoy o Esta Semana según cuándo lo programe."
-            : "This gets assigned to you and will show up in My Shift, Today, or This Week depending on when you schedule it."}
+            ? "Aparecerá en Mi Turno, Hoy o Esta Semana según cuándo lo programe."
+            : "This will show up in My Shift, Today, or This Week depending on when you schedule it."}
       </p>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Agregar tarea" : "Add task"} />
     </form>
