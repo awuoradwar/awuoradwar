@@ -20,15 +20,15 @@ export default function CompletedTaskRow({ task, lang }: { task: CompletedTaskDa
 
   return (
     <div className="flex items-center gap-2.5 px-3 py-2">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ok/15 text-[11px] font-bold text-ok">✓</span>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ok/15 text-xs font-bold text-ok">✓</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-foreground/80">{title}</p>
-        <p className="truncate text-[11px] text-muted">
+        <p className="truncate text-xs text-muted">
           {task.completed_by_name && <span>{task.completed_by_name}</span>}
           {task.area && <span>{task.completed_by_name ? " · " : ""}{task.area}</span>}
         </p>
       </div>
-      {timeLabel && <span className="shrink-0 text-[11px] tabular-nums text-muted">{timeLabel}</span>}
+      {timeLabel && <span className="shrink-0 text-xs tabular-nums text-muted">{timeLabel}</span>}
     </div>
   );
 }

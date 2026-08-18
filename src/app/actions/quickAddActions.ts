@@ -154,10 +154,12 @@ export async function quickAddCleaningAction(formData: FormData) {
   if (!areaId || !title) return { error: "Area and title are required." };
   const id = newId();
   const frequency = fd(formData, "frequency") === "WEEKLY" ? "WEEKLY" : "DAILY";
+  const weekdayRaw = fd(formData, "weekday");
+  const weekday = frequency === "WEEKLY" && weekdayRaw !== "" ? Number(weekdayRaw) : null;
   db.prepare(
-    `INSERT INTO cleaning_tasks (id, area_id, title, frequency, associate_name, manager_owner_id, status, photo_required, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
-  ).run(id, areaId, title, frequency, fd(formData, "associateName") || null, user.id, fd(formData, "photoRequired") === "on" ? 1 : 0, nowIso());
+    `INSERT INTO cleaning_tasks (id, area_id, title, frequency, weekday, associate_name, manager_owner_id, status, photo_required, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'ASSIGNED', ?, ?)`
+  ).run(id, areaId, title, frequency, weekday, fd(formData, "associateName") || null, user.id, fd(formData, "photoRequired") === "on" ? 1 : 0, nowIso());
   writeAudit({ entityType: "cleaning_task", entityId: id, actor: user, action: "CREATED" });
   refresh();
   return { ok: true };

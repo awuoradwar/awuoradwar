@@ -26,7 +26,7 @@ const en = {
   status_complete: "Complete",
   status_carried_forward: "Carried Forward",
   status_cancelled: "Cancelled",
-  status_assigned: "Assigned",
+  status_assigned: "Open",
   status_completed: "Completed",
   status_verified: "Verified",
   status_reopened: "Reopened",

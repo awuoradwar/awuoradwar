@@ -112,3 +112,9 @@ export async function reopenCleaningAction(id: string) {
   cleaningService.reopenCleaningTask(id, user);
   refresh();
 }
+
+export async function deleteCleaningTaskAction(id: string) {
+  const user = await requireCurrentUser();
+  cleaningService.deleteCleaningTask(id, user);
+  refresh();
+}

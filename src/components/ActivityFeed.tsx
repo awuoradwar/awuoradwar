@@ -40,7 +40,7 @@ export default function ActivityFeed({ items, lang }: { items: ActivityItem[]; l
               <span className="font-medium">{item.actor_name || (lang === "es" ? "Sistema" : "System")}</span>{" "}
               <span className="text-muted">{ACTION_LABEL[item.action]?.[lang] || item.action.toLowerCase()}</span> {item.title}
             </p>
-            <p className="text-[11px] text-muted">
+            <p className="text-xs text-muted">
               {new Date(item.created_at).toLocaleString(lang === "es" ? "es-MX" : "en-US", {
                 weekday: "short",
                 hour: "numeric",

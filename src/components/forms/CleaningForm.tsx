@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { quickAddCleaningAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
 import { Language } from "@/lib/types";
+
+const WEEKDAYS_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAYS_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 export default function CleaningForm({
   lang,
@@ -12,11 +16,13 @@ export default function CleaningForm({
   lang: Language;
   areas: Array<{ id: string; name: string }>;
 }) {
+  const [frequency, setFrequency] = useState("DAILY");
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     null,
     quickAddCleaningAction,
     (fd) => `${lang === "es" ? "Limpieza" : "Cleaning"}: ${fd.get("title")}`
   );
+  const weekdayLabels = lang === "es" ? WEEKDAYS_ES : WEEKDAYS_EN;
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
@@ -35,16 +41,28 @@ export default function CleaningForm({
       <Field label={lang === "es" ? "Tarea" : "Task"}>
         <input name="title" required className={inputClass} />
       </Field>
-      <Field label={lang === "es" ? "Frecuencia" : "Frequency"}>
-        <select name="frequency" defaultValue="DAILY" className={selectClass}>
+      <Field label={lang === "es" ? "Frecuencia (se repite)" : "Frequency (recurring)"}>
+        <select name="frequency" value={frequency} onChange={(e) => setFrequency(e.target.value)} className={selectClass}>
           <option value="DAILY">{lang === "es" ? "Diaria" : "Daily"}</option>
           <option value="WEEKLY">{lang === "es" ? "Semanal" : "Weekly"}</option>
         </select>
       </Field>
+      {frequency === "WEEKLY" && (
+        <Field label={lang === "es" ? "Día" : "Day"}>
+          <select name="weekday" defaultValue="" className={selectClass}>
+            <option value="">{lang === "es" ? "Cualquier día" : "Any day"}</option>
+            {weekdayLabels.map((d, idx) => (
+              <option key={idx} value={idx}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label={lang === "es" ? "Asociado (opcional)" : "Associate (optional)"}>
         <input name="associateName" className={inputClass} />
       </Field>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-base">
         <input type="checkbox" name="photoRequired" className="h-5 w-5" />
         {lang === "es" ? "Requiere foto" : "Photo required"}
       </label>

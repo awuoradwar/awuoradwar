@@ -71,7 +71,7 @@ export default function BulkAddCleaningForm({ lang, existingAreas }: { lang: Lan
         {rows.map((row, i) => (
           <div key={i} className="rounded-xl border border-border p-2.5">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-muted">
+              <span className="text-xs font-bold uppercase tracking-wide text-muted">
                 {lang === "es" ? "Fila" : "Row"} {i + 1}
               </span>
               {rows.length > 1 && (

@@ -46,7 +46,7 @@ function Section({
         <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
           <div>
             <span className="text-xs font-bold uppercase tracking-wide text-accent">{title}</span>
-            {sub && <p className="text-[11px] text-muted">{sub}</p>}
+            {sub && <p className="text-xs text-muted">{sub}</p>}
           </div>
           <span className="shrink-0 text-xs font-semibold text-muted">{rows.length}</span>
         </summary>
@@ -61,7 +61,7 @@ function Section({
         <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{title}</h2>
         {rows.length > 0 && <span className="text-xs font-semibold text-muted">{rows.length}</span>}
       </div>
-      {sub && <p className="mb-2 text-[11px] text-muted">{sub}</p>}
+      {sub && <p className="mb-2 text-xs text-muted">{sub}</p>}
       {body}
     </section>
   );

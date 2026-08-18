@@ -42,7 +42,7 @@ export default async function InventoryPage() {
         <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-accent">
           {es ? "Suministros y Equipo" : "Supplies & Equipment"}
         </h2>
-        <p className="mb-2 text-[11px] text-muted">
+        <p className="mb-2 text-xs text-muted">
           {es
             ? "Use +/− para ajustar el conteo, o toque el número para escribirlo directamente. \"Pedir\" marca un reabastecimiento en camino."
             : "Use +/− to adjust the count, or tap the number to type it directly. \"Order\" flags a restock as on the way."}
@@ -64,7 +64,7 @@ export default async function InventoryPage() {
         <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-accent">
           {es ? "Mantenimiento" : "Maintenance"}
         </h2>
-        <p className="mb-2 text-[11px] text-muted">
+        <p className="mb-2 text-xs text-muted">
           {es
             ? "Filtros de agua, focos y otros artículos que se cambian periódicamente. Toca para ver el historial."
             : "Water filters, bulbs, and other items that get switched periodically. Tap to see history."}

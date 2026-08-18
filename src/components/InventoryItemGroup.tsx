@@ -45,14 +45,14 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
   if (item.on_order) {
     return (
       <div className="flex shrink-0 items-center gap-1.5">
-        <span className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-accent">
+        <span className="rounded-full bg-accent/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-accent">
           {lang === "es" ? "Pedido" : "Ordered"}
         </span>
         <button
           type="button"
           disabled={pending}
           onClick={() => startTransition(async () => { await markInventoryReceivedAction(item.id); router.refresh(); })}
-          className="tap-target flex h-7 min-h-0 items-center rounded-full bg-accent px-2 text-[10px] font-semibold text-accent-foreground disabled:opacity-50"
+          className="tap-target flex h-7 min-h-0 items-center rounded-full bg-accent px-2 text-xs font-semibold text-accent-foreground disabled:opacity-50"
         >
           {lang === "es" ? "Recibido ✓" : "Received ✓"}
         </button>
@@ -112,7 +112,7 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
             value={orderQty}
             onChange={(e) => setOrderQty(e.target.value)}
             placeholder={lang === "es" ? "Cant." : "Qty"}
-            className="h-7 w-12 rounded-md border border-border bg-card px-1 text-[10px] outline-none focus:border-accent"
+            className="h-7 w-12 rounded-md border border-border bg-card px-1 text-xs outline-none focus:border-accent"
           />
           <button
             type="button"
@@ -125,7 +125,7 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
                 router.refresh();
               })
             }
-            className="flex h-7 items-center rounded-md bg-accent px-1.5 text-[10px] font-semibold text-accent-foreground disabled:opacity-50"
+            className="flex h-7 items-center rounded-md bg-accent px-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
           >
             ✓
           </button>
@@ -162,7 +162,7 @@ export default function InventoryItemGroup({ name, items, lang, canManage }: { n
       <div className="flex items-center gap-2 px-3 py-2">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{name}</p>
-          {item.notes && <p className="truncate text-[11px] italic text-muted">{item.notes}</p>}
+          {item.notes && <p className="truncate text-xs italic text-muted">{item.notes}</p>}
         </div>
         <Stepper item={item} lang={lang} />
         {canManage && <RemoveButton id={item.id} lang={lang} />}
@@ -179,7 +179,7 @@ export default function InventoryItemGroup({ name, items, lang, canManage }: { n
       <div className="flex flex-wrap gap-2">
         {items.map((it) => (
           <div key={it.id} className="flex items-center gap-1.5 rounded-lg border border-border py-1 pl-2 pr-1">
-            <span className="w-6 shrink-0 text-[10px] font-bold text-muted">{it.variant}</span>
+            <span className="w-6 shrink-0 text-xs font-bold text-muted">{it.variant}</span>
             <Stepper item={it} lang={lang} />
             {canManage && <RemoveButton id={it.id} lang={lang} />}
           </div>

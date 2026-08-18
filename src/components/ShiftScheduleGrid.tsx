@@ -83,7 +83,7 @@ export default function ShiftScheduleGrid({
                     onClick={() => cycle(m.id, d.date)}
                     title={d.label}
                     style={entry ? { backgroundColor: color.bg, color: color.text } : undefined}
-                    className={`flex flex-col items-center rounded-lg py-1.5 text-[10px] font-medium transition-colors ${
+                    className={`flex flex-col items-center rounded-lg py-1.5 text-xs font-medium transition-colors ${
                       entry ? "" : "text-muted"
                     } ${canEdit ? "hover:opacity-80" : ""} disabled:cursor-default`}
                   >
@@ -96,7 +96,7 @@ export default function ShiftScheduleGrid({
           </div>
         );
       })}
-      <p className="px-3 py-2 text-[11px] text-muted">
+      <p className="px-3 py-2 text-xs text-muted">
         {lang === "es" ? "M = Mañana · E = Tarde/Noche · D = Doble" : "M = Morning · E = Evening · D = Double"}
         {canEdit ? (lang === "es" ? " · toca para cambiar" : " · tap to change") : ""}
       </p>

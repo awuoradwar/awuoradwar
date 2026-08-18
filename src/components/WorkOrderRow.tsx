@@ -29,13 +29,13 @@ export default function WorkOrderRow({ order, lang }: { order: WorkOrderRowData;
       <span className="text-lg">{CATEGORY_ICON[order.category] || "⚠️"}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{order.description}</p>
-        <p className="truncate text-[11px] text-muted">
+        <p className="truncate text-xs text-muted">
           {CATEGORY_LABEL[order.category]?.[lang] || order.category.replace(/_/g, " ")}
           {dateLabel && <span> · {dateLabel}</span>}
           {order.owner_name && <span> · {order.owner_name}</span>}
         </p>
       </div>
-      {order.severity === "CRITICAL" && <span className="shrink-0 rounded bg-critical/10 px-1.5 py-0.5 text-[11px] text-critical">!</span>}
+      {order.severity === "CRITICAL" && <span className="shrink-0 rounded bg-critical/10 px-1.5 py-0.5 text-xs text-critical">!</span>}
     </Link>
   );
 }

@@ -48,7 +48,7 @@ export default function TrainingChecklist({
             <span className="min-w-0 flex-1">
               <p className="text-sm">{label}</p>
               {trained && (
-                <p className="text-[11px] text-muted">
+                <p className="text-xs text-muted">
                   {lang === "es" ? "Capacitado por" : "Trained by"} {it.trained_by_name || "—"} · {new Date(it.trained_at!).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
                 </p>
               )}

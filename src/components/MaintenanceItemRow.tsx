@@ -48,7 +48,7 @@ export default function MaintenanceItemRow({
             {lang === "es" ? "cada" : "every"} {item.interval_days}{lang === "es" ? "d" : "d"}
           </p>
           {item.notes && <p className="mt-0.5 text-xs italic text-muted">{item.notes}</p>}
-          <p className="mt-0.5 text-[11px] text-muted">
+          <p className="mt-0.5 text-xs text-muted">
             {item.last_done_at
               ? `${lang === "es" ? "Última vez" : "Last done"}: ${new Date(item.last_done_at).toLocaleDateString()}${item.last_done_by_name ? ` · ${item.last_done_by_name}` : ""}`
               : lang === "es"
@@ -78,12 +78,12 @@ export default function MaintenanceItemRow({
       </div>
       {history.length > 0 && (
         <details className="mt-2">
-          <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-wide text-muted">
+          <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-muted">
             {lang === "es" ? "Ver historial" : "View history"} ({history.length})
           </summary>
           <div className="mt-1 flex flex-col gap-0.5">
             {history.slice(0, 10).map((h) => (
-              <p key={h.id} className="text-[11px] text-muted">
+              <p key={h.id} className="text-xs text-muted">
                 {new Date(h.created_at).toLocaleDateString()} · {h.actor_name || "—"}
               </p>
             ))}

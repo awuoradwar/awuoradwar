@@ -10,11 +10,11 @@ export default function TraineeRow({ item, lang }: { item: TraineeRowData; lang:
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-semibold">{item.name}</p>
-          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent">
             {TRAINING_POSITION_LABEL[item.position]?.[lang] || item.position}
           </span>
           {item.status === "COMPLETE" && (
-            <span className="shrink-0 rounded-full bg-ok/10 px-2 py-0.5 text-[10px] font-bold text-ok">
+            <span className="shrink-0 rounded-full bg-ok/10 px-2 py-0.5 text-xs font-bold text-ok">
               {lang === "es" ? "COMPLETO" : "COMPLETE"}
             </span>
           )}
@@ -23,7 +23,7 @@ export default function TraineeRow({ item, lang }: { item: TraineeRowData; lang:
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
             <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
           </div>
-          <span className="shrink-0 text-[11px] text-muted">
+          <span className="shrink-0 text-xs text-muted">
             {item.completed_count}/{item.total_count}
           </span>
         </div>

@@ -28,7 +28,7 @@ const es: Record<DictKeys, string> = {
   status_complete: "Completo",
   status_carried_forward: "Trasladado",
   status_cancelled: "Cancelado",
-  status_assigned: "Asignado",
+  status_assigned: "Abierta",
   status_completed: "Completado",
   status_verified: "Verificado",
   status_reopened: "Reabierto",

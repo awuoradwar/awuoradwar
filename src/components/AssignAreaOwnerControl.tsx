@@ -29,7 +29,7 @@ export default function AssignAreaOwnerControl({
           router.refresh();
         })
       }
-      className="h-6 min-h-0 rounded-full border border-border bg-card px-2 text-[11px] text-muted outline-none focus:border-accent disabled:opacity-50"
+      className="h-6 min-h-0 rounded-full border border-border bg-card px-2 text-xs text-muted outline-none focus:border-accent disabled:opacity-50"
     >
       <option value="">{lang === "es" ? "Sin asignar" : "Unassigned"}</option>
       {managers.map((m) => (

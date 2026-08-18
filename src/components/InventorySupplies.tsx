@@ -63,7 +63,7 @@ export default function InventorySupplies({ groups, lang, canManage }: { groups:
         // by category, always expanded -- you typed a name, you want it now.
         CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((cat) => (
           <div key={cat}>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted">
+            <p className="mb-1 text-xs font-bold uppercase tracking-wide text-muted">
               {CATEGORY_ICON[cat]} {CATEGORY_LABEL[cat][lang]}
             </p>
             <div className="card divide-y divide-border">

@@ -30,7 +30,7 @@ export default async function HandoffPage() {
 
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "handoff_since_you_were_here")}</h2>
-        <p className="mb-2 text-[11px] text-muted">
+        <p className="mb-2 text-xs text-muted">
           {user.language === "es"
             ? "En vivo -- lo que el equipo ha hecho, sin generar ni confirmar nada."
             : "Live -- what the team has actually done, no generating or acknowledging needed."}

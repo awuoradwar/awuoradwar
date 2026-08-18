@@ -43,7 +43,7 @@ export default function WeekTaskRow({
           </Link>
           <span
             className={
-              "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide " +
+              "shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold uppercase tracking-wide " +
               (task.source === "recurring" ? "bg-muted/10 text-muted" : "bg-accent/10 text-accent")
             }
           >

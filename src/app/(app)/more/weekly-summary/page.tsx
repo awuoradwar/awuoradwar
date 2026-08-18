@@ -117,7 +117,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
                     <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                       <div className="min-w-0">
                         <p className="truncate">{item.title}</p>
-                        <p className="truncate text-[11px] text-muted">
+                        <p className="truncate text-xs text-muted">
                           {fmtWhen(item.at)}
                           {item.subtitle && <span> · {item.subtitle}</span>}
                         </p>
@@ -152,7 +152,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold">{summary.period.period_label}</p>
                 {summary.period.releasedThisWeek && (
-                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                  <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-bold text-accent">
                     {es ? "PUBLICADO ESTA SEMANA" : "RELEASED THIS WEEK"}
                   </span>
                 )}

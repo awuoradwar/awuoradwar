@@ -71,7 +71,7 @@ export default async function MyShiftPage() {
             <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, `section_${bucket.toLowerCase()}` as never)}</h2>
             {buckets[bucket].length > 0 && <span className="text-xs font-semibold text-muted">{buckets[bucket].length}</span>}
           </div>
-          <p className="mb-2 text-[11px] text-muted">{t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}</p>
+          <p className="mb-2 text-xs text-muted">{t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}</p>
           {buckets[bucket].length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">
               {t(user.language, "all_clear")}
@@ -89,11 +89,11 @@ export default async function MyShiftPage() {
       <section>
         <div className="flex items-baseline justify-between">
           <h2 className="text-xs font-bold uppercase tracking-wide text-accent">
-            🧹 {user.language === "es" ? "Limpieza de Hoy" : "Cleaning Today"}
+            {user.language === "es" ? "Limpieza de Hoy" : "Cleaning Today"}
           </h2>
           {cleaningToday.length > 0 && <span className="text-xs font-semibold text-muted">{cleaningToday.length}</span>}
         </div>
-        <p className="mb-2 text-[11px] text-muted">
+        <p className="mb-2 text-xs text-muted">
           {user.language === "es" ? "Tareas de limpieza pendientes de hoy" : "Today's outstanding cleaning tasks"}
         </p>
         {cleaningToday.length === 0 ? (
@@ -102,7 +102,7 @@ export default async function MyShiftPage() {
           <div className="flex flex-col gap-2">
             {cleaningToday.map((ct) => (
               <div key={ct.id}>
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
                   {user.language === "es" && ct.area_name_es ? ct.area_name_es : ct.area_name}
                   {ct.owner_name ? ` · ${ct.owner_name}` : ""}
                 </p>
@@ -120,7 +120,7 @@ export default async function MyShiftPage() {
               <span className="text-xs font-bold uppercase tracking-wide text-accent">
                 {t(user.language, `section_${bucket.toLowerCase()}` as never)}
               </span>
-              <p className="text-[11px] text-muted">{t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}</p>
+              <p className="text-xs text-muted">{t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}</p>
             </div>
             <span className="shrink-0 text-xs font-semibold text-muted">{buckets[bucket].length}</span>
           </summary>
@@ -140,7 +140,7 @@ export default async function MyShiftPage() {
         <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
           <div>
             <span className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "section_completed")}</span>
-            <p className="text-[11px] text-muted">{t(user.language, "section_completed_sub")}</p>
+            <p className="text-xs text-muted">{t(user.language, "section_completed_sub")}</p>
           </div>
           <span className="shrink-0 text-xs font-semibold text-muted">{completedToday.length}</span>
         </summary>
@@ -157,7 +157,7 @@ export default async function MyShiftPage() {
 
       <section>
         <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "section_from_last_shift" as never)}</h2>
-        <p className="mb-2 text-[11px] text-muted">{t(user.language, "section_from_last_shift_sub" as never)}</p>
+        <p className="mb-2 text-xs text-muted">{t(user.language, "section_from_last_shift_sub" as never)}</p>
         {fromLastShiftCount === 0 ? (
           <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">
             {t(user.language, "all_clear")}

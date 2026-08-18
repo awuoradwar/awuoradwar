@@ -8,6 +8,7 @@ import {
   verifyCleaningAction,
   reopenCleaningAction,
   setCleaningTaskAssociateAction,
+  deleteCleaningTaskAction,
 } from "@/app/actions/cleaningActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
@@ -46,7 +47,7 @@ function PhotoSlot({ taskId, kind, url, lang }: { taskId: string; kind: "before"
 
   if (url) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs">
+      <span className="inline-flex items-center gap-1.5 text-sm">
         <span className="font-medium text-muted">{label}:</span>
         <a href={`/api/cleaning-photos/${taskId}?kind=${kind}`} target="_blank" rel="noreferrer" className="text-accent underline">
           {t(lang, "cleaning_view")}
@@ -59,20 +60,21 @@ function PhotoSlot({ taskId, kind, url, lang }: { taskId: string; kind: "before"
   }
 
   return (
-    <span className="inline-flex items-center gap-1 text-xs">
+    <span className="inline-flex items-center gap-1 text-sm">
       <button
         type="button"
         disabled={pending}
         onClick={() => inputRef.current?.click()}
-        className="tap-target h-7 min-h-0 rounded-full border border-dashed border-border px-2.5 text-[11px] font-semibold text-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+        className="tap-target h-8 min-h-0 rounded-full border border-dashed border-border px-2.5 text-xs font-semibold text-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
       >
         📷 {t(lang, "cleaning_add")} {label}
       </button>
+      {/* No `capture` attribute -- lets mobile browsers offer both "Take Photo"
+          and "Choose from Library" instead of forcing straight to the camera. */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="sr-only"
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -119,9 +121,9 @@ function AssociateEditor({ taskId, associateName, lang }: { taskId: string; asso
           onChange={(e) => setValue(e.target.value)}
           placeholder={lang === "es" ? "Nombre" : "Name"}
           autoFocus
-          className="h-6 w-24 rounded-md border border-accent bg-card px-1.5 text-xs outline-none"
+          className="h-8 w-28 rounded-md border border-accent bg-card px-2 text-sm outline-none"
         />
-        <button type="submit" disabled={pending} className="text-xs font-semibold text-accent">
+        <button type="submit" disabled={pending} className="text-sm font-semibold text-accent">
           ✓
         </button>
       </form>
@@ -132,7 +134,7 @@ function AssociateEditor({ taskId, associateName, lang }: { taskId: string; asso
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className="text-xs font-medium text-accent underline decoration-dotted"
+      className="text-sm font-medium text-accent underline decoration-dotted"
     >
       {associateName || (lang === "es" ? "Asignar asociado" : "Assign associate")}
     </button>
@@ -166,15 +168,15 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{title}</p>
-          <div className="flex flex-wrap items-center gap-x-1 text-xs text-muted">
+          <div className="flex flex-wrap items-center gap-x-1 text-sm text-muted">
             {dueDay && <span>{lang === "es" ? "Vence" : "Due"}: {dueDay} ·</span>}
             <AssociateEditor taskId={task.id} associateName={task.associate_name} lang={lang} />
             {task.photo_required ? <span>· 📷 {t(lang, "cleaning_photo_required")}</span> : null}
           </div>
           {description && (
             <details className="mt-1">
-              <summary className="cursor-pointer text-xs text-accent">{lang === "es" ? "Ver detalle" : "View checklist"}</summary>
-              <p className="mt-1 text-xs text-muted">{description}</p>
+              <summary className="cursor-pointer text-sm text-accent">{lang === "es" ? "Ver detalle" : "View checklist"}</summary>
+              <p className="mt-1 text-sm text-muted">{description}</p>
             </details>
           )}
           <div className="mt-1">
@@ -184,22 +186,31 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
         <div className="flex shrink-0 flex-col items-end gap-1">
           {task.status === "ASSIGNED" &&
             (needsAfterPhotoToComplete ? (
-              <span className="text-[11px] font-medium text-warning">{lang === "es" ? "Falta foto de después" : "Needs after photo"}</span>
+              <span className="text-xs font-medium text-warning">{lang === "es" ? "Falta foto de después" : "Needs after photo"}</span>
             ) : (
-              <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className="tap-target rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
+              <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className="tap-target rounded-full bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
                 {t(lang, "action_complete")}
               </button>
             ))}
           {task.status === "COMPLETED" && (
-            <button disabled={pending} onClick={() => run(() => verifyCleaningAction(task.id))} className="tap-target rounded-full border-2 border-ok px-3 text-xs font-semibold text-ok disabled:opacity-50">
+            <button disabled={pending} onClick={() => run(() => verifyCleaningAction(task.id))} className="tap-target rounded-full border-2 border-ok px-3 text-sm font-semibold text-ok disabled:opacity-50">
               {t(lang, "action_verify")}
             </button>
           )}
           {task.status === "VERIFIED" && (
-            <button disabled={pending} onClick={() => run(() => reopenCleaningAction(task.id))} className="tap-target rounded-full border border-border px-3 text-xs text-muted disabled:opacity-50">
+            <button disabled={pending} onClick={() => run(() => reopenCleaningAction(task.id))} className="tap-target rounded-full border border-border px-3 text-sm text-muted disabled:opacity-50">
               {lang === "es" ? "Reabrir" : "Reopen"}
             </button>
           )}
+          <button
+            type="button"
+            disabled={pending}
+            title={lang === "es" ? "Eliminar" : "Delete"}
+            onClick={() => run(() => deleteCleaningTaskAction(task.id))}
+            className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-critical disabled:opacity-40"
+          >
+            🗑
+          </button>
         </div>
       </div>
 
@@ -208,7 +219,7 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
         <PhotoSlot taskId={task.id} kind="after" url={task.photo_after_url} lang={lang} />
       </div>
 
-      {error && <p className="text-xs text-critical">{error}</p>}
+      {error && <p className="text-sm text-critical">{error}</p>}
     </div>
   );
 }

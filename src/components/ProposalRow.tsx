@@ -75,7 +75,7 @@ export default function ProposalRow({
       {isCleaning && cleaningAreas.length > 0 && (
         <div className="mt-2 flex flex-col gap-2">
           <div>
-            <label className="text-[11px] text-muted">{lang === "es" ? "Área de limpieza" : "Cleaning area"}</label>
+            <label className="text-xs text-muted">{lang === "es" ? "Área de limpieza" : "Cleaning area"}</label>
             <select
               value={cleaningAreaId}
               onChange={(e) => setCleaningAreaId(e.target.value)}
@@ -89,7 +89,7 @@ export default function ProposalRow({
             </select>
           </div>
           <div>
-            <label className="text-[11px] text-muted">{lang === "es" ? "Frecuencia" : "Frequency"}</label>
+            <label className="text-xs text-muted">{lang === "es" ? "Frecuencia" : "Frequency"}</label>
             <select
               value={frequency}
               onChange={(e) => setFrequency(e.target.value as "DAILY" | "WEEKLY")}
@@ -103,7 +103,7 @@ export default function ProposalRow({
       )}
       {willCreateTask && !isCleaning && managers.length > 0 && (
         <div className="mt-2">
-          <label className="text-[11px] text-muted">
+          <label className="text-xs text-muted">
             {t(lang, "import_suggested_owner")}
             {suggestedName ? ` — ${suggestedName}` : ""}
           </label>

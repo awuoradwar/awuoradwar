@@ -25,7 +25,7 @@ export default function CompactTaskRow({ task, lang }: { task: TaskCardData; lan
     <div className="flex items-center gap-2 px-3 py-2">
       <Link href={`/task/${task.id}`} className="min-w-0 flex-1">
         <p className="truncate text-sm">{title}</p>
-        <p className="truncate text-[11px] text-muted">
+        <p className="truncate text-xs text-muted">
           {dueLabel && <span>⏰ {dueLabel} </span>}
           {task.area && <span>· {task.area} </span>}
           {task.owner_name && <span>· {task.owner_name}</span>}

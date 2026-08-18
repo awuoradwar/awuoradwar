@@ -26,7 +26,7 @@ export default function MealReplacementRow({ item, lang }: { item: MealReplaceme
           {item.guest_name ? `${item.guest_name} · ` : ""}
           {item.item_description || CATEGORY_LABEL[item.issue_category]?.[lang] || item.issue_category}
         </p>
-        <p className="truncate text-[11px] text-muted">
+        <p className="truncate text-xs text-muted">
           {CATEGORY_LABEL[item.issue_category]?.[lang] || item.issue_category} · {timeLabel}
           {item.created_by_name && <span> · {item.created_by_name}</span>}
         </p>

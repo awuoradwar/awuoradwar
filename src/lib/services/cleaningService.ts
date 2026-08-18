@@ -6,6 +6,12 @@ import { storeToday } from "../storeTime";
 import { weekStartOf } from "./recurrenceService";
 import { WEEKLY_CLEANING_ROTATION } from "../weeklyCleaningRotation";
 
+export function deleteCleaningTask(taskId: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`DELETE FROM cleaning_tasks WHERE id = ?`).run(taskId);
+  writeAudit({ entityType: "cleaning_task", entityId: taskId, actor, action: "CANCELLED" });
+}
+
 export function setCleaningAreaOwner(areaId: string, ownerId: string | null, actor: SessionUser) {
   const db = getDb();
   db.prepare(`UPDATE cleaning_areas SET owner_id = ? WHERE id = ?`).run(ownerId, areaId);
