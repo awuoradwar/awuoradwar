@@ -1,4 +1,4 @@
-import { SessionUser } from "@/lib/types";
+import { SessionUser, Position } from "@/lib/types";
 import { POSITION_LABEL } from "@/lib/permissions";
 import LanguageToggle from "./LanguageToggle";
 import { logoutAction } from "@/app/actions/auth";
@@ -6,20 +6,30 @@ import { logoutAction } from "@/app/actions/auth";
 export default function TopBar({
   user,
   storeName,
-  picName,
+  picNames,
+  picPosition,
 }: {
   user: SessionUser;
   storeName: string;
-  picName: string | null;
+  picNames: string[] | null;
+  picPosition: Position | null;
 }) {
+  // A single PIC shows their own title ("PIC: Eva · Assistant Manager").
+  // Two co-PICs (e.g. an AM and Chef covering together with no GM on) have
+  // no single title to show, so it's just their names joined together.
+  const picLabel =
+    picNames && picNames.length > 0
+      ? picNames.length === 1 && picPosition
+        ? `PIC: ${picNames[0]} · ${POSITION_LABEL[picPosition][user.language]}`
+        : `PIC: ${picNames.join(" & ")}`
+      : "No PIC assigned";
+
   return (
     <header className="sticky top-0 z-20 border-b-2 border-accent bg-chrome-bg text-chrome-fg">
       <div className="mx-auto flex max-w-md items-center justify-between gap-2 px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{storeName}</p>
-          <p className="truncate text-xs text-chrome-muted">
-            {picName ? `PIC: ${picName}` : "No PIC assigned"} · {POSITION_LABEL[user.position][user.language]}
-          </p>
+          <p className="truncate text-xs text-chrome-muted">{picLabel}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <LanguageToggle lang={user.language} />

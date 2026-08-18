@@ -1,7 +1,7 @@
 import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
-import { SessionUser } from "../types";
+import { SessionUser, Position } from "../types";
 import { windowForHour } from "./taskService";
 import { storeLocalHour } from "../storeTime";
 
@@ -71,12 +71,51 @@ export function getShiftTypeForUserToday(storeId: string, userId: string, dateSt
  * recurring task instances to whoever's actually working. Returns null when
  * nobody's scheduled or more than one manager could cover it, leaving the
  * task unassigned rather than guessing. */
-export function resolveShiftOwnerForWindow(storeId: string, date: string, window: "MORNING" | "EVENING"): string | null {
+interface ScheduledManager {
+  id: string;
+  name: string;
+  position: Position;
+}
+
+/** Everyone scheduled to cover the store-local shift window today, GM
+ * included -- the shared source both the single-owner resolver and the
+ * display resolver below build on. */
+function scheduledManagersForWindow(storeId: string, date: string, window: "MORNING" | "EVENING"): ScheduledManager[] {
   const db = getDb();
-  const rows = db
-    .prepare(`SELECT DISTINCT user_id FROM manager_shifts WHERE store_id = ? AND date = ? AND (shift_type = ? OR shift_type = 'DOUBLE')`)
-    .all(storeId, date, window) as Array<{ user_id: string }>;
-  return rows.length === 1 ? rows[0].user_id : null;
+  return db
+    .prepare(
+      `SELECT DISTINCT u.id, u.name, u.position FROM manager_shifts ms
+       JOIN users u ON u.id = ms.user_id
+       WHERE ms.store_id = ? AND ms.date = ? AND (ms.shift_type = ? OR ms.shift_type = 'DOUBLE')`
+    )
+    .all(storeId, date, window) as ScheduledManager[];
+}
+
+/** Whoever "owns" tasks auto-assigned to this window: the GM outranks
+ * anyone else scheduled alongside them (GM + AM + Chef together is still
+ * just the GM's shift), otherwise the sole scheduled manager, otherwise
+ * null when it's genuinely ambiguous -- two or more non-GM managers
+ * covering together (e.g. Assistant Manager + Chef, no GM on). */
+export function resolveShiftOwnerForWindow(storeId: string, date: string, window: "MORNING" | "EVENING"): string | null {
+  const candidates = scheduledManagersForWindow(storeId, date, window);
+  if (candidates.length === 0) return null;
+  const gm = candidates.find((c) => c.position === "GM");
+  if (gm) return gm.id;
+  return candidates.length === 1 ? candidates[0].id : null;
+}
+
+/** Who to show as "PIC" -- same GM-outranks-everyone rule as above, but
+ * covers the case a single owner can't: two or more non-GM managers
+ * covering together have no single task-owner, yet there's still a clear
+ * "who's in charge" answer worth showing -- both of their names. */
+export function resolveTodaysPicDisplay(storeId: string, dateStr: string, nowDate: Date): { names: string[]; position: Position | null } | null {
+  const window = windowForHour(storeLocalHour(storeId, nowDate));
+  const candidates = scheduledManagersForWindow(storeId, dateStr, window);
+  if (candidates.length === 0) return null;
+  const gm = candidates.find((c) => c.position === "GM");
+  if (gm) return { names: [gm.name], position: "GM" };
+  if (candidates.length === 1) return { names: [candidates[0].name], position: candidates[0].position };
+  return { names: candidates.map((c) => c.name), position: null };
 }
 
 /** Recurring instances already created for `date` before this manager_shift

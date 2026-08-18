@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { getDb } from "./db";
 import { SessionUser } from "./types";
 import { storeToday } from "./storeTime";
-import { resolveTodaysPic } from "./services/scheduleService";
+import { resolveTodaysPic, resolveTodaysPicDisplay } from "./services/scheduleService";
 import { newId, nowIso, writeAudit } from "./audit";
 
 const COOKIE_NAME = "shiftops_session";
@@ -115,5 +115,12 @@ export function getCurrentPicForStore(storeId: string) {
       .get(storeId, today) as typeof shift;
   }
 
-  return shift;
+  // Display-only: who to actually show as "PIC" in the top bar, including
+  // the co-PIC case (e.g. an Assistant Manager and Chef covering together
+  // with no GM on) where there's no single task-owner (so no `shifts` row
+  // above) but there is a clear "who's in charge" answer -- both of them,
+  // each with their own title. Merged on regardless of whether a `shifts`
+  // row exists, since every caller already reads shift fields optionally.
+  const display = resolveTodaysPicDisplay(storeId, today, new Date());
+  return { ...shift, picDisplayNames: display?.names ?? null, picDisplayPosition: display?.position ?? null };
 }
