@@ -40,6 +40,22 @@ export async function addGuestRecoveryFollowUpAction(id: string, title: string) 
   refresh();
 }
 
+export async function updateBorrowedItemAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const id = String(formData.get("id") || "");
+  const borrowedFrom = String(formData.get("borrowedFrom") || "").trim();
+  const item = String(formData.get("item") || "").trim();
+  if (!id || !borrowedFrom || !item) return { error: "Store and item are required." };
+  const quantityRaw = String(formData.get("quantity") || "").trim();
+  borrowingService.updateBorrowedItem(
+    id,
+    { borrowedFrom, item, quantity: quantityRaw ? Number(quantityRaw) : null, unit: String(formData.get("unit") || "").trim() || null },
+    user
+  );
+  refresh();
+  return { ok: true };
+}
+
 export async function selectSettlementAction(id: string, method: "RETURN_PRODUCT" | "CRUNCHTIME_TRANSFER" | "PENDING_CONFIRMATION") {
   const user = await requireCurrentUser();
   borrowingService.selectSettlement(id, method, user);

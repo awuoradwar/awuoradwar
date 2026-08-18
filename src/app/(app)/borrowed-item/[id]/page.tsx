@@ -5,6 +5,7 @@ import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import { t } from "@/lib/i18n";
 import StatusBadge from "@/components/StatusBadge";
 import BorrowedItemDetailActions from "@/components/BorrowedItemDetailActions";
+import BorrowedItemEditableFields from "@/components/BorrowedItemEditableFields";
 import PageHeader from "@/components/PageHeader";
 
 interface BorrowedItemRow {
@@ -55,16 +56,14 @@ export default async function BorrowedItemDetailPage({ params }: PageProps<"/bor
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
-        <dt className="text-muted">{t(user.language, "field_borrowed_from")}</dt>
-        <dd>{item.borrowed_from}</dd>
-        {item.quantity != null && (
-          <>
-            <dt className="text-muted">{t(user.language, "field_quantity")}</dt>
-            <dd>
-              {item.quantity} {item.unit || ""}
-            </dd>
-          </>
-        )}
+        <BorrowedItemEditableFields
+          id={item.id}
+          lang={user.language}
+          borrowedFrom={item.borrowed_from}
+          item={item.item}
+          quantity={item.quantity}
+          unit={item.unit}
+        />
         <dt className="text-muted">{t(user.language, "field_owner")}</dt>
         <dd>{item.owner_name || "—"}</dd>
         {item.completed_by_name && (

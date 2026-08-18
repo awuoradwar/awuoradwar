@@ -35,6 +35,26 @@ function insertBorrowedItem(params: {
   return id;
 }
 
+/** Fix a typo or wrong quantity/unit after the fact -- separate from
+ * settlement, which tracks how the borrow gets resolved, not what was
+ * borrowed. Editable regardless of status so a mistake caught after
+ * settling can still be corrected in the record. */
+export function updateBorrowedItem(
+  id: string,
+  params: { borrowedFrom: string; item: string; quantity: number | null; unit: string | null },
+  actor: SessionUser
+) {
+  const db = getDb();
+  db.prepare(`UPDATE borrowed_items SET borrowed_from = ?, item = ?, quantity = ?, unit = ? WHERE id = ?`).run(
+    params.borrowedFrom,
+    params.item,
+    params.quantity,
+    params.unit,
+    id
+  );
+  writeAudit({ entityType: "borrowed_item", entityId: id, actor, action: "EDITED", newValue: params });
+}
+
 export function selectSettlement(id: string, method: "RETURN_PRODUCT" | "CRUNCHTIME_TRANSFER" | "PENDING_CONFIRMATION", actor: SessionUser) {
   const db = getDb();
   const status = method === "PENDING_CONFIRMATION" ? "SETTLEMENT_SELECTED" : "SETTLEMENT_SELECTED";
