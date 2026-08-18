@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { setManagerShiftAction, removeManagerShiftAction } from "@/app/actions/scheduleActions";
 import { ShiftType } from "@/lib/services/scheduleService";
 import { Language } from "@/lib/types";
-import { managerColor } from "@/lib/managerColor";
+import { buildManagerColorMap } from "@/lib/managerColor";
 
 const CYCLE: Array<ShiftType | null> = [null, "MORNING", "EVENING", "DOUBLE"];
 const CODE: Record<string, string> = { MORNING: "M", EVENING: "E", DOUBLE: "D" };
@@ -45,6 +45,9 @@ export default function ShiftScheduleGrid({
 
   const byManagerDate = new Map<string, ScheduleEntry>();
   for (const s of schedule) byManagerDate.set(`${s.user_id}|${s.date}`, s);
+  // Same id-sorted assignment as the Manager Capacity list above it, so a
+  // given manager's dot color matches between the two sections.
+  const managerColors = buildManagerColorMap(managers.map((m) => m.id));
 
   function cycle(userId: string, date: string) {
     if (!canEdit || pending) return;
@@ -64,7 +67,7 @@ export default function ShiftScheduleGrid({
   return (
     <div className="card divide-y divide-border">
       {managers.map((m) => {
-        const color = managerColor(m.id);
+        const color = managerColors.get(m.id)!;
         return (
           <div key={m.id} className="p-3">
             <p className="mb-2 flex items-center gap-2 text-sm font-medium">

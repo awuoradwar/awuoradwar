@@ -10,7 +10,7 @@ import WeekTaskRow from "@/components/WeekTaskRow";
 import ShiftScheduleGrid from "@/components/ShiftScheduleGrid";
 import { POSITION_LABEL, canDo } from "@/lib/permissions";
 import { Position } from "@/lib/types";
-import { managerColor } from "@/lib/managerColor";
+import { buildManagerColorMap } from "@/lib/managerColor";
 import { storeToday } from "@/lib/storeTime";
 
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -58,6 +58,7 @@ export default async function WeekPage() {
   }));
 
   const lastWeekStart = new Date(startDate.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  const managerColors = buildManagerColorMap(managers.map((m) => m.id));
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-5">
@@ -75,7 +76,7 @@ export default async function WeekPage() {
         </h2>
         <div className="card divide-y divide-border">
           {loadByManager.map((m) => {
-            const color = managerColor(m.id);
+            const color = managerColors.get(m.id)!;
             return (
               <div key={m.id} className="flex items-center justify-between px-3 py-2 text-sm">
                 <div className="flex items-center gap-2">
