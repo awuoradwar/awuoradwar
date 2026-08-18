@@ -7,6 +7,8 @@ import PageHeader from "@/components/PageHeader";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
 import EditNameForm from "@/components/EditNameForm";
 import EditStoreForm from "@/components/EditStoreForm";
+import EditEmailForm from "@/components/EditEmailForm";
+import ChangePasswordForm from "@/components/ChangePasswordForm";
 
 export default async function SettingsPage() {
   const user = await getCurrentUser();
@@ -24,7 +26,11 @@ export default async function SettingsPage() {
         <p className="text-sm font-semibold">{user.name}</p>
         <p className="text-xs text-muted">{user.email}</p>
         <p className="text-xs text-muted">{POSITION_LABEL[user.position][user.language]}</p>
-        <EditNameForm name={user.name} lang={user.language} />
+        <div className="flex flex-col gap-3">
+          <EditNameForm name={user.name} lang={user.language} />
+          <EditEmailForm email={user.email} lang={user.language} />
+          <ChangePasswordForm lang={user.language} />
+        </div>
       </section>
 
       <section className="mb-4 flex items-center justify-between card p-4">
