@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Language } from "@/lib/types";
 import { MealReplacementRow as MealReplacementRowData } from "@/lib/services/guestRecoveryService";
+import { formatStoreDateTime } from "@/lib/storeTime";
 
 const CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   FOOD_QUALITY: { en: "Food Quality", es: "Calidad de Alimentos" },
@@ -10,8 +11,8 @@ const CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   OTHER: { en: "Other", es: "Otro" },
 };
 
-export default function MealReplacementRow({ item, lang }: { item: MealReplacementRowData; lang: Language }) {
-  const timeLabel = new Date(item.created_at).toLocaleString(lang === "es" ? "es-MX" : "en-US", {
+export default function MealReplacementRow({ item, lang, storeId }: { item: MealReplacementRowData; lang: Language; storeId: string }) {
+  const timeLabel = formatStoreDateTime(storeId, item.created_at, lang === "es" ? "es-MX" : "en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",

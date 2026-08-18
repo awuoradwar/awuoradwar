@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getWeekSummary, getWeekDetail, WeekItemRow } from "@/lib/services/weekSummaryService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import PageHeader from "@/components/PageHeader";
-import { storeToday } from "@/lib/storeTime";
+import { storeToday, formatStoreDateTime } from "@/lib/storeTime";
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00Z");
@@ -39,8 +39,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
 
   const fmtDate = (d: string) =>
     new Date(d + "T00:00:00Z").toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "numeric" });
-  const fmtWhen = (d: string) =>
-    d ? new Date(d).toLocaleDateString(es ? "es-MX" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : "—";
+  const fmtWhen = (d: string) => (d ? formatStoreDateTime(user.storeId, d, es ? "es-MX" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : "—");
 
   const tiles: Array<{ label: string; value: number; tone: "ok" | "warning"; items: WeekItemRow[]; href?: (id: string) => string }> = [
     { label: es ? "Tareas completadas" : "Tasks completed", value: summary.tasksCompleted, tone: "ok", items: detail.tasksCompleted, href: (id) => `/task/${id}` },

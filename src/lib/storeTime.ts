@@ -70,6 +70,21 @@ export function storeLocalIso(storeId: string, dateStr: string, timeStr: string)
   return zonedWallTimeToUtc(getStoreTimezone(storeId), y, mo, d, h, mi).toISOString();
 }
 
+/**
+ * Format a UTC instant for display in the store's own timezone -- NOT the
+ * server's. Server Components run Node's process clock (UTC on Railway),
+ * so a bare `new Date(x).toLocaleString()` with no timeZone renders in
+ * UTC regardless of what timezone the store or the person reading the
+ * page is actually in -- a task due "10:00 AM" store-local silently shows
+ * as "3:00 PM" to the manager looking at it. Client Components don't need
+ * this (the browser's own local timezone is already correct there, since
+ * whoever's holding the phone is standing in the store); this is only for
+ * timestamps formatted server-side.
+ */
+export function formatStoreDateTime(storeId: string, isoUtc: string, locale: string, options: Intl.DateTimeFormatOptions = {}): string {
+  return new Date(isoUtc).toLocaleString(locale, { ...options, timeZone: getStoreTimezone(storeId) });
+}
+
 /** Inverse of storeLocalIso -- a stored UTC instant back into the
  * "YYYY-MM-DDTHH:MM" shape an <input type="datetime-local"> expects,
  * showing the store's own wall-clock time rather than the server's UTC. */

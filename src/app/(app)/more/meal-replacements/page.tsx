@@ -12,12 +12,14 @@ function Section({
   sub,
   rows,
   lang,
+  storeId,
   collapsible,
 }: {
   title: string;
   sub?: string;
   rows: MealReplacementRowData[];
   lang: Language;
+  storeId: string;
   collapsible?: boolean;
 }) {
   const body =
@@ -34,7 +36,7 @@ function Section({
     ) : (
       <div className={collapsible ? "divide-y divide-border border-t border-border" : "card divide-y divide-border"}>
         {rows.map((r) => (
-          <MealReplacementRow key={r.id} item={r} lang={lang} />
+          <MealReplacementRow key={r.id} item={r} lang={lang} storeId={storeId} />
         ))}
       </div>
     );
@@ -93,8 +95,9 @@ export default async function MealReplacementsPage() {
         }
         rows={open}
         lang={lang}
+        storeId={user.storeId}
       />
-      <Section title={lang === "es" ? "Cumplidos Hoy" : "Fulfilled Today"} rows={completedToday} lang={lang} collapsible />
+      <Section title={lang === "es" ? "Cumplidos Hoy" : "Fulfilled Today"} rows={completedToday} lang={lang} storeId={user.storeId} collapsible />
     </div>
   );
 }

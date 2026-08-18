@@ -1,4 +1,5 @@
 import { Language } from "@/lib/types";
+import { formatStoreDateTime } from "@/lib/storeTime";
 
 export interface CompletedTaskData {
   id: string;
@@ -12,10 +13,10 @@ export interface CompletedTaskData {
 /** Read-only row for the completed-work record -- no action button, just
  * what got done, by whom, and when, so finishing something has a visible
  * payoff instead of vanishing off the dashboard. */
-export default function CompletedTaskRow({ task, lang }: { task: CompletedTaskData; lang: Language }) {
+export default function CompletedTaskRow({ task, lang, storeId }: { task: CompletedTaskData; lang: Language; storeId: string }) {
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
   const timeLabel = task.completed_at
-    ? new Date(task.completed_at).toLocaleTimeString(lang === "es" ? "es-MX" : "en-US", { hour: "numeric", minute: "2-digit" })
+    ? formatStoreDateTime(storeId, task.completed_at, lang === "es" ? "es-MX" : "en-US", { hour: "numeric", minute: "2-digit" })
     : null;
 
   return (

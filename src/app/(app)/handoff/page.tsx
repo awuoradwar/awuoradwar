@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getLatestHandoff, getLastAcknowledgedAt } from "@/lib/services/handoffService";
 import { getRecentActivity } from "@/lib/services/activityService";
 import { t } from "@/lib/i18n";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import HandoffActions from "@/components/HandoffActions";
 import ActivityFeed from "@/components/ActivityFeed";
 
@@ -35,7 +36,7 @@ export default async function HandoffPage() {
             ? "En vivo -- lo que el equipo ha hecho, sin generar ni confirmar nada."
             : "Live -- what the team has actually done, no generating or acknowledging needed."}
         </p>
-        <ActivityFeed items={activity} lang={user.language} />
+        <ActivityFeed items={activity} lang={user.language} storeId={user.storeId} />
       </section>
 
       <HandoffActions lang={user.language} handoff={handoff ? { id: handoff.id, status: handoff.status, outgoing_note: handoff.outgoing_note } : null} />
@@ -46,7 +47,13 @@ export default async function HandoffPage() {
           <SummarySection titleKey="handoff_completed_work" lang={user.language} items={summary.completedHighValue.map((c: { title: string; completed_by_name: string | null }) => `${c.title}${c.completed_by_name ? " · " + c.completed_by_name : ""}`)} />
           <SummarySection titleKey="handoff_unresolved" lang={user.language} items={summary.unresolved.map((u: { title: string }) => u.title)} />
           <SummarySection titleKey="handoff_open_items" lang={user.language} items={summary.openItems.map((o: { title: string }) => o.title)} />
-          <SummarySection titleKey="handoff_upcoming" lang={user.language} items={summary.upcoming.map((u: { title: string; due_at: string | null }) => `${u.title}${u.due_at ? " — " + new Date(u.due_at).toLocaleString() : ""}`)} />
+          <SummarySection
+            titleKey="handoff_upcoming"
+            lang={user.language}
+            items={summary.upcoming.map(
+              (u: { title: string; due_at: string | null }) => `${u.title}${u.due_at ? " — " + formatStoreDateTime(user.storeId, u.due_at, user.language === "es" ? "es-MX" : "en-US") : ""}`
+            )}
+          />
         </>
       )}
     </div>

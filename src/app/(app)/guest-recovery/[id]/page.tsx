@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import { t } from "@/lib/i18n";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import GuestRecoveryDetailActions from "@/components/GuestRecoveryDetailActions";
 import PageHeader from "@/components/PageHeader";
@@ -47,6 +48,8 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
     created_at: string;
   }>;
   const last = lastUpdatedBy("guest_recovery", id) as { actor_name: string | null; created_at: string } | undefined;
+  const locale = user.language === "es" ? "es-MX" : "en-US";
+  const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -57,7 +60,7 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
       />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={gr.replacement_status} lang={user.language} />
-        <span className="text-xs text-muted">{new Date(gr.created_at).toLocaleString()}</span>
+        <span className="text-xs text-muted">{fmt(gr.created_at)}</span>
       </div>
       {gr.description && <p className="mt-3 text-sm text-muted">{gr.description}</p>}
 
@@ -100,7 +103,7 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
           <>
             <dt className="text-muted">{t(user.language, "field_last_updated_by")}</dt>
             <dd>
-              {last.actor_name || "system"} · {new Date(last.created_at).toLocaleString()}
+              {last.actor_name || "system"} · {fmt(last.created_at)}
             </dd>
           </>
         )}
@@ -121,7 +124,7 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
               <p className="font-medium">
                 {a.action} · {a.actor_name || "system"}
               </p>
-              <p className="text-muted">{new Date(a.created_at).toLocaleString()}</p>
+              <p className="text-muted">{fmt(a.created_at)}</p>
             </div>
           ))}
         </div>

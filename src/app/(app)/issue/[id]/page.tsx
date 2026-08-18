@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import { t } from "@/lib/i18n";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import IssueDetailActions from "@/components/IssueDetailActions";
 import PageHeader from "@/components/PageHeader";
@@ -55,6 +56,8 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
     created_at: string;
   }>;
   const last = lastUpdatedBy("issue", id) as { actor_name: string | null; created_at: string } | undefined;
+  const locale = user.language === "es" ? "es-MX" : "en-US";
+  const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -62,7 +65,7 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={issue.status} lang={user.language} />
         {issue.severity === "CRITICAL" && <StatusBadge status="CRITICAL" lang={user.language} />}
-        <span className="text-xs text-muted">{new Date(issue.created_at).toLocaleString()}</span>
+        <span className="text-xs text-muted">{fmt(issue.created_at)}</span>
       </div>
       <p className="mt-3 text-sm text-muted">{issue.description}</p>
 
@@ -85,7 +88,7 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
           <>
             <dt className="text-muted">{t(user.language, "field_last_updated_by")}</dt>
             <dd>
-              {last.actor_name || "system"} · {new Date(last.created_at).toLocaleString()}
+              {last.actor_name || "system"} · {fmt(last.created_at)}
             </dd>
           </>
         )}
@@ -105,7 +108,7 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
               <div key={u.id} className="px-3 py-2 text-sm">
                 <p>{u.note}</p>
                 <p className="mt-1 text-xs text-muted">
-                  {u.actor_name || "system"} · {new Date(u.created_at).toLocaleString()}
+                  {u.actor_name || "system"} · {fmt(u.created_at)}
                 </p>
               </div>
             ))}
@@ -124,7 +127,7 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
               <p className="font-medium">
                 {a.action} · {a.actor_name || "system"}
               </p>
-              <p className="text-muted">{new Date(a.created_at).toLocaleString()}</p>
+              <p className="text-muted">{fmt(a.created_at)}</p>
             </div>
           ))}
         </div>

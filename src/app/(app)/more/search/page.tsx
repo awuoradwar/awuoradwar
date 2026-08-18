@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { searchAll } from "@/lib/services/searchService";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
 import FilterForm from "@/components/FilterForm";
@@ -108,7 +109,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/more/sear
                 <p className="truncate font-medium">
                   {KIND_ICON[r.kind] || "•"} {r.title}
                 </p>
-                <p className="text-xs text-muted">{new Date(r.date).toLocaleDateString()}</p>
+                <p className="text-xs text-muted">{formatStoreDateTime(user.storeId, r.date, "en-US", { dateStyle: "short" })}</p>
               </div>
               <StatusBadge status={r.status} lang={user.language} />
             </div>

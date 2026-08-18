@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import { canDo } from "@/lib/permissions";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
 import TaskEditForm from "@/components/TaskEditForm";
@@ -40,13 +41,15 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
     created_at: string;
   }>;
   const last = lastUpdatedBy("task", id) as { actor_name: string | null; created_at: string } | undefined;
+  const locale = user.language === "es" ? "es-MX" : "en-US";
+  const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/my-shift" lang={user.language} title={title} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={task.status} lang={user.language} />
-        {task.due_at && <span className="text-xs text-muted">⏰ {new Date(task.due_at).toLocaleString()}</span>}
+        {task.due_at && <span className="text-xs text-muted">⏰ {fmt(task.due_at)}</span>}
       </div>
       {task.description && <p className="mt-3 text-sm text-muted">{task.description}</p>}
       <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
@@ -60,7 +63,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
           <>
             <dt className="text-muted">{user.language === "es" ? "Última actualización" : "Last updated by"}</dt>
             <dd>
-              {last.actor_name || "system"} · {new Date(last.created_at).toLocaleString()}
+              {last.actor_name || "system"} · {fmt(last.created_at)}
             </dd>
           </>
         )}
@@ -100,7 +103,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
               <p className="font-medium">
                 {a.action} · {a.actor_name || "system"}
               </p>
-              <p className="text-muted">{new Date(a.created_at).toLocaleString()}</p>
+              <p className="text-muted">{fmt(a.created_at)}</p>
             </div>
           ))}
         </div>

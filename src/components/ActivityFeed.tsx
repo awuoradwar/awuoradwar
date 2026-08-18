@@ -1,6 +1,7 @@
 import { Language } from "@/lib/types";
 import { ActivityItem } from "@/lib/services/activityService";
 import { t } from "@/lib/i18n";
+import { formatStoreDateTime } from "@/lib/storeTime";
 
 const ENTITY_ICON: Record<string, string> = {
   task: "✅",
@@ -25,7 +26,7 @@ const ACTION_LABEL: Record<string, Record<Language, string>> = {
   SETTLED: { en: "settled", es: "saldó" },
 };
 
-export default function ActivityFeed({ items, lang }: { items: ActivityItem[]; lang: Language }) {
+export default function ActivityFeed({ items, lang, storeId }: { items: ActivityItem[]; lang: Language; storeId: string }) {
   if (items.length === 0) {
     return <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">{t(lang, "all_clear")}</p>;
   }
@@ -41,7 +42,7 @@ export default function ActivityFeed({ items, lang }: { items: ActivityItem[]; l
               <span className="text-muted">{ACTION_LABEL[item.action]?.[lang] || item.action.toLowerCase()}</span> {item.title}
             </p>
             <p className="text-xs text-muted">
-              {new Date(item.created_at).toLocaleString(lang === "es" ? "es-MX" : "en-US", {
+              {formatStoreDateTime(storeId, item.created_at, lang === "es" ? "es-MX" : "en-US", {
                 weekday: "short",
                 hour: "numeric",
                 minute: "2-digit",
