@@ -6,6 +6,7 @@ import UserAdminForm from "@/components/UserAdminForm";
 import DeactivateUserButton from "@/components/DeactivateUserButton";
 import EditUserForm from "@/components/EditUserForm";
 import ResetTestDataForm from "@/components/ResetTestDataForm";
+import ClearStarterChecklistForm from "@/components/ClearStarterChecklistForm";
 import PageHeader from "@/components/PageHeader";
 import { Position } from "@/lib/types";
 
@@ -74,8 +75,9 @@ export default async function AdminPage() {
         </div>
       </section>
 
-      <section className="mt-6">
+      <section className="mt-6 flex flex-col gap-3">
         <ResetTestDataForm lang={user.language} />
+        <ClearStarterChecklistForm lang={user.language} />
       </section>
     </div>
   );

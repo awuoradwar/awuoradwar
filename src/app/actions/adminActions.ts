@@ -113,11 +113,46 @@ export async function resetTestDataAction(formData: FormData): Promise<{ error?:
       )`
     ).run();
     db.prepare(
-      `UPDATE cleaning_tasks SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL, photo_url = NULL
+      `UPDATE cleaning_tasks SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
+         photo_before_url = NULL, photo_after_url = NULL
        WHERE area_id IN (SELECT id FROM cleaning_areas WHERE store_id = ?)`
     ).run(storeId);
   });
   reset();
+
+  revalidatePath("/", "layout");
+  return {};
+}
+
+/** Removes the seeded starter checklist content itself -- recurring task
+ * templates, cleaning areas/checklist items, and meetings (GEM call, area
+ * weekly) -- for a store that wants to build its own checklist from scratch
+ * instead of the demo content pack's. Keeps logins, store profile, and the
+ * inventory/maintenance/training catalogs untouched. Deletes dependent
+ * instance data first so foreign keys never block the templates/areas from
+ * going too. */
+export async function clearStarterChecklistAction(formData: FormData): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store.configure")) throw new Error("FORBIDDEN");
+  const confirm = String(formData.get("confirm") || "");
+  if (confirm !== "REMOVE") return { error: "Type REMOVE (all caps) to confirm." };
+
+  const db = getDb();
+  const storeId = user.storeId;
+  const clear = db.transaction(() => {
+    db.prepare(`DELETE FROM task_events WHERE task_id IN (SELECT id FROM tasks WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM tasks WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM task_templates WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM cleaning_tasks WHERE area_id IN (SELECT id FROM cleaning_areas WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM cleaning_areas WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM meeting_actions WHERE meeting_id IN (SELECT id FROM meetings WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM meeting_week_state WHERE meeting_id IN (SELECT id FROM meetings WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM meetings WHERE store_id = ?`).run(storeId);
+    db.prepare(
+      `DELETE FROM audit_events WHERE entity_type IN ('task', 'task_template', 'cleaning_task')`
+    ).run();
+  });
+  clear();
 
   revalidatePath("/", "layout");
   return {};
