@@ -46,6 +46,16 @@ export async function deactivateUserAction(userId: string) {
   revalidatePath("/more/admin");
 }
 
+export async function reactivateUserAction(userId: string) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "users.manage")) throw new Error("FORBIDDEN");
+  const db = getDb();
+  db.prepare(`UPDATE users SET active = 1 WHERE id = ?`).run(userId);
+  db.prepare(`UPDATE store_memberships SET active = 1 WHERE user_id = ?`).run(userId);
+  writeAudit({ entityType: "user", entityId: userId, actor: user, action: "EDITED", newValue: { active: true } });
+  revalidatePath("/more/admin");
+}
+
 export async function updateUserAction(userId: string, formData: FormData): Promise<{ error?: string }> {
   const user = await requireCurrentUser();
   if (!canDo(user, "users.manage")) throw new Error("FORBIDDEN");

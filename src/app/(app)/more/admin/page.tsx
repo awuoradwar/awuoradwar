@@ -67,7 +67,7 @@ export default async function AdminPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <EditUserForm id={u.id} name={u.name} email={u.email} position={u.position} lang={user.language} />
-                  {u.active ? <DeactivateUserButton id={u.id} lang={user.language} /> : <span className="text-xs text-muted">Inactive</span>}
+                  <DeactivateUserButton id={u.id} active={!!u.active} lang={user.language} />
                 </div>
               </div>
             </div>
