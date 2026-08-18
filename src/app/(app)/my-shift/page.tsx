@@ -6,10 +6,12 @@ import { getTodayShift } from "@/lib/services/shiftService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
+import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
 import { storeToday } from "@/lib/storeTime";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
+import CleaningTaskRow from "@/components/CleaningTaskRow";
 import { t } from "@/lib/i18n";
 
 const OPEN_ITEM_HREF: Record<string, string> = {
@@ -34,12 +36,14 @@ export default async function MyShiftPage() {
   }
 
   const summary = buildLiveSummary(user.storeId, user.language);
-  // Routine cleaning shows fully on its own page (Daily/Weekly, grouped by
-  // area) -- repeating "not yet done today" here just duplicates it with no
-  // way to act on it. Tasks are excluded too since MY SHIFT/TODAY above
-  // already cover every open task. What's left (acknowledgements) is
-  // genuinely handoff-relevant: something outstanding from a prior shift.
+  // Tasks are excluded from "from last shift" since MY SHIFT/TODAY above
+  // already cover every open task, and cleaning gets its own actionable
+  // section below instead of the flat unresolved list. What's left
+  // (acknowledgements) is genuinely handoff-relevant: something outstanding
+  // from a prior shift.
   const unresolvedForDisplay = summary.unresolved.filter((u) => u.kind !== "task" && u.kind !== "cleaning");
+  const todayWeekday = new Date(today + "T00:00:00Z").getDay();
+  const cleaningToday = getCleaningTasksDueToday(user.storeId, todayWeekday);
   const fromLastShiftCount = summary.staffing.length + summary.openItems.length + unresolvedForDisplay.length;
 
   const dateLabel = now.toLocaleDateString(user.language === "es" ? "es-MX" : "en-US", {
@@ -81,6 +85,33 @@ export default async function MyShiftPage() {
           )}
         </section>
       ))}
+
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-accent">
+            🧹 {user.language === "es" ? "Limpieza de Hoy" : "Cleaning Today"}
+          </h2>
+          {cleaningToday.length > 0 && <span className="text-xs font-semibold text-muted">{cleaningToday.length}</span>}
+        </div>
+        <p className="mb-2 text-[11px] text-muted">
+          {user.language === "es" ? "Tareas de limpieza pendientes de hoy" : "Today's outstanding cleaning tasks"}
+        </p>
+        {cleaningToday.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {cleaningToday.map((ct) => (
+              <div key={ct.id}>
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                  {user.language === "es" && ct.area_name_es ? ct.area_name_es : ct.area_name}
+                  {ct.owner_name ? ` · ${ct.owner_name}` : ""}
+                </p>
+                <CleaningTaskRow task={ct} lang={user.language} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {(["THIS_WEEK"] as const).map((bucket) => (
         <details key={bucket} className="card overflow-hidden" open={false}>

@@ -2,7 +2,13 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { completeCleaningAction, uploadCleaningPhotoAction, verifyCleaningAction, reopenCleaningAction } from "@/app/actions/cleaningActions";
+import {
+  completeCleaningAction,
+  uploadCleaningPhotoAction,
+  verifyCleaningAction,
+  reopenCleaningAction,
+  setCleaningTaskAssociateAction,
+} from "@/app/actions/cleaningActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
@@ -85,6 +91,54 @@ function PhotoSlot({ taskId, kind, url, lang }: { taskId: string; kind: "before"
   );
 }
 
+/** Tap the associate name (or "Assign associate") to set who's actually
+ * doing this task -- the manager on duty's main job here, separate from
+ * which manager owns the area overall. */
+function AssociateEditor({ taskId, associateName, lang }: { taskId: string; associateName: string | null; lang: Language }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(associateName || "");
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  if (editing) {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          startTransition(async () => {
+            await setCleaningTaskAssociateAction(taskId, value);
+            setEditing(false);
+            router.refresh();
+          });
+        }}
+        className="inline-flex items-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={lang === "es" ? "Nombre" : "Name"}
+          autoFocus
+          className="h-6 w-24 rounded-md border border-accent bg-card px-1.5 text-xs outline-none"
+        />
+        <button type="submit" disabled={pending} className="text-xs font-semibold text-accent">
+          ✓
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="text-xs font-medium text-accent underline decoration-dotted"
+    >
+      {associateName || (lang === "es" ? "Asignar asociado" : "Assign associate")}
+    </button>
+  );
+}
+
 export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData; lang: Language }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -112,11 +166,11 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{title}</p>
-          <p className="text-xs text-muted">
-            {dueDay && <span>{lang === "es" ? "Vence" : "Due"}: {dueDay}{task.associate_name ? " · " : ""}</span>}
-            {task.associate_name || (dueDay ? "" : "—")}
-            {task.photo_required ? ` · 📷 ${t(lang, "cleaning_photo_required")}` : ""}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-1 text-xs text-muted">
+            {dueDay && <span>{lang === "es" ? "Vence" : "Due"}: {dueDay} ·</span>}
+            <AssociateEditor taskId={task.id} associateName={task.associate_name} lang={lang} />
+            {task.photo_required ? <span>· 📷 {t(lang, "cleaning_photo_required")}</span> : null}
+          </div>
           {description && (
             <details className="mt-1">
               <summary className="cursor-pointer text-xs text-accent">{lang === "es" ? "Ver detalle" : "View checklist"}</summary>

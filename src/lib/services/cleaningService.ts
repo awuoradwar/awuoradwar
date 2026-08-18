@@ -6,6 +6,61 @@ import { storeToday } from "../storeTime";
 import { weekStartOf } from "./recurrenceService";
 import { WEEKLY_CLEANING_ROTATION } from "../weeklyCleaningRotation";
 
+export function setCleaningAreaOwner(areaId: string, ownerId: string | null, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE cleaning_areas SET owner_id = ? WHERE id = ?`).run(ownerId, areaId);
+  writeAudit({ entityType: "cleaning_area", entityId: areaId, actor, action: "ASSIGNED", newValue: { owner_id: ownerId } });
+}
+
+/** The manager on duty assigns the associate actually doing a specific
+ * cleaning task -- separate from (and more granular than) which manager
+ * owns the area overall. */
+export function setCleaningTaskAssociate(taskId: string, associateName: string | null, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE cleaning_tasks SET associate_name = ? WHERE id = ?`).run(associateName, taskId);
+  writeAudit({ entityType: "cleaning_task", entityId: taskId, actor, action: "ASSIGNED", newValue: { associate_name: associateName } });
+}
+
+export interface CleaningTaskDueToday {
+  id: string;
+  title: string;
+  title_es: string | null;
+  description: string | null;
+  description_es: string | null;
+  weekday: number | null;
+  frequency: "DAILY" | "WEEKLY";
+  status: string;
+  associate_name: string | null;
+  photo_required: number;
+  photo_before_url: string | null;
+  photo_after_url: string | null;
+  area_name: string;
+  area_name_es: string | null;
+  owner_id: string | null;
+  owner_name: string | null;
+}
+
+/** Today's open cleaning work for the My Shift dashboard -- every DAILY task
+ * not yet done, plus WEEKLY tasks whose fixed weekday is today (or that have
+ * no fixed day, so they stay live all week), same "today's version of the
+ * schedule shows itself" rule the Cleaning page itself uses. */
+export function getCleaningTasksDueToday(storeId: string, todayWeekday: number): CleaningTaskDueToday[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT ct.id, ct.title, ct.title_es, ct.description, ct.description_es, ct.weekday, ct.frequency, ct.status,
+              ct.associate_name, ct.photo_required, ct.photo_before_url, ct.photo_after_url,
+              a.name as area_name, a.name_es as area_name_es, a.owner_id, u.name as owner_name
+       FROM cleaning_tasks ct
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       LEFT JOIN users u ON u.id = a.owner_id
+       WHERE a.store_id = ? AND ct.status IN ('ASSIGNED', 'REOPENED')
+         AND (ct.frequency = 'DAILY' OR ct.weekday IS NULL OR ct.weekday = ?)
+       ORDER BY a.owner_id IS NULL, a.name`
+    )
+    .all(storeId, todayWeekday) as CleaningTaskDueToday[];
+}
+
 export function getAreasWithProgress(storeId: string) {
   const db = getDb();
   const areas = db

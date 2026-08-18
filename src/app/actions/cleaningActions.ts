@@ -89,6 +89,18 @@ export async function loadWeeklyCleaningRotationAction(): Promise<{ added: numbe
   return { added };
 }
 
+export async function setCleaningAreaOwnerAction(areaId: string, ownerId: string) {
+  const user = await requireCurrentUser();
+  cleaningService.setCleaningAreaOwner(areaId, ownerId || null, user);
+  refresh();
+}
+
+export async function setCleaningTaskAssociateAction(taskId: string, associateName: string) {
+  const user = await requireCurrentUser();
+  cleaningService.setCleaningTaskAssociate(taskId, associateName.trim() || null, user);
+  refresh();
+}
+
 export async function verifyCleaningAction(id: string) {
   const user = await requireCurrentUser();
   cleaningService.verifyCleaningTask(id, user);
