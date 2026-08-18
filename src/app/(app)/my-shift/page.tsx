@@ -6,6 +6,7 @@ import { getTodayShift } from "@/lib/services/shiftService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
+import { storeToday } from "@/lib/storeTime";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
@@ -22,7 +23,7 @@ export default async function MyShiftPage() {
   if (!user) redirect("/login");
 
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = storeToday(user.storeId, now);
   const todayShift = getTodayShift(user.storeId, today);
   const viewerShiftType = getShiftTypeForUserToday(user.storeId, user.id, today);
 

@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser } from "../types";
+import { storeToday } from "../storeTime";
 
 export interface ShiftRow {
   id: string;
@@ -28,7 +29,7 @@ export function getTodayShift(storeId: string, dateStr: string): ShiftRow | unde
 
 export function getOrCreateTodayShift(storeId: string, actor: SessionUser): ShiftRow {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = storeToday(storeId);
   let shift = db
     .prepare(
       `SELECT s.*, u.name as pic_name FROM shifts s LEFT JOIN users u ON u.id = s.pic_user_id

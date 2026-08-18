@@ -58,7 +58,7 @@ export default function TaskDetailActions({
         {openish && (
           <button
             disabled={pending}
-            onClick={() => run(() => carryForwardTaskAction(taskId, new Date(Date.now() + 86400000).toISOString().slice(0, 10)))}
+            onClick={() => run(() => carryForwardTaskAction(taskId))}
             className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
           >
             {t(lang, "action_carry_forward")}

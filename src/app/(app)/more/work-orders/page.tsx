@@ -6,6 +6,7 @@ import WorkOrderRow from "@/components/WorkOrderRow";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
+import { storeToday } from "@/lib/storeTime";
 
 function Section({
   title,
@@ -70,9 +71,8 @@ export default async function WorkOrdersPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  const weekEndStr = new Date(today.getTime() + 6 * 86400000).toISOString().slice(0, 10);
+  const todayStr = storeToday(user.storeId);
+  const weekEndStr = new Date(new Date(todayStr + "T00:00:00Z").getTime() + 6 * 86400000).toISOString().slice(0, 10);
   const groups = getWorkOrdersGrouped(user.storeId, todayStr, weekEndStr);
   const lang = user.language;
 

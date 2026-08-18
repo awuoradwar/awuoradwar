@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser, Language } from "../types";
+import { storeToday } from "../storeTime";
 
 const ISSUE_CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   EQUIPMENT: { en: "Equipment", es: "Equipo" },
@@ -35,7 +36,7 @@ export interface HandoffSummary {
 
 export function buildLiveSummary(storeId: string, lang: Language = "en"): HandoffSummary {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = storeToday(storeId);
 
   const staffing = db
     .prepare(`SELECT employee_name, type, note FROM attendance_events WHERE store_id = ? AND created_at LIKE ? ORDER BY created_at DESC`)

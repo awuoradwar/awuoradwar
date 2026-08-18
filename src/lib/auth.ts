@@ -4,6 +4,7 @@ import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { getDb } from "./db";
 import { SessionUser } from "./types";
+import { storeToday } from "./storeTime";
 
 const COOKIE_NAME = "shiftops_session";
 const SECRET = new TextEncoder().encode(
@@ -72,7 +73,7 @@ export async function requireCurrentUser(): Promise<SessionUser> {
 /** The manager currently PIC for the store "today" (most recent open/active shift). */
 export function getCurrentPicForStore(storeId: string) {
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = storeToday(storeId);
   const shift = db
     .prepare(
       `SELECT s.*, u.name as pic_name FROM shifts s

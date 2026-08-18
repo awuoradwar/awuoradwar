@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
+import { storeToday, storeLocalHour } from "../storeTime";
 
 export type Section = "NOW" | "TODAY" | "THIS_WEEK";
 
@@ -106,14 +107,22 @@ export function suggestOwnerForNewTask(storeId: string): SuggestedOwner | null {
 }
 
 function isDueToday(task: TaskRow, todayStr: string): boolean {
-  if (task.due_at) return task.due_at.slice(0, 10) === todayStr;
+  // scheduled_date is the authoritative calendar day (set explicitly, store-timezone-correct);
+  // due_at is a real UTC instant and its raw date slice can land on the wrong side of
+  // midnight UTC for a late store-local due time, so only fall back to it when there's
+  // no scheduled_date at all.
   if (task.scheduled_date) return task.scheduled_date === todayStr;
+  if (task.due_at) return storeToday(task.store_id, new Date(task.due_at)) === todayStr;
   return task.scheduled_for === "TODAY" || task.scheduled_for === "NEXT_SHIFT";
 }
 
-function isUrgentNow(task: TaskRow, nowDate: Date): boolean {
+/** dueToday gates the overdue path so a still-open instance from an earlier day
+ * this week (recurring tasks materialize for the whole week up front) doesn't
+ * sit in NOW forever just because it's long past due -- only today's own tasks
+ * escalate on lateness. CRITICAL severity always escalates regardless of day. */
+function isUrgentNow(task: TaskRow, nowDate: Date, dueToday: boolean): boolean {
   if (task.severity === "CRITICAL") return true;
-  if (!task.due_at) return false;
+  if (!task.due_at || !dueToday) return false;
   const hoursUntil = (new Date(task.due_at).getTime() - nowDate.getTime()) / 3600000;
   return hoursUntil <= 2; // overdue or imminent
 }
@@ -141,9 +150,9 @@ export function windowForHour(hour: number): ShiftWindow {
 function isDueThisShiftWindow(task: TaskRow, nowDate: Date, viewerShiftType: ViewerShiftType): boolean {
   if (!task.due_at) return false;
   if (viewerShiftType === "DOUBLE") return true;
-  const taskWindow = windowForHour(new Date(task.due_at).getHours());
+  const taskWindow = windowForHour(storeLocalHour(task.store_id, new Date(task.due_at)));
   if (viewerShiftType === "MORNING" || viewerShiftType === "EVENING") return taskWindow === viewerShiftType;
-  return taskWindow === windowForHour(nowDate.getHours());
+  return taskWindow === windowForHour(storeLocalHour(task.store_id, nowDate));
 }
 
 /**
@@ -166,10 +175,10 @@ export function computeSection(
   todayStr: string,
   viewerShiftType: ViewerShiftType = null
 ): Section {
-  if (isUrgentNow(task, nowDate)) return "NOW";
+  const dueToday = isDueToday(task, todayStr);
+  if (isUrgentNow(task, nowDate, dueToday)) return "NOW";
 
   const mine = task.owner_id ? task.owner_id === viewerId : picUserId === viewerId;
-  const dueToday = isDueToday(task, todayStr);
 
   if (mine && dueToday) {
     if (!task.due_at || isDueThisShiftWindow(task, nowDate, viewerShiftType)) return "NOW";
@@ -285,7 +294,7 @@ function insertTask(params: {
     params.supportIds ? JSON.stringify(params.supportIds) : null,
     params.dueAt || null,
     params.scheduledFor || "TODAY",
-    params.scheduledDate || new Date().toISOString().slice(0, 10),
+    params.scheduledDate || storeToday(params.storeId),
     params.effort || "STANDARD",
     params.severity || "NORMAL",
     params.actor.id,

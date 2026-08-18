@@ -39,3 +39,14 @@ export async function setLanguageAction(lang: Language) {
   db.prepare(`UPDATE users SET language = ? WHERE id = ?`).run(lang, user.id);
   revalidatePath("/", "layout");
 }
+
+export async function updateMyNameAction(name: string): Promise<{ error?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not signed in." };
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Name is required." };
+  const db = getDb();
+  db.prepare(`UPDATE users SET name = ? WHERE id = ?`).run(trimmed, user.id);
+  revalidatePath("/", "layout");
+  return {};
+}

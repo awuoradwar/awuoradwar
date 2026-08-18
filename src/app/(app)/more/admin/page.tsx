@@ -4,6 +4,7 @@ import { isGM, POSITION_LABEL } from "@/lib/permissions";
 import { getDb } from "@/lib/db";
 import UserAdminForm from "@/components/UserAdminForm";
 import DeactivateUserButton from "@/components/DeactivateUserButton";
+import EditUserForm from "@/components/EditUserForm";
 import PageHeader from "@/components/PageHeader";
 import { Position } from "@/lib/types";
 
@@ -54,14 +55,19 @@ export default async function AdminPage() {
         </h2>
         <div className="card divide-y divide-border">
           {users.map((u) => (
-            <div key={u.id} className="flex items-center justify-between px-3 py-2 text-sm">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{u.name}</p>
-                <p className="text-xs text-muted">
-                  {u.email} · {POSITION_LABEL[u.position][user.language]}
-                </p>
+            <div key={u.id} className="px-3 py-2 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{u.name}</p>
+                  <p className="text-xs text-muted">
+                    {u.email} · {POSITION_LABEL[u.position][user.language]}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <EditUserForm id={u.id} name={u.name} email={u.email} position={u.position} lang={user.language} />
+                  {u.active ? <DeactivateUserButton id={u.id} lang={user.language} /> : <span className="text-xs text-muted">Inactive</span>}
+                </div>
               </div>
-              {u.active ? <DeactivateUserButton id={u.id} lang={user.language} /> : <span className="text-xs text-muted">Inactive</span>}
             </div>
           ))}
         </div>

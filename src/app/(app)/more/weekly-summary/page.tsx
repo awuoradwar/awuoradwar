@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getWeekSummary, getWeekDetail, WeekItemRow } from "@/lib/services/weekSummaryService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import PageHeader from "@/components/PageHeader";
+import { storeToday } from "@/lib/storeTime";
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00Z");
@@ -26,7 +27,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
   const es = user.language === "es";
   const sp = await searchParams;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = storeToday(user.storeId);
   const currentWeekStart = weekStartOf(today);
   const lastCompletedWeekStart = addDays(currentWeekStart, -7);
   const weekStart = (sp.weekStart as string) || lastCompletedWeekStart;

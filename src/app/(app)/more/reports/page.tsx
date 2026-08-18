@@ -7,6 +7,7 @@ import { getQualityMetrics, getCompletionStats } from "@/lib/services/reportsSer
 import PageHeader from "@/components/PageHeader";
 import FilterForm from "@/components/FilterForm";
 import { t } from "@/lib/i18n";
+import { storeToday } from "@/lib/storeTime";
 
 export default async function ReportsPage({ searchParams }: PageProps<"/more/reports">) {
   const user = await getCurrentUser();
@@ -15,9 +16,10 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
   const db = getDb();
 
   const now = new Date();
-  const defaultStart = new Date(now.getTime() - 6 * 86400000).toISOString().slice(0, 10);
+  const todayForStore = storeToday(user.storeId, now);
+  const defaultStart = new Date(new Date(todayForStore + "T00:00:00Z").getTime() - 6 * 86400000).toISOString().slice(0, 10);
   const start = (sp.start as string) || defaultStart;
-  const end = (sp.end as string) || now.toISOString().slice(0, 10);
+  const end = (sp.end as string) || todayForStore;
 
   const overdueTasks = db
     .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status IN ('OPEN','IN_PROGRESS') AND due_at IS NOT NULL AND due_at < ?`)
@@ -40,8 +42,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
 
   const history = getHistoryForRange(user.storeId, start, end);
   const quality = getQualityMetrics(user.storeId, start, end);
-  const todayStr = now.toISOString().slice(0, 10);
-  const completion = getCompletionStats(user.storeId, user.id, todayStr, start, end);
+  const completion = getCompletionStats(user.storeId, user.id, todayForStore, start, end);
   const es = user.language === "es";
   const fmtMinutes = (m: number | null) => (m == null ? "—" : m < 60 ? `${Math.round(m)}m` : `${(m / 60).toFixed(1)}h`);
   const fmtDays = (d: number | null) => (d == null ? "—" : `${d.toFixed(1)}d`);

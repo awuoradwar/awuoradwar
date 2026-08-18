@@ -11,6 +11,7 @@ import ShiftScheduleGrid from "@/components/ShiftScheduleGrid";
 import { POSITION_LABEL, canDo } from "@/lib/permissions";
 import { Position } from "@/lib/types";
 import { managerColor } from "@/lib/managerColor";
+import { storeToday } from "@/lib/storeTime";
 
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -20,7 +21,7 @@ export default async function WeekPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const start = weekStartOf(new Date().toISOString().slice(0, 10));
+  const start = weekStartOf(storeToday(user.storeId));
   const startDate = new Date(start + "T00:00:00Z");
   const endDate = new Date(startDate.getTime() + 6 * 86400000);
   const end = endDate.toISOString().slice(0, 10);

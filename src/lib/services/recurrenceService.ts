@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { windowForHour } from "./taskService";
 import { resolveShiftOwnerForWindow } from "./scheduleService";
+import { storeLocalIso } from "../storeTime";
 
 export interface RecurrenceConfig {
   weekdays?: number[]; // 0=Sun..6=Sat, used for WEEKLY/WEEKDAYS/CUSTOM
@@ -84,8 +85,11 @@ export function ensureInstancesForDate(storeId: string, dateStr: string) {
       }
     }
 
-    const dueAt = config.dueTime ? `${dateStr}T${config.dueTime}:00` : null;
-    const ownerId = dueAt ? resolveShiftOwnerForWindow(storeId, dateStr, windowForHour(new Date(dueAt).getHours())) : null;
+    const dueAt = config.dueTime ? storeLocalIso(storeId, dateStr, config.dueTime) : null;
+    // windowForHour wants the store-local hour -- config.dueTime is already store-local
+    // wall-clock ("11:00" means 11am at the store), so parse it directly rather than
+    // re-deriving from dueAt (which is now a real UTC instant in the server's own zone).
+    const ownerId = config.dueTime ? resolveShiftOwnerForWindow(storeId, dateStr, windowForHour(Number(config.dueTime.split(":")[0]))) : null;
     const id = newId();
     db.prepare(
       `INSERT INTO tasks (id, store_id, template_id, title, description, area, category, owner_id, support_ids,

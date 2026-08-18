@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { newId, nowIso, writeAudit } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth";
 import { Position } from "@/lib/types";
+import { invalidateStoreTimezone } from "@/lib/storeTime";
 
 export async function createUserAction(formData: FormData) {
   const user = await requireCurrentUser();
@@ -43,4 +44,39 @@ export async function deactivateUserAction(userId: string) {
   db.prepare(`UPDATE users SET active = 0 WHERE id = ?`).run(userId);
   writeAudit({ entityType: "user", entityId: userId, actor: user, action: "EDITED", newValue: { active: false } });
   revalidatePath("/more/admin");
+}
+
+export async function updateUserAction(userId: string, formData: FormData): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "users.manage")) throw new Error("FORBIDDEN");
+  const db = getDb();
+  const name = String(formData.get("name") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const position = String(formData.get("position") || "") as Position;
+  if (!name || !email) return { error: "Name and email are required." };
+
+  const existing = db.prepare(`SELECT id FROM users WHERE lower(email) = ? AND id != ?`).get(email, userId);
+  if (existing) return { error: "A user with that email already exists." };
+
+  db.prepare(`UPDATE users SET name = ?, email = ?, position = ? WHERE id = ?`).run(name, email, position, userId);
+  db.prepare(`UPDATE store_memberships SET role = ? WHERE user_id = ?`).run(position, userId);
+  writeAudit({ entityType: "user", entityId: userId, actor: user, action: "EDITED", newValue: { name, email, position } });
+  revalidatePath("/more/admin");
+  revalidatePath("/", "layout");
+  return {};
+}
+
+export async function updateStoreProfileAction(formData: FormData): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store.configure")) throw new Error("FORBIDDEN");
+  const name = String(formData.get("name") || "").trim();
+  const timezone = String(formData.get("timezone") || "").trim();
+  if (!name || !timezone) return { error: "Store name and timezone are required." };
+  const db = getDb();
+  db.prepare(`UPDATE stores SET name = ?, timezone = ? WHERE id = ?`).run(name, timezone, user.storeId);
+  invalidateStoreTimezone(user.storeId);
+  writeAudit({ entityType: "store", entityId: user.storeId, actor: user, action: "EDITED", newValue: { name, timezone } });
+  revalidatePath("/more/settings");
+  revalidatePath("/", "layout");
+  return {};
 }

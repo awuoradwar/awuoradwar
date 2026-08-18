@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentUser, getCurrentPicForStore } from "@/lib/auth";
 import * as taskService from "@/lib/services/taskService";
 import * as pushService from "@/lib/services/pushService";
+import { storeToday } from "@/lib/storeTime";
 
 function refresh() {
   revalidatePath("/my-shift");
@@ -31,9 +32,10 @@ export async function reassignTaskAction(taskId: string, newOwnerId: string) {
   refresh();
 }
 
-export async function carryForwardTaskAction(taskId: string, newDate: string) {
+export async function carryForwardTaskAction(taskId: string) {
   const user = await requireCurrentUser();
-  taskService.carryForwardTask(taskId, newDate, user);
+  const tomorrow = new Date(new Date(storeToday(user.storeId) + "T00:00:00Z").getTime() + 86400000).toISOString().slice(0, 10);
+  taskService.carryForwardTask(taskId, tomorrow, user);
   refresh();
 }
 
@@ -79,7 +81,7 @@ export async function createTaskAction(formData: FormData) {
     ownerId,
     dueAt: String(formData.get("dueAt") || "") || null,
     scheduledFor: String(formData.get("scheduledFor") || "TODAY"),
-    scheduledDate: String(formData.get("scheduledDate") || new Date().toISOString().slice(0, 10)),
+    scheduledDate: String(formData.get("scheduledDate") || storeToday(user.storeId)),
     effort: String(formData.get("effort") || "STANDARD"),
     severity,
     actor: user,

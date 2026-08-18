@@ -5,6 +5,7 @@ import { getMealReplacementsGrouped, MealReplacementRow as MealReplacementRowDat
 import MealReplacementRow from "@/components/MealReplacementRow";
 import PageHeader from "@/components/PageHeader";
 import { Language } from "@/lib/types";
+import { storeToday } from "@/lib/storeTime";
 
 function Section({
   title,
@@ -69,7 +70,7 @@ export default async function MealReplacementsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const lang = user.language;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = storeToday(user.storeId);
   const { open, completedToday } = getMealReplacementsGrouped(user.storeId, today);
 
   return (

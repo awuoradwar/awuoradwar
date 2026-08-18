@@ -13,6 +13,7 @@ import * as taskService from "@/lib/services/taskService";
 import * as pushService from "@/lib/services/pushService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { canDo } from "@/lib/permissions";
+import { storeToday, storeLocalIso } from "@/lib/storeTime";
 
 function refresh() {
   revalidatePath("/my-shift");
@@ -32,10 +33,9 @@ function fd(formData: FormData, key: string): string {
 /** Maps the quick-add "When" bucket to an actual scheduled_date -- without
  * this, every task landed on today's date regardless of what was picked,
  * so a task marked "Tomorrow" would wrongly show up under today on Week. */
-function scheduledDateForWhen(when: string): string {
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-  if (when === "TOMORROW") return new Date(today.getTime() + 86400000).toISOString().slice(0, 10);
+function scheduledDateForWhen(when: string, storeId: string): string {
+  const todayStr = storeToday(storeId);
+  if (when === "TOMORROW") return new Date(new Date(todayStr + "T00:00:00Z").getTime() + 86400000).toISOString().slice(0, 10);
   if (when === "LATER_THIS_WEEK") {
     const weekStart = weekStartOf(todayStr);
     return new Date(new Date(weekStart + "T00:00:00Z").getTime() + 6 * 86400000).toISOString().slice(0, 10);
@@ -68,13 +68,13 @@ export async function quickAddTaskAction(formData: FormData) {
   }
 
   const scheduledFor = fd(formData, "scheduledFor") || "TODAY";
-  const scheduledDate = scheduledDateForWhen(scheduledFor);
+  const scheduledDate = scheduledDateForWhen(scheduledFor, user.storeId);
   taskService.createTask({
     storeId: user.storeId,
     title,
     scheduledFor,
     scheduledDate,
-    dueAt: dueTime ? `${scheduledDate}T${dueTime}:00` : null,
+    dueAt: dueTime ? storeLocalIso(user.storeId, scheduledDate, dueTime) : null,
     effort: fd(formData, "effort") || "QUICK",
     ownerId: user.id,
     actor: user,
@@ -206,12 +206,11 @@ export async function quickAddBorrowedItemAction(formData: FormData) {
   return { ok: true };
 }
 
-function dueDateForWhen(when: string): string | null {
-  const now = new Date();
-  if (when === "TODAY") return now.toISOString().slice(0, 10);
+function dueDateForWhen(when: string, storeId: string): string | null {
+  const todayStr = storeToday(storeId);
+  if (when === "TODAY") return todayStr;
   if (when === "THIS_WEEK") {
-    const end = new Date(now.getTime() + 6 * 86400000);
-    return end.toISOString().slice(0, 10);
+    return new Date(new Date(todayStr + "T00:00:00Z").getTime() + 6 * 86400000).toISOString().slice(0, 10);
   }
   return null;
 }
@@ -226,7 +225,7 @@ export async function quickAddIssueAction(formData: FormData) {
     category: fd(formData, "category") || "EQUIPMENT",
     description,
     severity,
-    dueDate: dueDateForWhen(fd(formData, "when")),
+    dueDate: dueDateForWhen(fd(formData, "when"), user.storeId),
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });
