@@ -408,3 +408,38 @@ export function cancelTask(taskId: string, reason: string, actor: SessionUser) {
   ).run(reason, actor.id, ts, taskId);
   writeAudit({ entityType: "task", entityId: taskId, actor, action: "CANCELLED", newValue: { reason } });
 }
+
+/** Cancel a whole recurring series, not just today's instance: turns the
+ * template off (so ensureInstancesForDate stops generating new ones) and
+ * cancels every not-yet-resolved instance it already generated, past or
+ * future. Distinct from cancelTask, which only ever touches the one row
+ * the manager is looking at. */
+export function cancelTaskSeries(templateId: string, reason: string, actor: SessionUser) {
+  const db = getDb();
+  const ts = nowIso();
+  db.prepare(`UPDATE task_templates SET active = 0 WHERE id = ?`).run(templateId);
+  const openInstances = db
+    .prepare(`SELECT id FROM tasks WHERE template_id = ? AND status NOT IN ('COMPLETE', 'CANCELLED')`)
+    .all(templateId) as Array<{ id: string }>;
+  for (const instance of openInstances) {
+    db.prepare(
+      `UPDATE tasks SET status = 'CANCELLED', cancel_reason = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`
+    ).run(reason, actor.id, ts, instance.id);
+    writeAudit({ entityType: "task", entityId: instance.id, actor, action: "CANCELLED", newValue: { reason, series: true } });
+  }
+  writeAudit({ entityType: "task_template", entityId: templateId, actor, action: "EDITED", newValue: { active: false, reason } });
+}
+
+/** Whether an active recurring template already exists with this title at
+ * this store -- catches the accidental double-add (same task typed twice,
+ * or added both from Quick Log and the Templates page) that otherwise shows
+ * up as the same task appearing twice, every day, forever. Case-insensitive
+ * since "Complete WorkJam Tasks" and "complete workjam tasks" are the same
+ * mistake to a manager typing fast. */
+export function activeTemplateTitleExists(storeId: string, title: string): boolean {
+  const db = getDb();
+  const row = db
+    .prepare(`SELECT id FROM task_templates WHERE store_id = ? AND active = 1 AND lower(title) = lower(?)`)
+    .get(storeId, title.trim());
+  return !!row;
+}

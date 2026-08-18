@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTemplateAction } from "@/app/actions/templateActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
@@ -19,16 +19,23 @@ const WEEKDAYS = [
 
 export default function TemplateForm({ lang }: { lang: Language }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        const fd = new FormData(e.currentTarget);
+        const form = e.currentTarget;
+        const fd = new FormData(form);
         startTransition(async () => {
-          await createTemplateAction(fd);
-          (e.target as HTMLFormElement).reset();
+          const result = await createTemplateAction(fd);
+          if (result && "error" in result && result.error) {
+            setError(result.error);
+            return;
+          }
+          setError(null);
+          form.reset();
           router.refresh();
         });
       }}
@@ -64,6 +71,7 @@ export default function TemplateForm({ lang }: { lang: Language }) {
           <option value="MAJOR">{t(lang, "effort_major")}</option>
         </select>
       </Field>
+      {error && <p className="text-sm text-critical">{error}</p>}
       <button type="submit" disabled={pending} className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60">
         {pending ? "…" : lang === "es" ? "Crear plantilla" : "Create template"}
       </button>

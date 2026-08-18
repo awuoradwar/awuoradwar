@@ -54,6 +54,9 @@ export async function quickAddTaskAction(formData: FormData) {
     if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
     const weekdaysRaw = formData.getAll("weekdays").map(String);
     if (weekdaysRaw.length === 0) return { error: "Pick at least one day for a recurring task." };
+    if (taskService.activeTemplateTitleExists(user.storeId, title)) {
+      return { error: `A recurring task named "${title}" already exists. Edit it from More > Templates instead of adding a duplicate.` };
+    }
     const db = getDb();
     const id = newId();
     const config = { weekdays: weekdaysRaw.map(Number), dueTime: dueTime || undefined };

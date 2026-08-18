@@ -5,6 +5,7 @@ import { requireCurrentUser } from "@/lib/auth";
 import { canDo } from "@/lib/permissions";
 import { getDb } from "@/lib/db";
 import { newId, nowIso, writeAudit } from "@/lib/audit";
+import { activeTemplateTitleExists } from "@/lib/services/taskService";
 
 export async function createTemplateAction(formData: FormData) {
   const user = await requireCurrentUser();
@@ -12,6 +13,9 @@ export async function createTemplateAction(formData: FormData) {
   const db = getDb();
   const title = String(formData.get("title") || "").trim();
   if (!title) return { error: "Title is required." };
+  if (activeTemplateTitleExists(user.storeId, title)) {
+    return { error: `A recurring task named "${title}" already exists. Edit that one instead of adding a duplicate.` };
+  }
   const recurrenceType = String(formData.get("recurrenceType") || "WEEKLY");
   const weekdaysRaw = formData.getAll("weekdays").map(String);
   const dueTime = String(formData.get("dueTime") || "") || undefined;
