@@ -253,7 +253,9 @@ create table cleaning_tasks (
   manager_owner_id uuid references users(id),
   status text not null default 'ASSIGNED' check (status in ('ASSIGNED','COMPLETED','VERIFIED','REOPENED')),
   photo_required boolean not null default false,
-  photo_url text,
+  photo_url text, -- deprecated, superseded by photo_before_url/photo_after_url
+  photo_before_url text,
+  photo_after_url text,
   completed_by uuid references users(id),
   completed_at timestamptz,
   verified_by uuid references users(id),

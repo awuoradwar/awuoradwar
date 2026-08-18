@@ -3,7 +3,7 @@ import type { DictKeys } from "./en";
 const es: Record<DictKeys, string> = {
   nav_my_shift: "Mi Turno",
   nav_week: "Semana",
-  nav_add: "Agregar",
+  nav_add: "Registro Rápido",
   nav_handoff: "Entrega",
   nav_more: "Más",
 
@@ -67,6 +67,8 @@ const es: Record<DictKeys, string> = {
   action_reopen: "Reabrir",
   action_add_update: "Agregar Actualización",
 
+  quick_log_group_staffing: "Personal",
+  quick_log_group_shift: "Registro de Turno",
   add_task: "Tarea",
   add_call_in: "Aviso de Ausencia",
   add_late: "Tardanza",
@@ -208,6 +210,11 @@ const es: Record<DictKeys, string> = {
   cleaning_add_photo: "Agregar Foto",
   cleaning_view_photo: "Ver Foto",
   cleaning_photo_missing_error: "Esta tarea de limpieza requiere una foto antes de poder marcarse como completa.",
+  cleaning_before_photo: "Antes",
+  cleaning_after_photo: "Después",
+  cleaning_view: "Ver",
+  cleaning_download: "Descargar",
+  cleaning_add: "Agregar",
 
   recurrence_daily: "Diario",
   recurrence_weekdays: "Días laborables",

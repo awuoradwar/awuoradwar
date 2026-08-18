@@ -3,32 +3,7 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
 import { t } from "@/lib/i18n";
-
-function Icon({ path }: { path: string }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d={path} />
-    </svg>
-  );
-}
-
-const ICON_PATHS: Record<string, string> = {
-  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.35-4.35",
-  wrench: "M14.7 6.3a4 4 0 0 0-5.66 5.66L3 18v3h3l6.04-6.04a4 4 0 0 0 5.66-5.66l-2.83 2.83-2.12-2.12 2.83-2.83Z",
-  sparkle: "M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18",
-  checkCircle: "M8 12.5 11 15l5-6M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z",
-  calendar: "M3 10h18M8 2v4M16 2v4M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z",
-  chart: "M3 3v18h18M8 17V10M13 17V6M18 17v-4",
-  inbox: "M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z",
-  layers: "m12 2 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 17l9 5 9-5",
-  gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z",
-  shield: "M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3Z",
-  storefront: "M4 9v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M2 9l1.5-5h17L22 9M2 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0M9 21v-6h6v6",
-  utensils: "M7 2v7a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V2M9 11v11M17 2c-1.5 0-3 1.5-3 4v4a2 2 0 0 0 2 2h2v9",
-  graduationCap: "M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5M22 10v6",
-  trendingUp: "M22 7 13.5 15.5 8.5 10.5 2 17M22 7h-6M22 7v6",
-  box: "M21 8v13H3V8M1 3h22v5H1zM10 12h4",
-};
+import NavIcon, { ICON_PATHS } from "@/components/NavIcon";
 
 export default async function MorePage() {
   const user = await getCurrentUser();
@@ -79,7 +54,7 @@ export default async function MorePage() {
               {group.items.map((item) => (
                 <Link key={item.href} href={item.href} className="tap-target flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors hover:bg-card-subtle">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
-                    <Icon path={ICON_PATHS[item.icon]} />
+                    <NavIcon path={ICON_PATHS[item.icon]} />
                   </span>
                   <span className="flex-1">{t(user.language, item.key as never)}</span>
                   <span className="text-muted">

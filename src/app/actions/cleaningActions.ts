@@ -30,27 +30,25 @@ export async function completeCleaningAction(id: string) {
   return { ok: true };
 }
 
-/** Completion with a required photo. Takes FormData (not raw args) so the
- * File survives the client->server-action boundary reliably. */
-export async function completeCleaningWithPhotoAction(formData: FormData) {
+async function storePhotoFile(taskId: string, file: File): Promise<string> {
+  await mkdir(PHOTO_DIR, { recursive: true });
+  const ext = path.extname(file.name) || "";
+  const storedName = `${taskId}-${randomUUID()}${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(path.join(PHOTO_DIR, storedName), buffer);
+  return storedName;
+}
+
+/** Attach a before/after documentation photo to any cleaning task, whether
+ * or not it's flagged photo_required and independent of completing it. */
+export async function uploadCleaningPhotoAction(formData: FormData) {
   const user = await requireCurrentUser();
   const id = String(formData.get("taskId") || "");
-  if (!id) return { error: "Missing task id." };
+  const kind = formData.get("kind") === "before" ? "before" : "after";
   const photo = formData.get("photo");
-  let photoRef: string | null = null;
-  if (photo instanceof File && photo.size > 0) {
-    await mkdir(PHOTO_DIR, { recursive: true });
-    const ext = path.extname(photo.name) || "";
-    const storedName = `${id}-${randomUUID()}${ext}`;
-    const buffer = Buffer.from(await photo.arrayBuffer());
-    await writeFile(path.join(PHOTO_DIR, storedName), buffer);
-    photoRef = storedName;
-  }
-  try {
-    cleaningService.completeCleaningTask(id, user, photoRef);
-  } catch (e) {
-    return { error: e instanceof Error ? e.message.replace(/^PHOTO_REQUIRED: /, "") : "Could not complete task." };
-  }
+  if (!id || !(photo instanceof File) || photo.size === 0) return { error: "Choose a photo first." };
+  const photoRef = await storePhotoFile(id, photo);
+  cleaningService.attachCleaningPhoto(id, kind, photoRef, user);
   refresh();
   return { ok: true };
 }

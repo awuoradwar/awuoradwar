@@ -1,7 +1,7 @@
 const en = {
   nav_my_shift: "My Shift",
   nav_week: "Week",
-  nav_add: "Add",
+  nav_add: "Quick Log",
   nav_handoff: "Handoff",
   nav_more: "More",
 
@@ -65,6 +65,8 @@ const en = {
   action_reopen: "Reopen",
   action_add_update: "Add Update",
 
+  quick_log_group_staffing: "Staffing",
+  quick_log_group_shift: "Shift Log",
   add_task: "Task",
   add_call_in: "Call-in",
   add_late: "Late",
@@ -206,6 +208,11 @@ const en = {
   cleaning_add_photo: "Add Photo",
   cleaning_view_photo: "View Photo",
   cleaning_photo_missing_error: "This cleaning task requires a photo before it can be marked complete.",
+  cleaning_before_photo: "Before",
+  cleaning_after_photo: "After",
+  cleaning_view: "View",
+  cleaning_download: "Download",
+  cleaning_add: "Add",
 
   recurrence_daily: "Daily",
   recurrence_weekdays: "Weekdays",

@@ -27,7 +27,8 @@ export function getAreasWithProgress(storeId: string) {
       status: string;
       associate_name: string | null;
       photo_required: number;
-      photo_url: string | null;
+      photo_before_url: string | null;
+      photo_after_url: string | null;
     }>;
     const done = tasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").length;
     return { ...area, tasks, done, total: tasks.length };
@@ -85,7 +86,8 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
 
   db.prepare(
     `UPDATE cleaning_tasks
-     SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL, photo_url = NULL
+     SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
+         photo_before_url = NULL, photo_after_url = NULL
      WHERE id IN (
        SELECT ct.id FROM cleaning_tasks ct
        JOIN cleaning_areas a ON a.id = ct.area_id
@@ -96,20 +98,29 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
   ).run(storeId, todayWeekday, weekStartIso);
 }
 
-export function completeCleaningTask(id: string, actor: SessionUser, photoUrl?: string | null) {
+export function completeCleaningTask(id: string, actor: SessionUser, afterPhotoUrl?: string | null) {
   const db = getDb();
-  const task = db.prepare(`SELECT photo_required FROM cleaning_tasks WHERE id = ?`).get(id) as { photo_required: number } | undefined;
-  if (task?.photo_required && !photoUrl) {
-    throw new Error("PHOTO_REQUIRED: This cleaning task requires a photo before it can be marked complete.");
+  const task = db.prepare(`SELECT photo_required, photo_after_url FROM cleaning_tasks WHERE id = ?`).get(id) as
+    | { photo_required: number; photo_after_url: string | null }
+    | undefined;
+  if (task?.photo_required && !task.photo_after_url && !afterPhotoUrl) {
+    throw new Error("PHOTO_REQUIRED: This cleaning task requires an after photo before it can be marked complete.");
   }
   const ts = nowIso();
-  db.prepare(`UPDATE cleaning_tasks SET status = 'COMPLETED', completed_by = ?, completed_at = ?, photo_url = COALESCE(?, photo_url) WHERE id = ?`).run(
-    actor.id,
-    ts,
-    photoUrl || null,
-    id
-  );
-  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "COMPLETED", newValue: photoUrl ? { photo_url: photoUrl } : undefined });
+  db.prepare(
+    `UPDATE cleaning_tasks SET status = 'COMPLETED', completed_by = ?, completed_at = ?, photo_after_url = COALESCE(?, photo_after_url) WHERE id = ?`
+  ).run(actor.id, ts, afterPhotoUrl || null, id);
+  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "COMPLETED", newValue: afterPhotoUrl ? { photo_after_url: afterPhotoUrl } : undefined });
+}
+
+/** Attach a before/after photo to a task independent of completion -- every
+ * cleaning task can carry documentation photos, not just the ones flagged
+ * photo_required. */
+export function attachCleaningPhoto(id: string, kind: "before" | "after", photoUrl: string, actor: SessionUser) {
+  const db = getDb();
+  const column = kind === "before" ? "photo_before_url" : "photo_after_url";
+  db.prepare(`UPDATE cleaning_tasks SET ${column} = ? WHERE id = ?`).run(photoUrl, id);
+  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "EDITED", newValue: { [column]: photoUrl } });
 }
 
 export function verifyCleaningTask(id: string, actor: SessionUser) {
@@ -120,13 +131,14 @@ export function verifyCleaningTask(id: string, actor: SessionUser) {
 }
 
 /** Scoped to storeId so one store can never fetch another's photo. */
-export function getPhotoRefForTask(taskId: string, storeId: string) {
+export function getPhotoRefForTask(taskId: string, storeId: string, kind: "before" | "after") {
   const db = getDb();
+  const column = kind === "before" ? "photo_before_url" : "photo_after_url";
   return db
     .prepare(
-      `SELECT ct.photo_url FROM cleaning_tasks ct
+      `SELECT ct.${column} as photo_url FROM cleaning_tasks ct
        JOIN cleaning_areas a ON a.id = ct.area_id
-       WHERE ct.id = ? AND a.store_id = ? AND ct.photo_url IS NOT NULL`
+       WHERE ct.id = ? AND a.store_id = ? AND ct.${column} IS NOT NULL`
     )
     .get(taskId, storeId) as { photo_url: string } | undefined;
 }

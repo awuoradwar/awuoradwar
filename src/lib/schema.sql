@@ -233,7 +233,9 @@ CREATE TABLE IF NOT EXISTS cleaning_tasks (
   manager_owner_id TEXT REFERENCES users(id),
   status TEXT NOT NULL DEFAULT 'ASSIGNED', -- ASSIGNED | COMPLETED | VERIFIED | REOPENED
   photo_required INTEGER NOT NULL DEFAULT 0,
-  photo_url TEXT,
+  photo_url TEXT, -- deprecated, superseded by photo_before_url/photo_after_url
+  photo_before_url TEXT,
+  photo_after_url TEXT,
   completed_by TEXT REFERENCES users(id),
   completed_at TEXT,
   verified_by TEXT REFERENCES users(id),

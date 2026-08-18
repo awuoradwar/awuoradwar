@@ -43,6 +43,8 @@ function createConnection(): Database.Database {
   ensureColumn(db, "inventory_items", "stock_count", "stock_count INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "inventory_items", "par_level", "par_level INTEGER");
   ensureColumn(db, "inventory_items", "on_order", "on_order INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "cleaning_tasks", "photo_before_url", "photo_before_url TEXT");
+  ensureColumn(db, "cleaning_tasks", "photo_after_url", "photo_after_url TEXT");
   migrateLegacyTrainingPositions(db);
   return db;
 }

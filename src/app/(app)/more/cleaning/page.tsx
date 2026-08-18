@@ -18,7 +18,8 @@ interface CleaningTask {
   status: string;
   associate_name: string | null;
   photo_required: number;
-  photo_url: string | null;
+  photo_before_url: string | null;
+  photo_after_url: string | null;
 }
 
 interface CleaningArea {

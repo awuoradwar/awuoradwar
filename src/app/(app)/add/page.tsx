@@ -2,36 +2,65 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { t } from "@/lib/i18n";
+import NavIcon, { ICON_PATHS } from "@/components/NavIcon";
 
 // Cleaning, Meal Replacement, Issue (Work Order), and Acknowledgement each
 // have their own dedicated management page under More, so their "add new"
 // entry point lives there instead of being duplicated here -- one home per
 // feature. Only things with no dedicated list page stay on this quick grid.
-const TYPES = [
-  { slug: "task", key: "add_task", icon: "✅" },
-  { slug: "call-in", key: "add_call_in", icon: "📵" },
-  { slug: "late", key: "add_late", icon: "⏱️" },
-  { slug: "borrowed-item", key: "add_borrowed_item", icon: "📦" },
-  { slug: "note", key: "add_note", icon: "📝" },
+// Grouped and styled the same as the More menu (accent group label, card of
+// icon rows) rather than a standalone tile grid, so every "list of things
+// you can go do" screen in the app reads as one consistent system.
+const GROUPS = [
+  {
+    labelKey: "quick_log_group_staffing",
+    items: [
+      { slug: "call-in", key: "add_call_in", icon: "phone" },
+      { slug: "late", key: "add_late", icon: "clock" },
+    ],
+  },
+  {
+    labelKey: "quick_log_group_shift",
+    items: [
+      { slug: "task", key: "add_task", icon: "checkCircle" },
+      { slug: "borrowed-item", key: "add_borrowed_item", icon: "box" },
+      { slug: "note", key: "add_note", icon: "fileText" },
+    ],
+  },
 ] as const;
 
 export default async function AddPickerPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const lang = user.language;
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <h1 className="mb-4 text-lg font-semibold">{t(user.language, "action_add")}</h1>
-      <div className="grid grid-cols-2 gap-3">
-        {TYPES.map((type) => (
-          <Link
-            key={type.slug}
-            href={`/add/${type.slug}`}
-            className="tap-target card flex flex-col items-center justify-center gap-2 p-5 text-center text-sm font-medium"
-          >
-            <span className="text-2xl">{type.icon}</span>
-            {t(user.language, type.key as never)}
-          </Link>
+      <h1 className="mb-4 text-lg font-semibold">{t(lang, "nav_add")}</h1>
+      <div className="flex flex-col gap-5">
+        {GROUPS.map((group) => (
+          <section key={group.labelKey}>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(lang, group.labelKey as never)}</h2>
+            <div className="card divide-y divide-border">
+              {group.items.map((item) => (
+                <Link
+                  key={item.slug}
+                  href={`/add/${item.slug}`}
+                  className="tap-target flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors hover:bg-card-subtle"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
+                    <NavIcon path={ICON_PATHS[item.icon]} />
+                  </span>
+                  <span className="flex-1">{t(lang, item.key as never)}</span>
+                  <span className="text-muted">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 6l6 6-6 6" />
+                    </svg>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </div>
