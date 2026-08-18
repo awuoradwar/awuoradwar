@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { getAreasWithProgress } from "@/lib/services/cleaningService";
+import { getAreasWithProgress, ensureWeeklyCleaningRotation } from "@/lib/services/cleaningService";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
 import BulkAddCleaningForm from "@/components/BulkAddCleaningForm";
+import LoadRotationButton from "@/components/LoadRotationButton";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
@@ -71,6 +72,7 @@ export default async function CleaningPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  ensureWeeklyCleaningRotation(user.storeId, user);
   const areas = getAreasWithProgress(user.storeId) as CleaningArea[];
   const dailyAreas = areas.map((a) => ({ ...a, tasks: a.tasks.filter((t) => t.frequency === "DAILY") }));
   // Weekly tasks tied to a specific weekday (the deep-clean rotation) only show up
@@ -92,6 +94,8 @@ export default async function CleaningPage() {
       >
         {user.language === "es" ? "+ Agregar tarea de limpieza" : "+ Add cleaning task"}
       </Link>
+
+      <LoadRotationButton lang={user.language} />
 
       <BulkAddCleaningForm lang={user.language} existingAreas={areas.map((a) => a.name)} />
 

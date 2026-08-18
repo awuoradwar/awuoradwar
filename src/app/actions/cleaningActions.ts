@@ -80,6 +80,15 @@ export async function bulkAddCleaningTasksAction(formData: FormData): Promise<{ 
   return { count: created };
 }
 
+/** Re-sync from the weekly rotation content file after the company chart
+ * changes -- only adds items missing by title, safe to call repeatedly. */
+export async function loadWeeklyCleaningRotationAction(): Promise<{ added: number }> {
+  const user = await requireCurrentUser();
+  const added = cleaningService.loadWeeklyCleaningRotation(user.storeId, user);
+  refresh();
+  return { added };
+}
+
 export async function verifyCleaningAction(id: string) {
   const user = await requireCurrentUser();
   cleaningService.verifyCleaningTask(id, user);

@@ -4,6 +4,7 @@ import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser } from "../types";
 import { storeToday } from "../storeTime";
 import { weekStartOf } from "./recurrenceService";
+import { WEEKLY_CLEANING_ROTATION } from "../weeklyCleaningRotation";
 
 export function getAreasWithProgress(storeId: string) {
   const db = getDb();
@@ -51,6 +52,38 @@ export function findOrCreateCleaningArea(storeId: string, name: string, category
   db.prepare(`INSERT INTO cleaning_areas (id, store_id, name, category, created_at) VALUES (?, ?, ?, ?, ?)`).run(id, storeId, trimmed, category, nowIso());
   writeAudit({ entityType: "cleaning_area", entityId: id, actor, action: "CREATED", newValue: { name: trimmed, category } });
   return id;
+}
+
+/** Bootstraps the store's real weekly deep-clean rotation the first time
+ * anyone opens Cleaning with no areas set up yet -- same "auto-populate an
+ * empty store once" pattern as ensureDefaultInventoryItems. Never runs again
+ * once any area exists, so it won't fight with what a manager adds or edits
+ * afterward. */
+export function ensureWeeklyCleaningRotation(storeId: string, actor: SessionUser) {
+  const db = getDb();
+  const existing = db.prepare(`SELECT COUNT(*) as n FROM cleaning_areas WHERE store_id = ?`).get(storeId) as { n: number };
+  if (existing.n > 0) return;
+  loadWeeklyCleaningRotation(storeId, actor);
+}
+
+/** Adds any rotation item not already present (matched by title) -- safe to
+ * call again after the company chart changes, since it only fills in what's
+ * missing and never touches areas/tasks a manager has since edited. */
+export function loadWeeklyCleaningRotation(storeId: string, actor: SessionUser): number {
+  const db = getDb();
+  let added = 0;
+  for (const item of WEEKLY_CLEANING_ROTATION) {
+    const existingTask = db
+      .prepare(
+        `SELECT ct.id FROM cleaning_tasks ct JOIN cleaning_areas a ON a.id = ct.area_id WHERE a.store_id = ? AND ct.title = ?`
+      )
+      .get(storeId, item.title);
+    if (existingTask) continue;
+    const areaId = findOrCreateCleaningArea(storeId, item.area, item.category, actor);
+    createCleaningTask({ areaId, title: item.title, description: item.description, frequency: "WEEKLY", weekday: item.weekday, actor });
+    added++;
+  }
+  return added;
 }
 
 export function createCleaningTask(params: {
