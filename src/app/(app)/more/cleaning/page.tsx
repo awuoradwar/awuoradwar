@@ -10,7 +10,6 @@ import AssignAreaOwnerControl from "@/components/AssignAreaOwnerControl";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
-import { storeToday } from "@/lib/storeTime";
 
 interface CleaningTask {
   id: string;
@@ -124,13 +123,13 @@ export default async function CleaningPage() {
     .prepare(`SELECT id, name FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
     .all() as Array<{ id: string; name: string }>;
   const dailyAreas = areas.map((a) => ({ ...a, tasks: a.tasks.filter((t) => t.frequency === "DAILY") }));
-  // Weekly tasks tied to a specific weekday (the deep-clean rotation) only show up
-  // on their day -- same "today's version of the schedule shows itself" principle
-  // as the recurring task engine. Weekly tasks with no fixed day stay visible all week.
-  const todayWeekday = new Date(storeToday(user.storeId) + "T00:00:00Z").getDay();
+  // This is the management/assignment view, so the whole week's rotation stays
+  // visible here (each task already shows its own due weekday) so a manager can
+  // review and assign ahead of time -- only My Shift's "what's due today" list
+  // filters down to just today's weekday.
   const weeklyAreas = areas.map((a) => ({
     ...a,
-    tasks: a.tasks.filter((t) => t.frequency === "WEEKLY" && (t.weekday == null || t.weekday === todayWeekday)),
+    tasks: a.tasks.filter((t) => t.frequency === "WEEKLY"),
   }));
 
   return (
