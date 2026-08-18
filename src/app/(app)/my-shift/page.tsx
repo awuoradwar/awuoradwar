@@ -7,7 +7,7 @@ import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
-import { storeToday, storeLocalHour } from "@/lib/storeTime";
+import { storeToday, storeLocalHour, formatStoreDateTime } from "@/lib/storeTime";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
@@ -73,16 +73,21 @@ export default async function MyShiftPage() {
   const unresolvedForDisplay = summary.unresolved.filter((u) => u.kind !== "task" && u.kind !== "cleaning");
   const todayWeekday = new Date(today + "T00:00:00Z").getDay();
   const cleaningToday = getCleaningTasksDueToday(user.storeId, todayWeekday);
-  // A call-in/late/no-show logged during the shift that's happening right
-  // now is current information for whoever's on now, not a leftover from a
-  // prior shift -- only staffing events logged in an earlier shift window
-  // belong under "From Last Shift".
+  // A call-in/late/no-show -- or an issue, borrowed item, or meal
+  // replacement -- logged during the shift that's happening right now is
+  // current information for whoever's on now, not a leftover from a prior
+  // shift. Only items actually opened in an earlier shift window belong
+  // under "From Last Shift".
   const nowWindow = windowForHour(storeLocalHour(user.storeId, now));
-  const currentShiftStaffing = summary.staffing.filter((s) => windowForHour(storeLocalHour(user.storeId, new Date(s.created_at))) === nowWindow);
-  const priorShiftStaffing = summary.staffing.filter((s) => windowForHour(storeLocalHour(user.storeId, new Date(s.created_at))) !== nowWindow);
-  const fromLastShiftCount = priorShiftStaffing.length + summary.openItems.length + unresolvedForDisplay.length;
+  const inCurrentWindow = (createdAt: string) => windowForHour(storeLocalHour(user.storeId, new Date(createdAt))) === nowWindow;
+  const currentShiftStaffing = summary.staffing.filter((s) => inCurrentWindow(s.created_at));
+  const priorShiftStaffing = summary.staffing.filter((s) => !inCurrentWindow(s.created_at));
+  const currentShiftOpenItems = summary.openItems.filter((it) => inCurrentWindow(it.created_at));
+  const priorShiftOpenItems = summary.openItems.filter((it) => !inCurrentWindow(it.created_at));
+  const fromLastShiftCount = priorShiftStaffing.length + priorShiftOpenItems.length + unresolvedForDisplay.length;
+  const currentShiftCount = currentShiftStaffing.length + currentShiftOpenItems.length;
 
-  const dateLabel = now.toLocaleDateString(user.language === "es" ? "es-MX" : "en-US", {
+  const dateLabel = formatStoreDateTime(user.storeId, now.toISOString(), user.language === "es" ? "es-MX" : "en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -101,11 +106,11 @@ export default async function MyShiftPage() {
         )}
       </div>
 
-      {currentShiftStaffing.length > 0 && (
+      {currentShiftCount > 0 && (
         <SectionCard
-          title={user.language === "es" ? "Personal de Este Turno" : "Staffing This Shift"}
-          sub={user.language === "es" ? "Llamadas, tardanzas y cobertura de hoy" : "Call-ins, late arrivals, and coverage happening now"}
-          count={currentShiftStaffing.length}
+          title={user.language === "es" ? "Este Turno" : "This Shift"}
+          sub={user.language === "es" ? "Personal, problemas y artículos abiertos en este turno" : "Staffing, issues, and items opened this shift"}
+          count={currentShiftCount}
         >
           <div className="flex flex-col gap-2">
             {currentShiftStaffing.map((s, i) => (
@@ -113,6 +118,11 @@ export default async function MyShiftPage() {
                 🧍 {s.employee_name} — {s.type.replace("_", " ")}
                 {s.note ? <span className="text-muted"> · {s.note}</span> : null}
               </div>
+            ))}
+            {currentShiftOpenItems.map((it, i) => (
+              <Link key={`current-open-${i}`} href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`} className="card block p-3 text-sm">
+                {it.kind === "guest_recovery" ? "🍽️" : it.kind === "issue" ? "⚠️" : "📦"} {it.title}
+              </Link>
             ))}
           </div>
         </SectionCard>
@@ -195,19 +205,19 @@ export default async function MyShiftPage() {
         ) : (
           <div className="divide-y divide-border border-t border-border">
             {completedToday.map((task) => (
-              <CompletedTaskRow key={task.id} lang={user.language} task={task} />
+              <CompletedTaskRow key={task.id} lang={user.language} task={task} storeId={user.storeId} />
             ))}
           </div>
         )}
       </details>
 
-      <section>
-        <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "section_from_last_shift" as never)}</h2>
-        <p className="mb-2 text-xs text-muted">{t(user.language, "section_from_last_shift_sub" as never)}</p>
+      <SectionCard
+        title={t(user.language, "section_from_last_shift" as never)}
+        sub={t(user.language, "section_from_last_shift_sub" as never)}
+        count={fromLastShiftCount}
+      >
         {fromLastShiftCount === 0 ? (
-          <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">
-            {t(user.language, "all_clear")}
-          </p>
+          <p className="text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {priorShiftStaffing.map((s, i) => (
@@ -216,7 +226,7 @@ export default async function MyShiftPage() {
                 {s.note ? <span className="text-muted"> · {s.note}</span> : null}
               </div>
             ))}
-            {summary.openItems.map((it, i) => (
+            {priorShiftOpenItems.map((it, i) => (
               <Link key={`open-${i}`} href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`} className="card block p-3 text-sm">
                 {it.kind === "guest_recovery" ? "🍽️" : it.kind === "issue" ? "⚠️" : "📦"} {it.title}
               </Link>
@@ -228,7 +238,7 @@ export default async function MyShiftPage() {
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
     </div>
   );
 }

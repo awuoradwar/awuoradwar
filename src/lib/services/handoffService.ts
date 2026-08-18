@@ -30,7 +30,7 @@ export interface HandoffSummary {
   staffing: Array<{ employee_name: string; type: string; note: string | null; created_at: string }>;
   completedHighValue: Array<{ title: string; completed_by_name: string | null }>;
   unresolved: Array<{ kind: string; title: string }>;
-  openItems: Array<{ kind: string; title: string; id: string }>;
+  openItems: Array<{ kind: string; title: string; id: string; created_at: string }>;
   upcoming: Array<{ title: string; due_at: string | null }>;
 }
 
@@ -77,14 +77,14 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
   ];
 
   const openGR = db
-    .prepare(`SELECT id, issue_category, replacement_status FROM guest_recoveries WHERE store_id = ? AND replacement_status IN ('PENDING','APPROVED')`)
-    .all(storeId) as Array<{ id: string; issue_category: string; replacement_status: string }>;
+    .prepare(`SELECT id, issue_category, replacement_status, created_at FROM guest_recoveries WHERE store_id = ? AND replacement_status IN ('PENDING','APPROVED')`)
+    .all(storeId) as Array<{ id: string; issue_category: string; replacement_status: string; created_at: string }>;
   const openIssues = db
-    .prepare(`SELECT id, category, description FROM issues WHERE store_id = ? AND status NOT IN ('RESOLVED')`)
-    .all(storeId) as Array<{ id: string; category: string; description: string }>;
+    .prepare(`SELECT id, category, description, created_at FROM issues WHERE store_id = ? AND status NOT IN ('RESOLVED')`)
+    .all(storeId) as Array<{ id: string; category: string; description: string; created_at: string }>;
   const openBorrowed = db
-    .prepare(`SELECT id, item, borrowed_from, direction FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED'`)
-    .all(storeId) as Array<{ id: string; item: string; borrowed_from: string; direction: "BORROWED" | "LENT" }>;
+    .prepare(`SELECT id, item, borrowed_from, direction, created_at FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED'`)
+    .all(storeId) as Array<{ id: string; item: string; borrowed_from: string; direction: "BORROWED" | "LENT"; created_at: string }>;
 
   const openItems = [
     ...openGR.map((g) => ({
@@ -93,11 +93,13 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
       title: `${lang === "es" ? "Reemplazo de Comida" : "Meal Replacement"}: ${
         GUEST_RECOVERY_CATEGORY_LABEL[g.issue_category]?.[lang] || g.issue_category
       } (${REPLACEMENT_STATUS_LABEL[g.replacement_status]?.[lang] || g.replacement_status})`,
+      created_at: g.created_at,
     })),
     ...openIssues.map((i) => ({
       kind: "issue",
       id: i.id,
       title: `${lang === "es" ? "Problema" : "Issue"}: ${ISSUE_CATEGORY_LABEL[i.category]?.[lang] || i.category} - ${i.description}`,
+      created_at: i.created_at,
     })),
     ...openBorrowed.map((b) => ({
       kind: "borrowed_item",
@@ -106,6 +108,7 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
         b.direction === "LENT"
           ? `${lang === "es" ? "Prestado a" : "Lent"}: ${b.item} ${lang === "es" ? "a" : "to"} ${b.borrowed_from}`
           : `${lang === "es" ? "Prestado" : "Borrowed"}: ${b.item} ${lang === "es" ? "de" : "from"} ${b.borrowed_from}`,
+      created_at: b.created_at,
     })),
   ];
 
