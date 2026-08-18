@@ -3,9 +3,11 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAreasWithProgress } from "@/lib/services/cleaningService";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
+import BulkAddCleaningForm from "@/components/BulkAddCleaningForm";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
+import { storeToday } from "@/lib/storeTime";
 
 interface CleaningTask {
   id: string;
@@ -74,7 +76,7 @@ export default async function CleaningPage() {
   // Weekly tasks tied to a specific weekday (the deep-clean rotation) only show up
   // on their day -- same "today's version of the schedule shows itself" principle
   // as the recurring task engine. Weekly tasks with no fixed day stay visible all week.
-  const todayWeekday = new Date().getDay();
+  const todayWeekday = new Date(storeToday(user.storeId) + "T00:00:00Z").getDay();
   const weeklyAreas = areas.map((a) => ({
     ...a,
     tasks: a.tasks.filter((t) => t.frequency === "WEEKLY" && (t.weekday == null || t.weekday === todayWeekday)),
@@ -86,10 +88,12 @@ export default async function CleaningPage() {
 
       <Link
         href="/add/cleaning"
-        className="tap-target mb-6 flex w-full items-center justify-center rounded-xl border-2 border-dashed border-accent text-sm font-semibold text-accent"
+        className="tap-target mb-3 flex w-full items-center justify-center rounded-xl border-2 border-dashed border-accent text-sm font-semibold text-accent"
       >
         {user.language === "es" ? "+ Agregar tarea de limpieza" : "+ Add cleaning task"}
       </Link>
+
+      <BulkAddCleaningForm lang={user.language} existingAreas={areas.map((a) => a.name)} />
 
       <FrequencySection title={t(user.language, "cleaning_daily")} areas={dailyAreas} lang={user.language} />
       <FrequencySection title={t(user.language, "cleaning_weekly")} areas={weeklyAreas} lang={user.language} />

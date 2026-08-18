@@ -2,6 +2,8 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser } from "../types";
+import { storeToday } from "../storeTime";
+import { weekStartOf } from "./recurrenceService";
 
 export function getAreasWithProgress(storeId: string) {
   const db = getDb();
@@ -33,6 +35,22 @@ export function getAreasWithProgress(storeId: string) {
     const done = tasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").length;
     return { ...area, tasks, done, total: tasks.length };
   });
+}
+
+/** Case-insensitive match on an existing area for this store; creates a new
+ * one if nothing matches. Lets a bulk chart import just type area names
+ * freeform without first having to pre-create every area by hand. */
+export function findOrCreateCleaningArea(storeId: string, name: string, category: "FOH" | "BOH" | "FACILITIES", actor: SessionUser): string {
+  const db = getDb();
+  const trimmed = name.trim();
+  const existing = db.prepare(`SELECT id FROM cleaning_areas WHERE store_id = ? AND lower(name) = lower(?)`).get(storeId, trimmed) as
+    | { id: string }
+    | undefined;
+  if (existing) return existing.id;
+  const id = newId();
+  db.prepare(`INSERT INTO cleaning_areas (id, store_id, name, category, created_at) VALUES (?, ?, ?, ?, ?)`).run(id, storeId, trimmed, category, nowIso());
+  writeAudit({ entityType: "cleaning_area", entityId: id, actor, action: "CREATED", newValue: { name: trimmed, category } });
+  return id;
 }
 
 export function createCleaningTask(params: {
@@ -77,12 +95,9 @@ export function createCleaningTask(params: {
  */
 export function resetDueWeeklyCleaningTasks(storeId: string) {
   const db = getDb();
-  const now = new Date();
-  const todayWeekday = now.getDay();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - todayWeekday);
-  weekStart.setHours(0, 0, 0, 0);
-  const weekStartIso = weekStart.toISOString();
+  const todayStr = storeToday(storeId);
+  const todayWeekday = new Date(todayStr + "T00:00:00Z").getDay();
+  const weekStartIso = weekStartOf(todayStr) + "T00:00:00.000Z";
 
   db.prepare(
     `UPDATE cleaning_tasks

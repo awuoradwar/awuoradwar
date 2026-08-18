@@ -53,6 +53,33 @@ export async function uploadCleaningPhotoAction(formData: FormData) {
   return { ok: true };
 }
 
+/** Bulk-enter a whole cleaning chart at once: repeating rows of area/task/
+ * frequency/weekday, each finding-or-creating its area by name so the whole
+ * chart can be typed in without pre-setting up areas first. Row N's fields
+ * are named area_N/category_N/title_N/frequency_N/weekday_N/photoRequired_N. */
+export async function bulkAddCleaningTasksAction(formData: FormData): Promise<{ error?: string; count?: number }> {
+  const user = await requireCurrentUser();
+  const rowCount = Number(formData.get("rowCount") || 0);
+  let created = 0;
+  for (let i = 0; i < rowCount; i++) {
+    const areaName = String(formData.get(`area_${i}`) || "").trim();
+    const title = String(formData.get(`title_${i}`) || "").trim();
+    if (!areaName || !title) continue; // skip blank rows -- not every row gets filled in
+    const category = (String(formData.get(`category_${i}`) || "FOH") as "FOH" | "BOH" | "FACILITIES");
+    const frequency = String(formData.get(`frequency_${i}`) || "DAILY") === "WEEKLY" ? "WEEKLY" : "DAILY";
+    const weekdayRaw = String(formData.get(`weekday_${i}`) || "");
+    const weekday = frequency === "WEEKLY" && weekdayRaw !== "" ? Number(weekdayRaw) : null;
+    const photoRequired = formData.get(`photoRequired_${i}`) === "on";
+
+    const areaId = cleaningService.findOrCreateCleaningArea(user.storeId, areaName, category, user);
+    cleaningService.createCleaningTask({ areaId, title, frequency, weekday, photoRequired, actor: user });
+    created++;
+  }
+  if (created === 0) return { error: "Fill in at least one row (area + task) before saving." };
+  refresh();
+  return { count: created };
+}
+
 export async function verifyCleaningAction(id: string) {
   const user = await requireCurrentUser();
   cleaningService.verifyCleaningTask(id, user);
