@@ -20,6 +20,37 @@ const OPEN_ITEM_HREF: Record<string, string> = {
   borrowed_item: "/borrowed-item",
 };
 
+const WEEKDAY_LABEL: Record<number, { en: string; es: string }> = {
+  0: { en: "Sunday", es: "Domingo" },
+  1: { en: "Monday", es: "Lunes" },
+  2: { en: "Tuesday", es: "Martes" },
+  3: { en: "Wednesday", es: "Miércoles" },
+  4: { en: "Thursday", es: "Jueves" },
+  5: { en: "Friday", es: "Viernes" },
+  6: { en: "Saturday", es: "Sábado" },
+};
+
+/** "This Week" spans 7 days of recurring + one-off work with no grouping,
+ * so every task -- however different its actual due day -- reads as one
+ * undifferentiated list ("10:00 AM", "11:00 AM" ... with no day attached).
+ * Groups by scheduled_date (a plain YYYY-MM-DD, no time component, so no
+ * timezone conversion needed) and orders the groups chronologically. */
+function dayLabel(dateStr: string, lang: "en" | "es"): string {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const weekday = WEEKDAY_LABEL[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()][lang];
+  return `${weekday} · ${mo}/${d}`;
+}
+
+function groupByScheduledDate<T extends { scheduled_date: string | null }>(tasks: T[]): Array<[string, T[]]> {
+  const groups = new Map<string, T[]>();
+  for (const task of tasks) {
+    const key = task.scheduled_date || "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(task);
+  }
+  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
 /** Every My Shift section lives inside the same bordered card, header and
  * content together -- matching how This Week/Completed already look, so a
  * section doesn't visually change containers depending on whether it's
@@ -183,9 +214,18 @@ export default async function MyShiftPage() {
           {buckets[bucket].length === 0 ? (
             <p className="border-t border-border p-4 text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
           ) : (
-            <div className="divide-y divide-border border-t border-border">
-              {buckets[bucket].map((task) => (
-                <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} />
+            <div className="border-t border-border">
+              {groupByScheduledDate(buckets[bucket]).map(([dateStr, dayTasks]) => (
+                <div key={dateStr || "no-date"}>
+                  <p className="border-b border-border bg-card-subtle px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                    {dateStr ? dayLabel(dateStr, user.language) : user.language === "es" ? "Sin fecha" : "No date"}
+                  </p>
+                  <div className="divide-y divide-border">
+                    {dayTasks.map((task) => (
+                      <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           )}
