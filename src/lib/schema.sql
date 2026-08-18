@@ -243,6 +243,21 @@ CREATE TABLE IF NOT EXISTS cleaning_tasks (
   created_at TEXT NOT NULL
 );
 
+-- One cleaning task often covers several distinct things to do (e.g. a
+-- "Deep clean cook range" task's checklist is really "hoods, lights,
+-- wok rings, drains..." as separate jobs) -- these let different
+-- associates be assigned to different sub-items of the same task, not
+-- just one associate_name for the whole thing.
+CREATE TABLE IF NOT EXISTS cleaning_task_items (
+  id TEXT PRIMARY KEY,
+  cleaning_task_id TEXT NOT NULL REFERENCES cleaning_tasks(id),
+  text TEXT NOT NULL,
+  associate_name TEXT,
+  done INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS attendance_events (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
@@ -554,6 +569,7 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
 CREATE INDEX IF NOT EXISTS idx_tasks_store ON tasks(store_id, status);
 CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_at);
 CREATE INDEX IF NOT EXISTS idx_cleaning_tasks_area ON cleaning_tasks(area_id);
+CREATE INDEX IF NOT EXISTS idx_cleaning_task_items_task ON cleaning_task_items(cleaning_task_id);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_events(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_schedule_requests_status ON schedule_requests(store_id, status);
 CREATE INDEX IF NOT EXISTS idx_store_pnl_periods_store ON store_pnl_periods(store_id, created_at);

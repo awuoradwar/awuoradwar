@@ -43,6 +43,62 @@ export function setCleaningTaskAssociate(taskId: string, associateName: string |
   writeAudit({ entityType: "cleaning_task", entityId: taskId, actor, action: "ASSIGNED", newValue: { associate_name: associateName } });
 }
 
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  associate_name: string | null;
+  done: number;
+}
+
+function getChecklistItems(cleaningTaskId: string): ChecklistItem[] {
+  const db = getDb();
+  return db
+    .prepare(`SELECT id, text, associate_name, done FROM cleaning_task_items WHERE cleaning_task_id = ? ORDER BY sort_order, created_at`)
+    .all(cleaningTaskId) as ChecklistItem[];
+}
+
+/** Auto-splits a task's free-text checklist description into individually
+ * assignable sub-items the first time anyone views it -- so "different
+ * associates doing different things on the same task" works immediately
+ * for every task already loaded from the chart, without a manager having
+ * to manually re-type each sub-item first. Only splits when there's
+ * clearly more than one thing listed (comma-separated); a single-item
+ * description is left as plain text. Never re-splits once items exist, so
+ * it won't fight with anything a manager has since assigned or checked off. */
+export function ensureChecklistItems(cleaningTaskId: string, description: string | null): ChecklistItem[] {
+  const existing = getChecklistItems(cleaningTaskId);
+  if (existing.length > 0 || !description) return existing;
+  const parts = description
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return existing;
+  const db = getDb();
+  const ts = nowIso();
+  parts.forEach((text, i) => {
+    db.prepare(`INSERT INTO cleaning_task_items (id, cleaning_task_id, text, sort_order, created_at) VALUES (?, ?, ?, ?, ?)`).run(
+      newId(),
+      cleaningTaskId,
+      text,
+      i,
+      ts
+    );
+  });
+  return getChecklistItems(cleaningTaskId);
+}
+
+export function setChecklistItemAssociate(itemId: string, associateName: string | null, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE cleaning_task_items SET associate_name = ? WHERE id = ?`).run(associateName, itemId);
+  writeAudit({ entityType: "cleaning_task_item", entityId: itemId, actor, action: "ASSIGNED", newValue: { associate_name: associateName } });
+}
+
+export function toggleChecklistItemDone(itemId: string, done: boolean, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE cleaning_task_items SET done = ? WHERE id = ?`).run(done ? 1 : 0, itemId);
+  writeAudit({ entityType: "cleaning_task_item", entityId: itemId, actor, action: done ? "COMPLETED" : "REOPENED" });
+}
+
 export interface CleaningTaskDueToday {
   id: string;
   title: string;
@@ -60,6 +116,7 @@ export interface CleaningTaskDueToday {
   area_name_es: string | null;
   owner_id: string | null;
   owner_name: string | null;
+  checklistItems: ChecklistItem[];
 }
 
 /** Today's open cleaning work for the My Shift dashboard -- every DAILY task
@@ -68,7 +125,7 @@ export interface CleaningTaskDueToday {
  * schedule shows itself" rule the Cleaning page itself uses. */
 export function getCleaningTasksDueToday(storeId: string, todayWeekday: number): CleaningTaskDueToday[] {
   const db = getDb();
-  return db
+  const rows = db
     .prepare(
       `SELECT ct.id, ct.title, ct.title_es, ct.description, ct.description_es, ct.weekday, ct.frequency, ct.status,
               ct.associate_name, ct.photo_required, ct.photo_before_url, ct.photo_after_url,
@@ -80,7 +137,8 @@ export function getCleaningTasksDueToday(storeId: string, todayWeekday: number):
          AND (ct.frequency = 'DAILY' OR ct.weekday IS NULL OR ct.weekday = ?)
        ORDER BY a.owner_id IS NULL, a.name`
     )
-    .all(storeId, todayWeekday) as CleaningTaskDueToday[];
+    .all(storeId, todayWeekday) as Array<Omit<CleaningTaskDueToday, "checklistItems">>;
+  return rows.map((row) => ({ ...row, checklistItems: ensureChecklistItems(row.id, row.description) }));
 }
 
 export function getAreasWithProgress(storeId: string) {
@@ -94,7 +152,7 @@ export function getAreasWithProgress(storeId: string) {
     .all(storeId) as Array<{ id: string; name: string; name_es: string | null; category: string; owner_id: string | null; owner_name: string | null }>;
 
   return areas.map((area) => {
-    const tasks = db
+    const rawTasks = db
       .prepare(`SELECT * FROM cleaning_tasks WHERE area_id = ? ORDER BY created_at ASC`)
       .all(area.id) as Array<{
       id: string;
@@ -110,6 +168,7 @@ export function getAreasWithProgress(storeId: string) {
       photo_before_url: string | null;
       photo_after_url: string | null;
     }>;
+    const tasks = rawTasks.map((task) => ({ ...task, checklistItems: ensureChecklistItems(task.id, task.description) }));
     const done = tasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").length;
     return { ...area, tasks, done, total: tasks.length };
   });

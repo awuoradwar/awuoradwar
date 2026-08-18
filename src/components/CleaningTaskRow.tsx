@@ -10,11 +10,20 @@ import {
   setCleaningTaskAssociateAction,
   deleteCleaningTaskAction,
   updateCleaningTaskAction,
+  setChecklistItemAssociateAction,
+  toggleChecklistItemDoneAction,
 } from "@/app/actions/cleaningActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
+
+interface ChecklistItemData {
+  id: string;
+  text: string;
+  associate_name: string | null;
+  done: number;
+}
 
 interface CleaningTaskData {
   id: string;
@@ -29,6 +38,7 @@ interface CleaningTaskData {
   photo_required: number;
   photo_before_url?: string | null;
   photo_after_url?: string | null;
+  checklistItems?: ChecklistItemData[];
 }
 
 const WEEKDAY_LABEL: Record<number, { en: string; es: string }> = {
@@ -141,6 +151,81 @@ function AssociateEditor({ taskId, associateName, lang }: { taskId: string; asso
     >
       {associateName || (lang === "es" ? "Asignar asociado" : "Assign associate")}
     </button>
+  );
+}
+
+/** Same tap-to-edit pattern as AssociateEditor, scoped to one checklist
+ * sub-item instead of the whole task -- lets different associates be
+ * assigned to different parts of the same cleaning job (e.g. one person on
+ * the hoods, another on the drains, within the same "Deep clean cook
+ * range" task). */
+function ChecklistItemAssociateEditor({ itemId, associateName, lang }: { itemId: string; associateName: string | null; lang: Language }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(associateName || "");
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  if (editing) {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          startTransition(async () => {
+            await setChecklistItemAssociateAction(itemId, value);
+            setEditing(false);
+            router.refresh();
+          });
+        }}
+        className="inline-flex items-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={lang === "es" ? "Nombre" : "Name"}
+          autoFocus
+          className="h-7 w-24 rounded-md border border-accent bg-card px-2 text-xs outline-none"
+        />
+        <button type="submit" disabled={pending} className="text-xs font-semibold text-accent">
+          ✓
+        </button>
+      </form>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-accent underline decoration-dotted">
+      {associateName || (lang === "es" ? "Asignar" : "Assign")}
+    </button>
+  );
+}
+
+/** One line of a task's checklist -- its own done/not-done state and its
+ * own associate, independent of the task's overall Complete button. */
+function ChecklistItemRow({ item, lang }: { item: ChecklistItemData; lang: Language }) {
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            await toggleChecklistItemDoneAction(item.id, !item.done);
+            router.refresh();
+          })
+        }
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold disabled:opacity-50 ${
+          item.done ? "border-ok bg-ok text-white" : "border-border text-transparent"
+        }`}
+      >
+        ✓
+      </button>
+      <span className={`flex-1 text-sm ${item.done ? "text-muted line-through" : ""}`}>{item.text}</span>
+      <ChecklistItemAssociateEditor itemId={item.id} associateName={item.associate_name} lang={lang} />
+    </div>
   );
 }
 
@@ -258,11 +343,24 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
             <AssociateEditor taskId={task.id} associateName={task.associate_name} lang={lang} />
             {task.photo_required ? <span>· 📷 {t(lang, "cleaning_photo_required")}</span> : null}
           </div>
-          {description && (
+          {task.checklistItems && task.checklistItems.length > 0 ? (
             <details className="mt-1">
-              <summary className="cursor-pointer text-sm text-accent">{lang === "es" ? "Ver detalle" : "View checklist"}</summary>
-              <p className="mt-1 text-sm text-muted">{description}</p>
+              <summary className="cursor-pointer text-sm text-accent">
+                {lang === "es" ? "Ver detalle" : "View checklist"} ({task.checklistItems.filter((i) => i.done).length}/{task.checklistItems.length})
+              </summary>
+              <div className="mt-1 divide-y divide-border">
+                {task.checklistItems.map((item) => (
+                  <ChecklistItemRow key={item.id} item={item} lang={lang} />
+                ))}
+              </div>
             </details>
+          ) : (
+            description && (
+              <details className="mt-1">
+                <summary className="cursor-pointer text-sm text-accent">{lang === "es" ? "Ver detalle" : "View checklist"}</summary>
+                <p className="mt-1 text-sm text-muted">{description}</p>
+              </details>
+            )
           )}
           <div className="mt-1">
             <StatusBadge status={task.status} lang={lang} />

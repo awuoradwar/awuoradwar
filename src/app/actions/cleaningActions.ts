@@ -135,3 +135,15 @@ export async function deleteCleaningTaskAction(id: string) {
   cleaningService.deleteCleaningTask(id, user);
   refresh();
 }
+
+export async function setChecklistItemAssociateAction(itemId: string, associateName: string) {
+  const user = await requireCurrentUser();
+  cleaningService.setChecklistItemAssociate(itemId, associateName.trim() || null, user);
+  refresh();
+}
+
+export async function toggleChecklistItemDoneAction(itemId: string, done: boolean) {
+  const user = await requireCurrentUser();
+  cleaningService.toggleChecklistItemDone(itemId, done, user);
+  refresh();
+}

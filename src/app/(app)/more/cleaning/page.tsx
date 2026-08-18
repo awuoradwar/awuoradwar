@@ -11,6 +11,13 @@ import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
 
+interface ChecklistItem {
+  id: string;
+  text: string;
+  associate_name: string | null;
+  done: number;
+}
+
 interface CleaningTask {
   id: string;
   title: string;
@@ -24,6 +31,7 @@ interface CleaningTask {
   photo_required: number;
   photo_before_url: string | null;
   photo_after_url: string | null;
+  checklistItems: ChecklistItem[];
 }
 
 interface CleaningArea {
