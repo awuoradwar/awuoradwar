@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentUser, getCurrentPicForStore } from "@/lib/auth";
 import * as taskService from "@/lib/services/taskService";
 import * as pushService from "@/lib/services/pushService";
+import { canDo } from "@/lib/permissions";
 import { storeToday } from "@/lib/storeTime";
 
 function refresh() {
@@ -43,6 +44,14 @@ export async function cancelTaskAction(taskId: string, reason: string) {
   const user = await requireCurrentUser();
   taskService.cancelTask(taskId, reason || "No reason given", user);
   refresh();
+}
+
+export async function cancelTaskSeriesAction(templateId: string, reason: string) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
+  taskService.cancelTaskSeries(templateId, reason || "No reason given", user);
+  refresh();
+  revalidatePath("/more/templates");
 }
 
 export async function updateTaskAction(taskId: string, formData: FormData) {

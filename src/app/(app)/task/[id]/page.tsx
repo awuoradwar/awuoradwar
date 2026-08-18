@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
+import { canDo } from "@/lib/permissions";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
 import TaskEditForm from "@/components/TaskEditForm";
@@ -66,7 +67,15 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
       </dl>
 
       <div className="mt-5">
-        <TaskDetailActions taskId={task.id} lang={user.language} managers={managers} status={task.status} verificationRequired={!!task.verification_required} />
+        <TaskDetailActions
+          taskId={task.id}
+          lang={user.language}
+          managers={managers}
+          status={task.status}
+          verificationRequired={!!task.verification_required}
+          templateId={task.template_id}
+          canManageSeries={canDo(user, "templates.manage")}
+        />
       </div>
 
       {task.status !== "COMPLETE" && task.status !== "CANCELLED" && (

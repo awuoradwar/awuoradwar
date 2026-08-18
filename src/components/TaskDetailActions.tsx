@@ -8,6 +8,7 @@ import {
   reassignTaskAction,
   carryForwardTaskAction,
   cancelTaskAction,
+  cancelTaskSeriesAction,
 } from "@/app/actions/taskActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
@@ -18,15 +19,20 @@ export default function TaskDetailActions({
   managers,
   status,
   verificationRequired,
+  templateId,
+  canManageSeries,
 }: {
   taskId: string;
   lang: Language;
   managers: Array<{ id: string; name: string }>;
   status: string;
   verificationRequired: boolean;
+  templateId?: string | null;
+  canManageSeries?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [reassignTo, setReassignTo] = useState("");
+  const [confirmingSeries, setConfirmingSeries] = useState(false);
   const router = useRouter();
 
   function run(fn: () => Promise<unknown>) {
@@ -37,6 +43,7 @@ export default function TaskDetailActions({
   }
 
   const openish = status !== "COMPLETE" && status !== "CANCELLED";
+  const isRecurring = !!templateId;
 
   return (
     <div className="flex flex-col gap-3">
@@ -70,10 +77,46 @@ export default function TaskDetailActions({
             onClick={() => run(() => cancelTaskAction(taskId, lang === "es" ? "Cancelado por gerente" : "Cancelled by manager"))}
             className="tap-target rounded-full border border-critical px-4 text-sm font-semibold text-critical disabled:opacity-50"
           >
-            {t(lang, "action_cancel")}
+            {isRecurring ? (lang === "es" ? "Cancelar solo hoy" : "Cancel this day") : t(lang, "action_cancel")}
+          </button>
+        )}
+        {openish && isRecurring && canManageSeries && (
+          <button
+            disabled={pending}
+            onClick={() => setConfirmingSeries(true)}
+            className="tap-target rounded-full border border-critical px-4 text-sm font-semibold text-critical disabled:opacity-50"
+          >
+            {lang === "es" ? "Cancelar toda la serie" : "Cancel entire series"}
           </button>
         )}
       </div>
+      {confirmingSeries && (
+        <div className="card flex flex-col gap-2 border-critical/40 p-3">
+          <p className="text-sm">
+            {lang === "es"
+              ? "Esto detiene esta tarea recurrente para siempre y cancela cualquier ocurrencia pendiente. ¿Continuar?"
+              : "This stops this recurring task forever and cancels any pending occurrences. Continue?"}
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  await cancelTaskSeriesAction(templateId as string, lang === "es" ? "Serie cancelada por gerente" : "Series cancelled by manager");
+                  setConfirmingSeries(false);
+                  router.refresh();
+                })
+              }
+              className="tap-target rounded-full bg-critical px-4 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {lang === "es" ? "Sí, cancelar serie" : "Yes, cancel series"}
+            </button>
+            <button type="button" onClick={() => setConfirmingSeries(false)} disabled={pending} className="text-sm font-medium text-muted">
+              {lang === "es" ? "Cancelar" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
       {openish && (
         <div className="flex items-center gap-2">
           <select
