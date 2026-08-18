@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser } from "../types";
 import { windowForHour } from "./taskService";
+import { storeLocalHour } from "../storeTime";
 
 export type ShiftType = "MORNING" | "EVENING" | "DOUBLE";
 
@@ -84,6 +85,21 @@ export function resolveShiftOwnerForWindow(storeId: string, date: string, window
  * any still-open, still-unowned instance whose due time now resolves to
  * exactly one covering manager. Never reassigns an already-owned task and
  * never un-assigns anything, so it's safe to call on every roster edit. */
+/** Who's actually in charge right now, straight from the Week schedule grid --
+ * whoever is scheduled MORNING/EVENING/DOUBLE for the store-local current
+ * shift window today. This is what "PIC" should mean day to day: marking the
+ * schedule IS staffing the shift, with no separate manual "start my shift"
+ * step required. Returns null when nobody's scheduled for this window, or
+ * more than one manager could cover it (ambiguous). */
+export function resolveTodaysPic(storeId: string, dateStr: string, nowDate: Date): { id: string; name: string } | null {
+  const db = getDb();
+  const window = windowForHour(storeLocalHour(storeId, nowDate));
+  const userId = resolveShiftOwnerForWindow(storeId, dateStr, window);
+  if (!userId) return null;
+  const row = db.prepare(`SELECT name FROM users WHERE id = ?`).get(userId) as { name: string } | undefined;
+  return row ? { id: userId, name: row.name } : null;
+}
+
 export function backfillTaskOwnersForDate(storeId: string, date: string) {
   const db = getDb();
   const tasks = db
@@ -91,7 +107,7 @@ export function backfillTaskOwnersForDate(storeId: string, date: string) {
     .all(storeId, date) as Array<{ id: string; due_at: string }>;
   if (tasks.length === 0) return;
   for (const task of tasks) {
-    const window = windowForHour(new Date(task.due_at).getHours());
+    const window = windowForHour(storeLocalHour(storeId, new Date(task.due_at)));
     const ownerId = resolveShiftOwnerForWindow(storeId, date, window);
     if (ownerId) {
       db.prepare(`UPDATE tasks SET owner_id = ? WHERE id = ?`).run(ownerId, task.id);

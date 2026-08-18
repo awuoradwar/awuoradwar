@@ -5,6 +5,8 @@ import bcrypt from "bcryptjs";
 import { getDb } from "./db";
 import { SessionUser } from "./types";
 import { storeToday } from "./storeTime";
+import { resolveTodaysPic } from "./services/scheduleService";
+import { newId, nowIso, writeAudit } from "./audit";
 
 const COOKIE_NAME = "shiftops_session";
 const SECRET = new TextEncoder().encode(
@@ -70,19 +72,48 @@ export async function requireCurrentUser(): Promise<SessionUser> {
   return user;
 }
 
-/** The manager currently PIC for the store "today" (most recent open/active shift). */
+/** The manager currently PIC for the store "today". PIC now comes straight
+ * from the Week schedule grid -- whoever's scheduled for the store-local
+ * current shift window -- so marking the schedule is the whole action; there
+ * is no separate "start my shift" step. Keeps a `shifts` row in sync (rather
+ * than being purely a read) because other flows (attendance events, audits)
+ * link to a shift by id, not by user, and expect one to already exist. Safe
+ * to call on every dashboard load -- it's an idempotent upsert. */
 export function getCurrentPicForStore(storeId: string) {
   const db = getDb();
   const today = storeToday(storeId);
-  const shift = db
+  const scheduled = resolveTodaysPic(storeId, today, new Date());
+
+  let shift = db
     .prepare(
       `SELECT s.*, u.name as pic_name FROM shifts s
        LEFT JOIN users u ON u.id = s.pic_user_id
        WHERE s.store_id = ? AND s.date = ? AND s.status != 'CLOSED'
        ORDER BY s.created_at DESC LIMIT 1`
     )
-    .get(storeId, today);
-  return shift as
-    | { id: string; pic_user_id: string | null; pic_name: string | null; status: string; date: string }
-    | undefined;
+    .get(storeId, today) as { id: string; pic_user_id: string | null; pic_name: string | null; status: string; date: string } | undefined;
+
+  if (scheduled && scheduled.id !== shift?.pic_user_id) {
+    if (shift) {
+      db.prepare(`UPDATE shifts SET pic_user_id = ? WHERE id = ?`).run(scheduled.id, shift.id);
+    } else {
+      const id = newId();
+      db.prepare(`INSERT INTO shifts (id, store_id, date, pic_user_id, status, created_at) VALUES (?, ?, ?, ?, 'ACTIVE', ?)`).run(
+        id,
+        storeId,
+        today,
+        scheduled.id,
+        nowIso()
+      );
+      writeAudit({ entityType: "shift", entityId: id, actor: null, action: "CREATED", newValue: { pic: scheduled.id, source: "schedule" } });
+    }
+    shift = db
+      .prepare(
+        `SELECT s.*, u.name as pic_name FROM shifts s LEFT JOIN users u ON u.id = s.pic_user_id
+         WHERE s.store_id = ? AND s.date = ? AND s.status != 'CLOSED' ORDER BY s.created_at DESC LIMIT 1`
+      )
+      .get(storeId, today) as typeof shift;
+  }
+
+  return shift;
 }

@@ -66,6 +66,63 @@ export async function updateUserAction(userId: string, formData: FormData): Prom
   return {};
 }
 
+/** Wipes activity/instance data left over from testing (tasks, meal
+ * replacements, issues, borrowed items, attendance, training records,
+ * acknowledgements, P&L periods, audit history, etc.) while keeping
+ * everything that represents real ongoing setup: logins, the store
+ * profile, recurring task templates, the inventory/maintenance catalog,
+ * and cleaning area/checklist definitions. cleaning_tasks rows are reset
+ * to ASSIGNED rather than deleted since the row IS the checklist item. */
+export async function resetTestDataAction(formData: FormData): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store.configure")) throw new Error("FORBIDDEN");
+  const confirm = String(formData.get("confirm") || "");
+  if (confirm !== "RESET") return { error: 'Type RESET (all caps) to confirm.' };
+
+  const db = getDb();
+  const storeId = user.storeId;
+  const reset = db.transaction(() => {
+    db.prepare(`DELETE FROM task_events WHERE task_id IN (SELECT id FROM tasks WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM tasks WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM issue_updates WHERE issue_id IN (SELECT id FROM issues WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM issues WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM guest_recoveries WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM borrowed_items WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM acknowledgement_completions WHERE acknowledgement_id IN (SELECT id FROM acknowledgements WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM acknowledgements WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM attendance_events WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM shifts WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM manager_shifts WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM training_completions WHERE trainee_id IN (SELECT id FROM trainees WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM training_sessions WHERE trainee_id IN (SELECT id FROM trainees WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM trainees WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM store_pnl_periods WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM meeting_actions WHERE meeting_id IN (SELECT id FROM meetings WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM meeting_week_state WHERE meeting_id IN (SELECT id FROM meetings WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM schedule_request_attachments WHERE request_id IN (SELECT id FROM schedule_requests WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM schedule_request_events WHERE request_id IN (SELECT id FROM schedule_requests WHERE store_id = ?)`).run(storeId);
+    db.prepare(`DELETE FROM schedule_conflicts WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM schedule_requests WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM shift_notes WHERE store_id = ?`).run(storeId);
+    db.prepare(`DELETE FROM handoffs WHERE store_id = ?`).run(storeId);
+    db.prepare(
+      `DELETE FROM audit_events WHERE entity_type IN (
+        'task', 'attendance_event', 'acknowledgement', 'acknowledgement_completion', 'manager_shift',
+        'schedule_request', 'borrowed_item', 'trainee', 'handoff', 'shift', 'guest_recovery', 'issue',
+        'store_pnl_period', 'shift_note', 'cleaning_task'
+      )`
+    ).run();
+    db.prepare(
+      `UPDATE cleaning_tasks SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL, photo_url = NULL
+       WHERE area_id IN (SELECT id FROM cleaning_areas WHERE store_id = ?)`
+    ).run(storeId);
+  });
+  reset();
+
+  revalidatePath("/", "layout");
+  return {};
+}
+
 export async function updateStoreProfileAction(formData: FormData): Promise<{ error?: string }> {
   const user = await requireCurrentUser();
   if (!canDo(user, "store.configure")) throw new Error("FORBIDDEN");
