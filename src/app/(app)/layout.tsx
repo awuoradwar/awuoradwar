@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-dvh flex-col bg-background">
       <NavDepthTracker />
       <AutoRefresh />
-      <TopBar user={user} storeName={store?.name || "Store"} picName={shift?.pic_name || null} />
+      <TopBar user={user} storeName={store?.name || "Store"} picNames={shift.picDisplayNames} picPosition={shift.picDisplayPosition} />
       <OfflineQueueBanner lang={user.language} />
       <main className="flex-1 overflow-y-auto pb-24">{children}</main>
       <BottomNav lang={user.language} />
