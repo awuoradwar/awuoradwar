@@ -45,6 +45,10 @@ function createConnection(): Database.Database {
   ensureColumn(db, "inventory_items", "on_order", "on_order INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "cleaning_tasks", "photo_before_url", "photo_before_url TEXT");
   ensureColumn(db, "cleaning_tasks", "photo_after_url", "photo_after_url TEXT");
+  ensureColumn(db, "borrowed_items", "direction", "direction TEXT NOT NULL DEFAULT 'BORROWED'");
+  ensureColumn(db, "borrowed_items", "approved_by_name", "approved_by_name TEXT");
+  ensureColumn(db, "borrowed_items", "picked_up_by_name", "picked_up_by_name TEXT");
+  ensureColumn(db, "borrowed_items", "picked_up_at", "picked_up_at TEXT");
   migrateLegacyTrainingPositions(db);
   return db;
 }

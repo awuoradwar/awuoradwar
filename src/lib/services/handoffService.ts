@@ -83,8 +83,8 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
     .prepare(`SELECT id, category, description FROM issues WHERE store_id = ? AND status NOT IN ('RESOLVED')`)
     .all(storeId) as Array<{ id: string; category: string; description: string }>;
   const openBorrowed = db
-    .prepare(`SELECT id, item, borrowed_from FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED'`)
-    .all(storeId) as Array<{ id: string; item: string; borrowed_from: string }>;
+    .prepare(`SELECT id, item, borrowed_from, direction FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED'`)
+    .all(storeId) as Array<{ id: string; item: string; borrowed_from: string; direction: "BORROWED" | "LENT" }>;
 
   const openItems = [
     ...openGR.map((g) => ({
@@ -102,7 +102,10 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
     ...openBorrowed.map((b) => ({
       kind: "borrowed_item",
       id: b.id,
-      title: `${lang === "es" ? "Prestado" : "Borrowed"}: ${b.item} ${lang === "es" ? "de" : "from"} ${b.borrowed_from}`,
+      title:
+        b.direction === "LENT"
+          ? `${lang === "es" ? "Prestado a" : "Lent"}: ${b.item} ${lang === "es" ? "a" : "to"} ${b.borrowed_from}`
+          : `${lang === "es" ? "Prestado" : "Borrowed"}: ${b.item} ${lang === "es" ? "de" : "from"} ${b.borrowed_from}`,
     })),
   ];
 

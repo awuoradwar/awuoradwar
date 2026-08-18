@@ -47,7 +47,11 @@ export default async function ShiftHistoryPage({ params }: PageProps<"/history/[
 
       <Section title={es ? `Artículos prestados (${borrowedItems.length})` : `Borrowed items (${borrowedItems.length})`} count={borrowedItems.length}>
         {borrowedItems.map((b, i) => (
-          <Row key={i} left={`${b.item} (${b.borrowed_from})`} right={<StatusBadge status={b.status} lang={user.language} />} />
+          <Row
+            key={i}
+            left={`${b.direction === "LENT" ? (es ? "Prestado a" : "Lent to") : es ? "Prestado de" : "Borrowed from"} ${b.borrowed_from}: ${b.item}`}
+            right={<StatusBadge status={b.status} lang={user.language} />}
+          />
         ))}
       </Section>
 

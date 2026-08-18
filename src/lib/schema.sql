@@ -284,10 +284,14 @@ CREATE TABLE IF NOT EXISTS guest_recoveries (
 CREATE TABLE IF NOT EXISTS borrowed_items (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
-  borrowed_from TEXT NOT NULL,
+  direction TEXT NOT NULL DEFAULT 'BORROWED', -- BORROWED (from another store) | LENT (to another store)
+  borrowed_from TEXT NOT NULL, -- the other store, regardless of direction
   item TEXT NOT NULL,
   quantity REAL,
   unit TEXT,
+  approved_by_name TEXT, -- who authorized this store's side of the move
+  picked_up_by_name TEXT, -- who physically handled the pickup
+  picked_up_at TEXT, -- when the pickup happened
   settlement_method TEXT, -- RETURN_PRODUCT | CRUNCHTIME_TRANSFER | PENDING_CONFIRMATION
   owner_id TEXT REFERENCES users(id),
   status TEXT NOT NULL DEFAULT 'OPEN', -- OPEN | SETTLEMENT_SELECTED | RETURN_PENDING | SETTLED

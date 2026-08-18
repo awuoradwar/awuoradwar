@@ -3,12 +3,18 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
 
+export type BorrowDirection = "BORROWED" | "LENT";
+
 export function createBorrowedItem(params: {
   storeId: string;
+  direction: BorrowDirection;
   borrowedFrom: string;
   item: string;
   quantity?: number;
   unit?: string;
+  approvedByName?: string | null;
+  pickedUpByName?: string | null;
+  pickedUpAt?: string | null;
   ownerId?: string | null;
   actor: SessionUser;
   idempotencyKey?: string;
@@ -18,19 +24,37 @@ export function createBorrowedItem(params: {
 
 function insertBorrowedItem(params: {
   storeId: string;
+  direction: BorrowDirection;
   borrowedFrom: string;
   item: string;
   quantity?: number;
   unit?: string;
+  approvedByName?: string | null;
+  pickedUpByName?: string | null;
+  pickedUpAt?: string | null;
   ownerId?: string | null;
   actor: SessionUser;
 }) {
   const db = getDb();
   const id = newId();
   db.prepare(
-    `INSERT INTO borrowed_items (id, store_id, borrowed_from, item, quantity, unit, owner_id, status, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?)`
-  ).run(id, params.storeId, params.borrowedFrom, params.item, params.quantity ?? null, params.unit || null, params.ownerId || params.actor.id, params.actor.id, nowIso());
+    `INSERT INTO borrowed_items (id, store_id, direction, borrowed_from, item, quantity, unit, approved_by_name, picked_up_by_name, picked_up_at, owner_id, status, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?)`
+  ).run(
+    id,
+    params.storeId,
+    params.direction,
+    params.borrowedFrom,
+    params.item,
+    params.quantity ?? null,
+    params.unit || null,
+    params.approvedByName || null,
+    params.pickedUpByName || null,
+    params.pickedUpAt || null,
+    params.ownerId || params.actor.id,
+    params.actor.id,
+    nowIso()
+  );
   writeAudit({ entityType: "borrowed_item", entityId: id, actor: params.actor, action: "CREATED" });
   return id;
 }
@@ -41,15 +65,30 @@ function insertBorrowedItem(params: {
  * settling can still be corrected in the record. */
 export function updateBorrowedItem(
   id: string,
-  params: { borrowedFrom: string; item: string; quantity: number | null; unit: string | null },
+  params: {
+    direction: BorrowDirection;
+    borrowedFrom: string;
+    item: string;
+    quantity: number | null;
+    unit: string | null;
+    approvedByName: string | null;
+    pickedUpByName: string | null;
+    pickedUpAt: string | null;
+  },
   actor: SessionUser
 ) {
   const db = getDb();
-  db.prepare(`UPDATE borrowed_items SET borrowed_from = ?, item = ?, quantity = ?, unit = ? WHERE id = ?`).run(
+  db.prepare(
+    `UPDATE borrowed_items SET direction = ?, borrowed_from = ?, item = ?, quantity = ?, unit = ?, approved_by_name = ?, picked_up_by_name = ?, picked_up_at = ? WHERE id = ?`
+  ).run(
+    params.direction,
     params.borrowedFrom,
     params.item,
     params.quantity,
     params.unit,
+    params.approvedByName,
+    params.pickedUpByName,
+    params.pickedUpAt,
     id
   );
   writeAudit({ entityType: "borrowed_item", entityId: id, actor, action: "EDITED", newValue: params });

@@ -209,12 +209,21 @@ export async function quickAddBorrowedItemAction(formData: FormData) {
   const borrowedFrom = fd(formData, "borrowedFrom");
   const item = fd(formData, "item");
   if (!borrowedFrom || !item) return { error: "Store and item are required." };
+  const direction = fd(formData, "direction") === "LENT" ? "LENT" : "BORROWED";
+  const pickedUpAtLocal = fd(formData, "pickedUpAt"); // datetime-local: "YYYY-MM-DDTHH:MM"
+  const pickedUpAt = pickedUpAtLocal
+    ? storeLocalIso(user.storeId, pickedUpAtLocal.slice(0, 10), pickedUpAtLocal.slice(11, 16))
+    : null;
   borrowingService.createBorrowedItem({
     storeId: user.storeId,
+    direction,
     borrowedFrom,
     item,
     quantity: fd(formData, "quantity") ? Number(fd(formData, "quantity")) : undefined,
     unit: fd(formData, "unit") || undefined,
+    approvedByName: fd(formData, "approvedByName") || undefined,
+    pickedUpByName: fd(formData, "pickedUpByName") || undefined,
+    pickedUpAt,
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });

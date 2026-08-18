@@ -69,3 +69,21 @@ export function storeLocalIso(storeId: string, dateStr: string, timeStr: string)
   const [h, mi] = timeStr.split(":").map(Number);
   return zonedWallTimeToUtc(getStoreTimezone(storeId), y, mo, d, h, mi).toISOString();
 }
+
+/** Inverse of storeLocalIso -- a stored UTC instant back into the
+ * "YYYY-MM-DDTHH:MM" shape an <input type="datetime-local"> expects,
+ * showing the store's own wall-clock time rather than the server's UTC. */
+export function utcToStoreLocalInput(storeId: string, isoUtc: string): string {
+  const tz = getStoreTimezone(storeId);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(isoUtc));
+  const get = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour") === "24" ? "00" : get("hour")}:${get("minute")}`;
+}

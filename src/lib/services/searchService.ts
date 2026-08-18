@@ -74,10 +74,14 @@ export function searchAll(storeId: string, query: string, filters: SearchFilters
   if (wantKind("borrowed_item")) {
     const borrowed = db
       .prepare(
-        `SELECT id, item, status, created_at FROM borrowed_items WHERE store_id = ? AND lower(item) LIKE ? AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT 50`
+        `SELECT id, item, direction, status, created_at FROM borrowed_items WHERE store_id = ? AND lower(item) LIKE ? AND created_at BETWEEN ? AND ? ORDER BY created_at DESC LIMIT 50`
       )
-      .all(storeId, q, dateFrom, dateTo) as Array<{ id: string; item: string; status: string; created_at: string }>;
-    results.push(...borrowed.filter((b) => matchesStatus(b.status)).map((b) => ({ kind: "borrowed_item", id: b.id, title: `Borrowed: ${b.item}`, status: b.status, date: b.created_at })));
+      .all(storeId, q, dateFrom, dateTo) as Array<{ id: string; item: string; direction: "BORROWED" | "LENT"; status: string; created_at: string }>;
+    results.push(
+      ...borrowed
+        .filter((b) => matchesStatus(b.status))
+        .map((b) => ({ kind: "borrowed_item", id: b.id, title: `${b.direction === "LENT" ? "Lent" : "Borrowed"}: ${b.item}`, status: b.status, date: b.created_at }))
+    );
   }
 
   if (wantKind("cleaning")) {
@@ -127,8 +131,8 @@ export function getShiftHistory(storeId: string, shiftId: string) {
     .prepare(`SELECT category, description, status, created_at FROM issues WHERE store_id = ? AND created_at BETWEEN ? AND ?`)
     .all(storeId, dayStart, dayEnd) as Array<{ category: string; description: string; status: string; created_at: string }>;
   const borrowedItems = db
-    .prepare(`SELECT item, borrowed_from, status, created_at FROM borrowed_items WHERE store_id = ? AND created_at BETWEEN ? AND ?`)
-    .all(storeId, dayStart, dayEnd) as Array<{ item: string; borrowed_from: string; status: string; created_at: string }>;
+    .prepare(`SELECT item, borrowed_from, direction, status, created_at FROM borrowed_items WHERE store_id = ? AND created_at BETWEEN ? AND ?`)
+    .all(storeId, dayStart, dayEnd) as Array<{ item: string; borrowed_from: string; direction: "BORROWED" | "LENT"; status: string; created_at: string }>;
   const cleaningActivity = db
     .prepare(
       `SELECT ae.action, ae.created_at, ct.title, u.name as actor_name

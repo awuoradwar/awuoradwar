@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getActivity, lastUpdatedBy } from "@/lib/audit";
 import { t } from "@/lib/i18n";
+import { utcToStoreLocalInput } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import BorrowedItemDetailActions from "@/components/BorrowedItemDetailActions";
 import BorrowedItemEditableFields from "@/components/BorrowedItemEditableFields";
@@ -10,10 +11,14 @@ import PageHeader from "@/components/PageHeader";
 
 interface BorrowedItemRow {
   id: string;
+  direction: "BORROWED" | "LENT";
   borrowed_from: string;
   item: string;
   quantity: number | null;
   unit: string | null;
+  approved_by_name: string | null;
+  picked_up_by_name: string | null;
+  picked_up_at: string | null;
   settlement_method: string | null;
   status: string;
   owner_name: string | null;
@@ -59,10 +64,14 @@ export default async function BorrowedItemDetailPage({ params }: PageProps<"/bor
         <BorrowedItemEditableFields
           id={item.id}
           lang={user.language}
+          direction={item.direction}
           borrowedFrom={item.borrowed_from}
           item={item.item}
           quantity={item.quantity}
           unit={item.unit}
+          approvedByName={item.approved_by_name}
+          pickedUpByName={item.picked_up_by_name}
+          pickedUpAtLocal={item.picked_up_at ? utcToStoreLocalInput(user.storeId, item.picked_up_at) : null}
         />
         <dt className="text-muted">{t(user.language, "field_owner")}</dt>
         <dd>{item.owner_name || "—"}</dd>
