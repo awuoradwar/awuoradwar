@@ -26,6 +26,15 @@ const TITLE_KEYS: Record<string, string> = {
   note: "add_note",
 };
 
+// Types reached from their own More page (rather than the /add grid) fall
+// back there when there's no real navigation history to go back to.
+const BACK_HREF: Record<string, string> = {
+  cleaning: "/more/cleaning",
+  "meal-replacement": "/more/meal-replacements",
+  issue: "/more/work-orders",
+  acknowledgement: "/more/acknowledgements",
+};
+
 export default async function AddTypePage({ params }: PageProps<"/add/[type]">) {
   const { type } = await params;
   const user = await getCurrentUser();
@@ -40,7 +49,7 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref="/add" lang={user.language} title={t(user.language, TITLE_KEYS[type] as never)} />
+      <PageHeader backHref={BACK_HREF[type] || "/add"} lang={user.language} title={t(user.language, TITLE_KEYS[type] as never)} />
       {type === "task" && <TaskForm lang={user.language} isGM={isGM(user)} />}
       {type === "call-in" && <CallInForm lang={user.language} />}
       {type === "late" && <LateForm lang={user.language} />}

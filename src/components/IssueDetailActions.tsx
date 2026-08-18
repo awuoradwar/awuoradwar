@@ -49,7 +49,7 @@ export default function IssueDetailActions({ id, lang, status }: { id: string; l
             </button>
             {status !== "IN_PROGRESS" && (
               <button
-                disabled={pending || !note.trim()}
+                disabled={pending}
                 onClick={() =>
                   run(async () => {
                     await addIssueUpdateAction(id, note.trim(), "IN_PROGRESS");
@@ -63,7 +63,7 @@ export default function IssueDetailActions({ id, lang, status }: { id: string; l
             )}
             {status !== "WAITING" && (
               <button
-                disabled={pending || !note.trim()}
+                disabled={pending}
                 onClick={() =>
                   run(async () => {
                     await addIssueUpdateAction(id, note.trim(), "WAITING");

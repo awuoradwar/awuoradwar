@@ -43,7 +43,22 @@ function createConnection(): Database.Database {
   ensureColumn(db, "inventory_items", "stock_count", "stock_count INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "inventory_items", "par_level", "par_level INTEGER");
   ensureColumn(db, "inventory_items", "on_order", "on_order INTEGER NOT NULL DEFAULT 0");
+  migrateLegacyTrainingPositions(db);
   return db;
+}
+
+/** Training positions started as FOH/BOH, then split into COUNTERHELP/COOK/
+ * KITCHENHELP (Cook and Kitchenhelp are distinct real positions). Any
+ * trainee or checklist item created under the old scheme would otherwise
+ * point at a position no label/checklist recognizes -- BOH maps to COOK as
+ * a reasonable default; a GM can move a specific trainee to Kitchenhelp by
+ * hand if that's what was actually meant. Idempotent: a second run is a
+ * no-op once no rows carry the old values. */
+function migrateLegacyTrainingPositions(db: Database.Database) {
+  for (const table of ["training_items", "trainees"]) {
+    db.prepare(`UPDATE ${table} SET position = 'COUNTERHELP' WHERE position = 'FOH'`).run();
+    db.prepare(`UPDATE ${table} SET position = 'COOK' WHERE position = 'BOH'`).run();
+  }
 }
 
 export function getDb(): Database.Database {

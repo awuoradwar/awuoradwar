@@ -19,9 +19,17 @@ const CATEGORY_LABEL: Record<InventoryCategory, Record<Language, string>> = {
   EQUIPMENT: { en: "Equipment", es: "Equipo" },
   OTHER: { en: "Other", es: "Otro" },
 };
+const CATEGORY_ICON: Record<InventoryCategory, string> = {
+  SUPPLIES: "🧴",
+  TOOLS: "🔧",
+  UNIFORMS: "👕",
+  EQUIPMENT: "📦",
+  OTHER: "🗂️",
+};
 
 export default function InventorySupplies({ groups, lang, canManage }: { groups: InventoryGroup[]; lang: Language; canManage: boolean }) {
   const [query, setQuery] = useState("");
+  const hasQuery = query.trim().length > 0;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -50,10 +58,14 @@ export default function InventorySupplies({ groups, lang, canManage }: { groups:
         <div className="card p-4 text-center text-sm text-muted">
           {lang === "es" ? "No se encontraron artículos." : "No items found."}
         </div>
-      ) : (
+      ) : hasQuery ? (
+        // Searching: skip the accordion entirely and show every match, grouped
+        // by category, always expanded -- you typed a name, you want it now.
         CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((cat) => (
           <div key={cat}>
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted">{CATEGORY_LABEL[cat][lang]}</p>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-muted">
+              {CATEGORY_ICON[cat]} {CATEGORY_LABEL[cat][lang]}
+            </p>
             <div className="card divide-y divide-border">
               {byCategory.get(cat)!.map((g) => (
                 <InventoryItemGroup key={`${g.category}-${g.name}`} name={g.name} items={g.items} lang={lang} canManage={canManage} />
@@ -61,6 +73,29 @@ export default function InventorySupplies({ groups, lang, canManage }: { groups:
             </div>
           </div>
         ))
+      ) : (
+        // Not searching: one collapsed section per category, so scrolling
+        // through the whole list never mixes categories together, and you
+        // always know exactly which one you're looking at.
+        CATEGORY_ORDER.filter((c) => byCategory.has(c)).map((cat) => {
+          const catGroups = byCategory.get(cat)!;
+          const itemCount = catGroups.reduce((sum, g) => sum + g.items.length, 0);
+          return (
+            <details key={cat} className="card overflow-hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between bg-accent/10 px-3 py-2.5">
+                <span className="text-sm font-bold text-accent">
+                  {CATEGORY_ICON[cat]} {CATEGORY_LABEL[cat][lang]}
+                </span>
+                <span className="shrink-0 text-xs font-semibold text-accent">{itemCount}</span>
+              </summary>
+              <div className="divide-y divide-border border-t border-border">
+                {catGroups.map((g) => (
+                  <InventoryItemGroup key={`${g.category}-${g.name}`} name={g.name} items={g.items} lang={lang} canManage={canManage} />
+                ))}
+              </div>
+            </details>
+          );
+        })
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getMealReplacementsGrouped, MealReplacementRow as MealReplacementRowData } from "@/lib/services/guestRecoveryService";
 import MealReplacementRow from "@/components/MealReplacementRow";
@@ -74,6 +75,13 @@ export default async function MealReplacementsPage() {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
       <PageHeader backHref="/more" lang={lang} title={lang === "es" ? "Reemplazos de Comida" : "Meal Replacements"} />
+
+      <Link
+        href="/add/meal-replacement"
+        className="tap-target flex w-full items-center justify-center rounded-xl border-2 border-dashed border-accent text-sm font-semibold text-accent"
+      >
+        {lang === "es" ? "+ Agregar reemplazo de comida" : "+ Add meal replacement"}
+      </Link>
 
       <Section
         title={lang === "es" ? "Esperando Cumplimiento" : "Awaiting Fulfillment"}

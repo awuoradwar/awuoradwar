@@ -47,8 +47,10 @@ function insertIssue(params: {
 
 export function addIssueUpdate(issueId: string, note: string, actor: SessionUser, newStatus?: string) {
   const db = getDb();
-  const id = newId();
-  db.prepare(`INSERT INTO issue_updates (id, issue_id, note, actor_id, created_at) VALUES (?, ?, ?, ?, ?)`).run(id, issueId, note, actor.id, nowIso());
+  if (note.trim()) {
+    const id = newId();
+    db.prepare(`INSERT INTO issue_updates (id, issue_id, note, actor_id, created_at) VALUES (?, ?, ?, ?, ?)`).run(id, issueId, note, actor.id, nowIso());
+  }
   if (newStatus) {
     const old = db.prepare(`SELECT status FROM issues WHERE id = ?`).get(issueId) as { status: string };
     db.prepare(`UPDATE issues SET status = ? WHERE id = ?`).run(newStatus, issueId);

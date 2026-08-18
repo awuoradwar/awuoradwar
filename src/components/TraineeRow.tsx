@@ -11,7 +11,7 @@ export default function TraineeRow({ item, lang }: { item: TraineeRowData; lang:
         <div className="flex items-center gap-2">
           <p className="truncate text-sm font-semibold">{item.name}</p>
           <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
-            {TRAINING_POSITION_LABEL[item.position][lang]}
+            {TRAINING_POSITION_LABEL[item.position]?.[lang] || item.position}
           </span>
           {item.status === "COMPLETE" && (
             <span className="shrink-0 rounded-full bg-ok/10 px-2 py-0.5 text-[10px] font-bold text-ok">

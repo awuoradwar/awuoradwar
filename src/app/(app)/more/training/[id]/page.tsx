@@ -33,7 +33,7 @@ export default async function TraineeDetailPage({ params }: PageProps<"/more/tra
 
       <div className="mb-4 flex items-center gap-2">
         <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent">
-          {TRAINING_POSITION_LABEL[trainee.position][user.language]}
+          {TRAINING_POSITION_LABEL[trainee.position]?.[user.language] || trainee.position}
         </span>
         {trainee.status === "COMPLETE" && (
           <span className="rounded-full bg-ok/10 px-2.5 py-1 text-xs font-bold text-ok">{es ? "COMPLETO" : "COMPLETE"}</span>

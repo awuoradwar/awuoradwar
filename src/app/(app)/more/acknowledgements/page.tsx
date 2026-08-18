@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAcknowledgementsWithStatus } from "@/lib/services/acknowledgementService";
 import { t } from "@/lib/i18n";
@@ -24,6 +25,13 @@ export default async function AcknowledgementsPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/more" lang={user.language} title={t(user.language, "more_acknowledgements")} />
+
+      <Link
+        href="/add/acknowledgement"
+        className="tap-target mb-4 flex w-full items-center justify-center rounded-xl border-2 border-dashed border-accent text-sm font-semibold text-accent"
+      >
+        {user.language === "es" ? "+ Agregar reconocimiento" : "+ Add acknowledgement"}
+      </Link>
 
       {acks.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">

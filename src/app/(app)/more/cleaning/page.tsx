@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAreasWithProgress } from "@/lib/services/cleaningService";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
@@ -81,6 +82,13 @@ export default async function CleaningPage() {
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Limpieza" : "Cleaning"} />
+
+      <Link
+        href="/add/cleaning"
+        className="tap-target mb-6 flex w-full items-center justify-center rounded-xl border-2 border-dashed border-accent text-sm font-semibold text-accent"
+      >
+        {user.language === "es" ? "+ Agregar tarea de limpieza" : "+ Add cleaning task"}
+      </Link>
 
       <FrequencySection title={t(user.language, "cleaning_daily")} areas={dailyAreas} lang={user.language} />
       <FrequencySection title={t(user.language, "cleaning_weekly")} areas={weeklyAreas} lang={user.language} />
