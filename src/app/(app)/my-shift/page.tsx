@@ -1,13 +1,13 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getOpenTasksForStore, getCompletedTasksToday, computeSection, isBlocked, Section } from "@/lib/services/taskService";
+import { getOpenTasksForStore, getCompletedTasksToday, computeSection, isBlocked, Section, windowForHour } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
-import { storeToday } from "@/lib/storeTime";
+import { storeToday, storeLocalHour } from "@/lib/storeTime";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
@@ -19,6 +19,35 @@ const OPEN_ITEM_HREF: Record<string, string> = {
   issue: "/issue",
   borrowed_item: "/borrowed-item",
 };
+
+/** Every My Shift section lives inside the same bordered card, header and
+ * content together -- matching how This Week/Completed already look, so a
+ * section doesn't visually change containers depending on whether it's
+ * collapsible. */
+function SectionCard({
+  title,
+  sub,
+  count,
+  children,
+}: {
+  title: string;
+  sub: string;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="card overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-3 py-3">
+        <div className="min-w-0">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{title}</h2>
+          <p className="text-xs text-muted">{sub}</p>
+        </div>
+        {!!count && <span className="shrink-0 text-xs font-semibold text-muted">{count}</span>}
+      </div>
+      <div className="border-t border-border p-3">{children}</div>
+    </section>
+  );
+}
 
 export default async function MyShiftPage() {
   const user = await getCurrentUser();
@@ -44,7 +73,14 @@ export default async function MyShiftPage() {
   const unresolvedForDisplay = summary.unresolved.filter((u) => u.kind !== "task" && u.kind !== "cleaning");
   const todayWeekday = new Date(today + "T00:00:00Z").getDay();
   const cleaningToday = getCleaningTasksDueToday(user.storeId, todayWeekday);
-  const fromLastShiftCount = summary.staffing.length + summary.openItems.length + unresolvedForDisplay.length;
+  // A call-in/late/no-show logged during the shift that's happening right
+  // now is current information for whoever's on now, not a leftover from a
+  // prior shift -- only staffing events logged in an earlier shift window
+  // belong under "From Last Shift".
+  const nowWindow = windowForHour(storeLocalHour(user.storeId, now));
+  const currentShiftStaffing = summary.staffing.filter((s) => windowForHour(storeLocalHour(user.storeId, new Date(s.created_at))) === nowWindow);
+  const priorShiftStaffing = summary.staffing.filter((s) => windowForHour(storeLocalHour(user.storeId, new Date(s.created_at))) !== nowWindow);
+  const fromLastShiftCount = priorShiftStaffing.length + summary.openItems.length + unresolvedForDisplay.length;
 
   const dateLabel = now.toLocaleDateString(user.language === "es" ? "es-MX" : "en-US", {
     weekday: "long",
@@ -65,17 +101,32 @@ export default async function MyShiftPage() {
         )}
       </div>
 
-      {(["NOW", "TODAY"] as const).map((bucket) => (
-        <section key={bucket}>
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, `section_${bucket.toLowerCase()}` as never)}</h2>
-            {buckets[bucket].length > 0 && <span className="text-xs font-semibold text-muted">{buckets[bucket].length}</span>}
+      {currentShiftStaffing.length > 0 && (
+        <SectionCard
+          title={user.language === "es" ? "Personal de Este Turno" : "Staffing This Shift"}
+          sub={user.language === "es" ? "Llamadas, tardanzas y cobertura de hoy" : "Call-ins, late arrivals, and coverage happening now"}
+          count={currentShiftStaffing.length}
+        >
+          <div className="flex flex-col gap-2">
+            {currentShiftStaffing.map((s, i) => (
+              <div key={`current-staff-${i}`} className="card p-3 text-sm">
+                🧍 {s.employee_name} — {s.type.replace("_", " ")}
+                {s.note ? <span className="text-muted"> · {s.note}</span> : null}
+              </div>
+            ))}
           </div>
-          <p className="mb-2 text-xs text-muted">{t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}</p>
+        </SectionCard>
+      )}
+
+      {(["NOW", "TODAY"] as const).map((bucket) => (
+        <SectionCard
+          key={bucket}
+          title={t(user.language, `section_${bucket.toLowerCase()}` as never)}
+          sub={t(user.language, `section_${bucket.toLowerCase()}_sub` as never)}
+          count={buckets[bucket].length}
+        >
           {buckets[bucket].length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">
-              {t(user.language, "all_clear")}
-            </p>
+            <p className="text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
           ) : (
             <div className="flex flex-col gap-2">
               {buckets[bucket].map((task) => (
@@ -83,21 +134,16 @@ export default async function MyShiftPage() {
               ))}
             </div>
           )}
-        </section>
+        </SectionCard>
       ))}
 
-      <section>
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-accent">
-            {user.language === "es" ? "Limpieza de Hoy" : "Cleaning Today"}
-          </h2>
-          {cleaningToday.length > 0 && <span className="text-xs font-semibold text-muted">{cleaningToday.length}</span>}
-        </div>
-        <p className="mb-2 text-xs text-muted">
-          {user.language === "es" ? "Tareas de limpieza pendientes de hoy" : "Today's outstanding cleaning tasks"}
-        </p>
+      <SectionCard
+        title={user.language === "es" ? "Limpieza de Hoy" : "Cleaning Today"}
+        sub={user.language === "es" ? "Tareas de limpieza pendientes de hoy" : "Today's outstanding cleaning tasks"}
+        count={cleaningToday.length}
+      >
         {cleaningToday.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
+          <p className="text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {cleaningToday.map((ct) => (
@@ -111,7 +157,7 @@ export default async function MyShiftPage() {
             ))}
           </div>
         )}
-      </section>
+      </SectionCard>
 
       {(["THIS_WEEK"] as const).map((bucket) => (
         <details key={bucket} className="card overflow-hidden" open={false}>
@@ -164,7 +210,7 @@ export default async function MyShiftPage() {
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            {summary.staffing.map((s, i) => (
+            {priorShiftStaffing.map((s, i) => (
               <div key={`staff-${i}`} className="card p-3 text-sm">
                 🧍 {s.employee_name} — {s.type.replace("_", " ")}
                 {s.note ? <span className="text-muted"> · {s.note}</span> : null}
