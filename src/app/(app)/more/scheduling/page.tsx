@@ -2,10 +2,12 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
 import { getPendingQueue, getAllRequests } from "@/lib/services/schedulingService";
+import { getActivity } from "@/lib/audit";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import ScheduleRequestForm from "@/components/ScheduleRequestForm";
 import ApprovalQueueRow from "@/components/ApprovalQueueRow";
 import ConflictCheckTool from "@/components/ConflictCheckTool";
-import ScheduleRequestRow from "@/components/ScheduleRequestRow";
+import ScheduleRequestRow, { ActivityEntry } from "@/components/ScheduleRequestRow";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -30,6 +32,21 @@ export default async function SchedulingPage() {
 
   const pending = getPendingQueue(user.storeId) as RequestRow[];
   const all = getAllRequests(user.storeId) as RequestRow[];
+  const locale = user.language === "es" ? "es-MX" : "en-US";
+  const activityByRequest = new Map<string, ActivityEntry[]>(
+    all.map((r) => {
+      const rows = getActivity("schedule_request", r.id) as Array<{ id: string; action: string; actor_name: string | null; created_at: string }>;
+      return [
+        r.id,
+        rows.map((a) => ({
+          id: a.id,
+          action: a.action,
+          actorName: a.actor_name,
+          formattedAt: formatStoreDateTime(user.storeId, a.created_at, locale),
+        })),
+      ];
+    })
+  );
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -74,7 +91,7 @@ export default async function SchedulingPage() {
         </h2>
         <div className="card divide-y divide-border">
           {all.map((r) => (
-            <ScheduleRequestRow key={r.id} request={r} lang={user.language} />
+            <ScheduleRequestRow key={r.id} request={r} lang={user.language} activity={activityByRequest.get(r.id) || []} />
           ))}
         </div>
       </section>

@@ -22,6 +22,13 @@ interface RequestData {
   attachment_count?: number;
 }
 
+export interface ActivityEntry {
+  id: string;
+  action: string;
+  actorName: string | null;
+  formattedAt: string;
+}
+
 const REQUEST_TYPES = [
   { value: "FULL_DAY_OFF", en: "Full day off", es: "Día completo libre" },
   { value: "LEAVE_EARLY", en: "Leave early", es: "Salir temprano" },
@@ -31,7 +38,7 @@ const REQUEST_TYPES = [
   { value: "OTHER", en: "Other", es: "Otro" },
 ];
 
-export default function ScheduleRequestRow({ request, lang }: { request: RequestData; lang: Language }) {
+export default function ScheduleRequestRow({ request, lang, activity }: { request: RequestData; lang: Language; activity: ActivityEntry[] }) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -42,29 +49,45 @@ export default function ScheduleRequestRow({ request, lang }: { request: Request
 
   if (!editing) {
     return (
-      <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-        <div className="min-w-0">
-          <p className="truncate font-medium">
-            {request.associate_name} · {request.request_type.replace(/_/g, " ")}
-          </p>
-          <p className="text-xs text-muted">
-            {request.requested_start_date} · {request.received_via} · {request.received_by_name}
-            {request.attachment_count ? (
-              <>
-                {" · "}
-                <a href={`/api/schedule-attachments/${request.id}`} target="_blank" rel="noreferrer" className="text-accent underline">
-                  📎
-                </a>
-              </>
-            ) : null}
-          </p>
+      <div className="px-3 py-2">
+        <div className="flex items-center justify-between gap-2 text-sm">
+          <div className="min-w-0">
+            <p className="truncate font-medium">
+              {request.associate_name} · {request.request_type.replace(/_/g, " ")}
+            </p>
+            <p className="text-xs text-muted">
+              {request.requested_start_date} · {request.received_via} · {request.received_by_name}
+              {request.attachment_count ? (
+                <>
+                  {" · "}
+                  <a href={`/api/schedule-attachments/${request.id}`} target="_blank" rel="noreferrer" className="text-accent underline">
+                    📎
+                  </a>
+                </>
+              ) : null}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <StatusBadge status={request.status} lang={lang} />
+            <button type="button" onClick={() => setEditing(true)} className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-accent">
+              ✎
+            </button>
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <StatusBadge status={request.status} lang={lang} />
-          <button type="button" onClick={() => setEditing(true)} className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-accent">
-            ✎
-          </button>
-        </div>
+        {activity.length > 0 && (
+          <details className="mt-1.5">
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted hover:text-accent">
+              {lang === "es" ? "Ver actividad" : "View activity"} ({activity.length})
+            </summary>
+            <div className="mt-1.5 flex flex-col gap-1 border-l-2 border-border pl-2.5">
+              {activity.map((a) => (
+                <p key={a.id} className="text-xs text-muted">
+                  <span className="font-semibold text-foreground">{a.action}</span> · {a.actorName || (lang === "es" ? "sistema" : "system")} · {a.formattedAt}
+                </p>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
     );
   }
