@@ -308,6 +308,7 @@ CREATE TABLE IF NOT EXISTS borrowed_items (
   approved_by_name TEXT, -- who authorized this store's side of the move
   picked_up_by_name TEXT, -- who physically handled the pickup
   picked_up_at TEXT, -- when the pickup happened
+  due_at TEXT, -- when this needs to be returned/settled by; drives the critical-when-overdue flag
   settlement_method TEXT, -- RETURN_PRODUCT | CRUNCHTIME_TRANSFER | PENDING_CONFIRMATION
   owner_id TEXT REFERENCES users(id),
   status TEXT NOT NULL DEFAULT 'OPEN', -- OPEN | SETTLEMENT_SELECTED | RETURN_PENDING | SETTLED

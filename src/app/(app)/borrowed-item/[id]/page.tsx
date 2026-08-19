@@ -19,6 +19,7 @@ interface BorrowedItemRow {
   approved_by_name: string | null;
   picked_up_by_name: string | null;
   picked_up_at: string | null;
+  due_at: string | null;
   settlement_method: string | null;
   status: string;
   owner_name: string | null;
@@ -54,11 +55,15 @@ export default async function BorrowedItemDetailPage({ params }: PageProps<"/bor
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
 
+  const hoursUntilDue = item.due_at ? (new Date(item.due_at).getTime() - Date.now()) / 3600000 : null;
+  const dueStatus = item.status === "SETTLED" || hoursUntilDue == null ? null : hoursUntilDue < 0 ? "OVERDUE" : hoursUntilDue <= 24 ? "DUE_SOON" : null;
+
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/more/search" lang={user.language} title={item.item} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={item.status} lang={user.language} />
+        {dueStatus && <StatusBadge status={dueStatus} lang={user.language} />}
         <span className="text-xs text-muted">{fmt(item.created_at)}</span>
       </div>
 
@@ -74,6 +79,8 @@ export default async function BorrowedItemDetailPage({ params }: PageProps<"/bor
           approvedByName={item.approved_by_name}
           pickedUpByName={item.picked_up_by_name}
           pickedUpAtLocal={item.picked_up_at ? utcToStoreLocalInput(user.storeId, item.picked_up_at) : null}
+          dueAtLocal={item.due_at ? utcToStoreLocalInput(user.storeId, item.due_at) : null}
+          dueAtIso={item.due_at}
         />
         <dt className="text-muted">{t(user.language, "field_owner")}</dt>
         <dd>{item.owner_name || "—"}</dd>

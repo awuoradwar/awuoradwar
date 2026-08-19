@@ -15,6 +15,7 @@ export function createBorrowedItem(params: {
   approvedByName?: string | null;
   pickedUpByName?: string | null;
   pickedUpAt?: string | null;
+  dueAt?: string | null;
   ownerId?: string | null;
   actor: SessionUser;
   idempotencyKey?: string;
@@ -32,14 +33,15 @@ function insertBorrowedItem(params: {
   approvedByName?: string | null;
   pickedUpByName?: string | null;
   pickedUpAt?: string | null;
+  dueAt?: string | null;
   ownerId?: string | null;
   actor: SessionUser;
 }) {
   const db = getDb();
   const id = newId();
   db.prepare(
-    `INSERT INTO borrowed_items (id, store_id, direction, borrowed_from, item, quantity, unit, approved_by_name, picked_up_by_name, picked_up_at, owner_id, status, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?)`
+    `INSERT INTO borrowed_items (id, store_id, direction, borrowed_from, item, quantity, unit, approved_by_name, picked_up_by_name, picked_up_at, due_at, owner_id, status, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -51,6 +53,7 @@ function insertBorrowedItem(params: {
     params.approvedByName || null,
     params.pickedUpByName || null,
     params.pickedUpAt || null,
+    params.dueAt || null,
     params.ownerId || params.actor.id,
     params.actor.id,
     nowIso()
@@ -74,12 +77,13 @@ export function updateBorrowedItem(
     approvedByName: string | null;
     pickedUpByName: string | null;
     pickedUpAt: string | null;
+    dueAt: string | null;
   },
   actor: SessionUser
 ) {
   const db = getDb();
   db.prepare(
-    `UPDATE borrowed_items SET direction = ?, borrowed_from = ?, item = ?, quantity = ?, unit = ?, approved_by_name = ?, picked_up_by_name = ?, picked_up_at = ? WHERE id = ?`
+    `UPDATE borrowed_items SET direction = ?, borrowed_from = ?, item = ?, quantity = ?, unit = ?, approved_by_name = ?, picked_up_by_name = ?, picked_up_at = ?, due_at = ? WHERE id = ?`
   ).run(
     params.direction,
     params.borrowedFrom,
@@ -89,6 +93,7 @@ export function updateBorrowedItem(
     params.approvedByName,
     params.pickedUpByName,
     params.pickedUpAt,
+    params.dueAt,
     id
   );
   writeAudit({ entityType: "borrowed_item", entityId: id, actor, action: "EDITED", newValue: params });

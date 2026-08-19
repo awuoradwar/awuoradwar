@@ -86,6 +86,9 @@ export default function BorrowedItemForm({ lang }: { lang: Language }) {
       <Field label={lang === "es" ? "Fecha y hora de recogida" : "Pickup date & time"}>
         <input name="pickedUpAt" type="datetime-local" className={inputClass} />
       </Field>
+      <Field label={direction === "LENT" ? (lang === "es" ? "Fecha límite de devolución" : "Due back date & time") : lang === "es" ? "Fecha límite para devolver" : "Due date & time to return"}>
+        <input name="dueAt" type="datetime-local" className={inputClass} />
+      </Field>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Guardar" : "Save"} />
     </form>
   );

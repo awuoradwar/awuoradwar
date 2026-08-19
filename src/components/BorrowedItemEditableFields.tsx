@@ -25,6 +25,19 @@ function formatStoreLocal(localDateTime: string, lang: Language): string {
   });
 }
 
+/** Overdue -> critical (red), due within 24h -> warning (amber), otherwise
+ * plain -- same "escalate as it approaches" idea used for CRITICAL tasks
+ * elsewhere, applied here since a borrowed/lent item has no other signal
+ * that it needs attention until someone happens to open it. Takes the real
+ * UTC instant (not the store-local display string) so the comparison
+ * against the browser's own clock is a plain, always-correct instant diff. */
+function dueTone(dueAtIso: string): "critical" | "warning" | null {
+  const hoursUntil = (new Date(dueAtIso).getTime() - Date.now()) / 3600000;
+  if (hoursUntil < 0) return "critical";
+  if (hoursUntil <= 24) return "warning";
+  return null;
+}
+
 export default function BorrowedItemEditableFields({
   id,
   lang,
@@ -36,6 +49,8 @@ export default function BorrowedItemEditableFields({
   approvedByName,
   pickedUpByName,
   pickedUpAtLocal,
+  dueAtLocal,
+  dueAtIso,
 }: {
   id: string;
   lang: Language;
@@ -47,6 +62,8 @@ export default function BorrowedItemEditableFields({
   approvedByName: string | null;
   pickedUpByName: string | null;
   pickedUpAtLocal: string | null;
+  dueAtLocal: string | null;
+  dueAtIso: string | null;
 }) {
   const [editing, setEditing] = useState(false);
   const [editDirection, setEditDirection] = useState<"BORROWED" | "LENT">(direction);
@@ -59,6 +76,8 @@ export default function BorrowedItemEditableFields({
   if (!editing) {
     const storeFieldLabel =
       direction === "LENT" ? (lang === "es" ? "Prestado a" : "Lent to") : lang === "es" ? "Prestado de" : "Borrowed from";
+    const tone = dueAtIso ? dueTone(dueAtIso) : null;
+    const dueLabel = direction === "LENT" ? (lang === "es" ? "Fecha límite de devolución" : "Due back") : lang === "es" ? "Fecha límite para devolver" : "Due";
     return (
       <>
         <dt className="text-muted">{storeFieldLabel}</dt>
@@ -94,6 +113,18 @@ export default function BorrowedItemEditableFields({
           <>
             <dt className="text-muted">{lang === "es" ? "Fecha y hora de recogida" : "Pickup date & time"}</dt>
             <dd>{formatStoreLocal(pickedUpAtLocal, lang)}</dd>
+          </>
+        )}
+        {dueAtLocal && (
+          <>
+            <dt className={tone === "critical" ? "font-semibold text-critical" : tone === "warning" ? "font-semibold text-warning" : "text-muted"}>
+              {dueLabel}
+            </dt>
+            <dd className={tone === "critical" ? "font-semibold text-critical" : tone === "warning" ? "font-semibold text-warning" : undefined}>
+              {tone === "critical" ? "⚠ " : ""}
+              {formatStoreLocal(dueAtLocal, lang)}
+              {tone === "critical" ? (lang === "es" ? " · Vencido" : " · Overdue") : ""}
+            </dd>
           </>
         )}
       </>
@@ -176,6 +207,9 @@ export default function BorrowedItemEditableFields({
         </Field>
         <Field label={lang === "es" ? "Fecha y hora de recogida" : "Pickup date & time"}>
           <input name="pickedUpAt" type="datetime-local" defaultValue={pickedUpAtLocal || ""} className={inputClass} />
+        </Field>
+        <Field label={editDirection === "LENT" ? (lang === "es" ? "Fecha límite de devolución" : "Due back date & time") : lang === "es" ? "Fecha límite para devolver" : "Due date & time to return"}>
+          <input name="dueAt" type="datetime-local" defaultValue={dueAtLocal || ""} className={inputClass} />
         </Field>
         {error && <p className="text-sm text-critical">{error}</p>}
         <div className="flex items-center gap-3">

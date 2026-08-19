@@ -41,6 +41,8 @@ const es: Record<DictKeys, string> = {
   status_settlement_selected: "Liquidación Seleccionada",
   status_return_pending: "Devolución/Transferencia Pendiente",
   status_resolved: "Resuelto",
+  status_overdue: "Vencido",
+  status_due_soon: "Vence Pronto",
 
   action_complete: "Completar",
   action_verify: "Verificar",

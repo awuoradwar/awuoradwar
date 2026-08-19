@@ -39,6 +39,8 @@ const en = {
   status_settlement_selected: "Settlement Selected",
   status_return_pending: "Return/Transfer Pending",
   status_resolved: "Resolved",
+  status_overdue: "Overdue",
+  status_due_soon: "Due Soon",
 
   action_complete: "Complete",
   action_verify: "Verify",

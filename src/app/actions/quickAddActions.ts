@@ -216,6 +216,8 @@ export async function quickAddBorrowedItemAction(formData: FormData) {
   const pickedUpAt = pickedUpAtLocal
     ? storeLocalIso(user.storeId, pickedUpAtLocal.slice(0, 10), pickedUpAtLocal.slice(11, 16))
     : null;
+  const dueAtLocal = fd(formData, "dueAt"); // datetime-local: "YYYY-MM-DDTHH:MM"
+  const dueAt = dueAtLocal ? storeLocalIso(user.storeId, dueAtLocal.slice(0, 10), dueAtLocal.slice(11, 16)) : null;
   borrowingService.createBorrowedItem({
     storeId: user.storeId,
     direction,
@@ -226,6 +228,7 @@ export async function quickAddBorrowedItemAction(formData: FormData) {
     approvedByName: fd(formData, "approvedByName") || undefined,
     pickedUpByName: fd(formData, "pickedUpByName") || undefined,
     pickedUpAt,
+    dueAt,
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });

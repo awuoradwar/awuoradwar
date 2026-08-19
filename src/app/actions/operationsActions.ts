@@ -51,6 +51,8 @@ export async function updateBorrowedItemAction(formData: FormData) {
   const direction = String(formData.get("direction") || "") === "LENT" ? "LENT" : "BORROWED";
   const pickedUpAtLocal = String(formData.get("pickedUpAt") || ""); // datetime-local: "YYYY-MM-DDTHH:MM"
   const pickedUpAt = pickedUpAtLocal ? storeLocalIso(user.storeId, pickedUpAtLocal.slice(0, 10), pickedUpAtLocal.slice(11, 16)) : null;
+  const dueAtLocal = String(formData.get("dueAt") || ""); // datetime-local: "YYYY-MM-DDTHH:MM"
+  const dueAt = dueAtLocal ? storeLocalIso(user.storeId, dueAtLocal.slice(0, 10), dueAtLocal.slice(11, 16)) : null;
   borrowingService.updateBorrowedItem(
     id,
     {
@@ -62,6 +64,7 @@ export async function updateBorrowedItemAction(formData: FormData) {
       approvedByName: String(formData.get("approvedByName") || "").trim() || null,
       pickedUpByName: String(formData.get("pickedUpByName") || "").trim() || null,
       pickedUpAt,
+      dueAt,
     },
     user
   );

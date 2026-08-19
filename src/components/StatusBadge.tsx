@@ -22,6 +22,8 @@ const STYLES: Record<string, string> = {
   WAITING: "bg-warning/10 text-warning",
   SETTLEMENT_SELECTED: "bg-warning/10 text-warning",
   RETURN_PENDING: "bg-warning/10 text-warning",
+  OVERDUE: "bg-critical/10 text-critical",
+  DUE_SOON: "bg-warning/10 text-warning",
 };
 
 const KEY_MAP: Record<string, string> = {
@@ -43,6 +45,8 @@ const KEY_MAP: Record<string, string> = {
   SETTLEMENT_SELECTED: "status_settlement_selected",
   RETURN_PENDING: "status_return_pending",
   RESOLVED: "status_resolved",
+  OVERDUE: "status_overdue",
+  DUE_SOON: "status_due_soon",
 };
 
 export default function StatusBadge({ status, lang }: { status: string; lang: Language }) {
