@@ -27,6 +27,7 @@ export default function CallInForm({ lang }: { lang: Language }) {
         <select name="coverageStatus" defaultValue="NEEDED" className={selectClass}>
           <option value="NEEDED">{lang === "es" ? "Necesaria" : "Needed"}</option>
           <option value="FOUND">{lang === "es" ? "Encontrada" : "Found"}</option>
+          <option value="NOT_FOUND">{lang === "es" ? "No Encontrada" : "Not Found"}</option>
           <option value="NOT_REQUIRED">{lang === "es" ? "No requerida" : "Not required"}</option>
         </select>
       </Field>

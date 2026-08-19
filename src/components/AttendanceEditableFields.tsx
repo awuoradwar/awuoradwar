@@ -14,6 +14,13 @@ const TYPE_LABEL: Record<string, { en: string; es: string }> = {
   SENT_HOME: { en: "Sent Home", es: "Enviado a casa" },
 };
 
+const COVERAGE_LABEL: Record<string, { en: string; es: string }> = {
+  NEEDED: { en: "Needed", es: "Necesaria" },
+  FOUND: { en: "Found", es: "Encontrada" },
+  NOT_FOUND: { en: "Not Found", es: "No Encontrada" },
+  NOT_REQUIRED: { en: "Not Required", es: "No Requerida" },
+};
+
 export default function AttendanceEditableFields({
   id,
   lang,
@@ -50,8 +57,12 @@ export default function AttendanceEditableFields({
         <dt className="text-muted">{lang === "es" ? "Empleado" : "Employee"}</dt>
         <dd className="flex items-center justify-between gap-2">
           <span>{employeeName}</span>
-          <button type="button" onClick={() => setEditing(true)} className="tap-target flex h-7 w-7 min-h-0 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:text-accent">
-            ✎
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="tap-target flex shrink-0 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            ✎ {lang === "es" ? "Editar" : "Edit"}
           </button>
         </dd>
         <dt className="text-muted">{lang === "es" ? "Tipo" : "Type"}</dt>
@@ -71,7 +82,7 @@ export default function AttendanceEditableFields({
         {hasCoverage && coverageStatus && (
           <>
             <dt className="text-muted">{lang === "es" ? "Cobertura" : "Coverage"}</dt>
-            <dd>{coverageStatus}</dd>
+            <dd>{COVERAGE_LABEL[coverageStatus]?.[lang] || coverageStatus}</dd>
           </>
         )}
         {hasCoverage && coveringPerson && (
@@ -130,6 +141,7 @@ export default function AttendanceEditableFields({
               <select name="coverageStatus" defaultValue={coverageStatus || "NEEDED"} className={selectClass}>
                 <option value="NEEDED">{lang === "es" ? "Necesaria" : "Needed"}</option>
                 <option value="FOUND">{lang === "es" ? "Encontrada" : "Found"}</option>
+                <option value="NOT_FOUND">{lang === "es" ? "No Encontrada" : "Not Found"}</option>
                 <option value="NOT_REQUIRED">{lang === "es" ? "No requerida" : "Not required"}</option>
               </select>
             </Field>

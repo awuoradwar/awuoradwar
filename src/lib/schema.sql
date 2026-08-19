@@ -268,7 +268,7 @@ CREATE TABLE IF NOT EXISTS attendance_events (
   scheduled_time TEXT,
   actual_time TEXT,
   minutes_late INTEGER,
-  coverage_status TEXT, -- NEEDED | FOUND | NOT_REQUIRED
+  coverage_status TEXT, -- NEEDED | FOUND | NOT_FOUND | NOT_REQUIRED
   covering_person TEXT,
   note TEXT,
   recorded_by TEXT REFERENCES users(id),
