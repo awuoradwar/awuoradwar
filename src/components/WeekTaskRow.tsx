@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { reassignTaskAction, cancelTaskAction } from "@/app/actions/taskActions";
@@ -30,9 +30,12 @@ export default function WeekTaskRow({
   lang: Language;
 }) {
   const [pending, startTransition] = useTransition();
+  const [optimisticallyCancelled, setOptimisticallyCancelled] = useState(false);
   const router = useRouter();
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
-  const removable = task.status !== "COMPLETE" && task.status !== "CANCELLED";
+  const removable = task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyCancelled;
+
+  if (optimisticallyCancelled) return null;
 
   return (
     <div className="flex items-center justify-between gap-2 p-3 text-sm">
@@ -80,12 +83,17 @@ export default function WeekTaskRow({
             type="button"
             disabled={pending}
             aria-label={lang === "es" ? "Eliminar" : "Remove"}
-            onClick={() =>
+            onClick={() => {
+              setOptimisticallyCancelled(true);
               startTransition(async () => {
-                await cancelTaskAction(task.id, lang === "es" ? "Eliminado desde la vista semanal" : "Removed from week view");
+                try {
+                  await cancelTaskAction(task.id, lang === "es" ? "Eliminado desde la vista semanal" : "Removed from week view");
+                } catch {
+                  setOptimisticallyCancelled(false);
+                }
                 router.refresh();
-              })
-            }
+              });
+            }}
             className="flex h-6 w-6 items-center justify-center rounded-full text-muted transition-colors hover:bg-critical/10 hover:text-critical disabled:opacity-50"
           >
             ×

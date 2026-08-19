@@ -35,7 +35,10 @@ export default function ScheduleRequestRow({ request, lang }: { request: Request
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [optimisticallyDeleted, setOptimisticallyDeleted] = useState(false);
   const router = useRouter();
+
+  if (optimisticallyDeleted) return null;
 
   if (!editing) {
     return (
@@ -130,8 +133,13 @@ export default function ScheduleRequestRow({ request, lang }: { request: Request
           onClick={() => {
             const msg = lang === "es" ? "¿Eliminar esta solicitud? Esto no se puede deshacer." : "Delete this request? This can't be undone.";
             if (!window.confirm(msg)) return;
+            setOptimisticallyDeleted(true);
             startTransition(async () => {
-              await deleteScheduleRequestAction(request.id);
+              try {
+                await deleteScheduleRequestAction(request.id);
+              } catch {
+                setOptimisticallyDeleted(false);
+              }
               router.refresh();
             });
           }}

@@ -58,11 +58,14 @@ export default function ProposalRow({
   const [cleaningAreaId, setCleaningAreaId] = useState(cleaningAreas[0]?.id || "");
   const [frequency, setFrequency] = useState<"DAILY" | "WEEKLY">("DAILY");
   const [pending, startTransition] = useTransition();
+  const [optimisticallyDecided, setOptimisticallyDecided] = useState(false);
   const router = useRouter();
   const typeLabel = lang === "es" ? TYPE_LABEL_ES : TYPE_LABEL_EN;
   const willCreateTask = proposal.extracted_type !== "INFO";
   const isCleaning = proposal.extracted_type === "CLEANING";
   const suggestedName = managers.find((m) => m.id === suggestedOwnerId)?.name;
+
+  if (optimisticallyDecided) return null;
 
   return (
     <div className="card p-3">
@@ -125,31 +128,41 @@ export default function ProposalRow({
       <div className="mt-2 flex gap-2">
         <button
           disabled={pending}
-          onClick={() =>
+          onClick={() => {
+            setOptimisticallyDecided(true);
             startTransition(async () => {
-              await approveProposalAction(
-                proposal.id,
-                title,
-                willCreateTask,
-                ownerId || null,
-                isCleaning ? cleaningAreaId || null : null,
-                frequency
-              );
+              try {
+                await approveProposalAction(
+                  proposal.id,
+                  title,
+                  willCreateTask,
+                  ownerId || null,
+                  isCleaning ? cleaningAreaId || null : null,
+                  frequency
+                );
+              } catch {
+                setOptimisticallyDecided(false);
+              }
               router.refresh();
-            })
-          }
+            });
+          }}
           className="tap-target flex-1 rounded-full bg-ok/10 px-3 text-xs font-semibold text-ok disabled:opacity-50"
         >
           {lang === "es" ? "Aprobar y agregar" : "Approve & Add"}
         </button>
         <button
           disabled={pending}
-          onClick={() =>
+          onClick={() => {
+            setOptimisticallyDecided(true);
             startTransition(async () => {
-              await rejectProposalAction(proposal.id);
+              try {
+                await rejectProposalAction(proposal.id);
+              } catch {
+                setOptimisticallyDecided(false);
+              }
               router.refresh();
-            })
-          }
+            });
+          }}
           className="tap-target flex-1 rounded-full bg-critical/10 px-3 text-xs font-semibold text-critical disabled:opacity-50"
         >
           {lang === "es" ? "Rechazar" : "Reject"}

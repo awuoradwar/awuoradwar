@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { selectSettlementAction, settleBorrowedItemAction } from "@/app/actions/operationsActions";
 import { Language } from "@/lib/types";
@@ -24,20 +24,17 @@ export default function BorrowedItemDetailActions({
   settlementMethod: string | null;
 }) {
   const [pending, startTransition] = useTransition();
+  const [optimisticMethod, setOptimisticMethod] = useState<string | null>(null);
+  const [optimisticallySettled, setOptimisticallySettled] = useState(false);
   const router = useRouter();
 
-  function run(fn: () => Promise<unknown>) {
-    startTransition(async () => {
-      await fn();
-      router.refresh();
-    });
-  }
+  const effectiveMethod = optimisticMethod ?? settlementMethod;
 
-  if (status === "SETTLED") return null;
+  if (status === "SETTLED" || optimisticallySettled) return null;
 
   return (
     <div className="flex flex-col gap-3">
-      {!settlementMethod ? (
+      {!effectiveMethod ? (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t(lang, "field_settlement_method")}</p>
           <div className="flex flex-wrap gap-2">
@@ -45,7 +42,17 @@ export default function BorrowedItemDetailActions({
               <button
                 key={m.value}
                 disabled={pending}
-                onClick={() => run(() => selectSettlementAction(id, m.value))}
+                onClick={() => {
+                  setOptimisticMethod(m.value);
+                  startTransition(async () => {
+                    try {
+                      await selectSettlementAction(id, m.value);
+                    } catch {
+                      setOptimisticMethod(null);
+                    }
+                    router.refresh();
+                  });
+                }}
                 className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
               >
                 {t(lang, m.key as never)}
@@ -56,11 +63,21 @@ export default function BorrowedItemDetailActions({
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-muted">
-            {t(lang, "detail_settlement_selected")}: {t(lang, (METHODS.find((m) => m.value === settlementMethod)?.key || "field_settlement_method") as never)}
+            {t(lang, "detail_settlement_selected")}: {t(lang, (METHODS.find((m) => m.value === effectiveMethod)?.key || "field_settlement_method") as never)}
           </p>
           <button
             disabled={pending}
-            onClick={() => run(() => settleBorrowedItemAction(id))}
+            onClick={() => {
+              setOptimisticallySettled(true);
+              startTransition(async () => {
+                try {
+                  await settleBorrowedItemAction(id);
+                } catch {
+                  setOptimisticallySettled(false);
+                }
+                router.refresh();
+              });
+            }}
             className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {t(lang, "action_settle")}

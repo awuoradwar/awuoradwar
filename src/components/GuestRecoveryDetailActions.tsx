@@ -22,6 +22,7 @@ export default function GuestRecoveryDetailActions({
   const [pending, startTransition] = useTransition();
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [followUpTitle, setFollowUpTitle] = useState("");
+  const [optimisticallyFinal, setOptimisticallyFinal] = useState(false);
   const router = useRouter();
 
   function run(fn: () => Promise<unknown>) {
@@ -31,7 +32,7 @@ export default function GuestRecoveryDetailActions({
     });
   }
 
-  const isFinal = status === "COMPLETED" || status === "NOT_REQUIRED";
+  const isFinal = status === "COMPLETED" || status === "NOT_REQUIRED" || optimisticallyFinal;
 
   return (
     <div className="flex flex-col gap-3">
@@ -39,7 +40,17 @@ export default function GuestRecoveryDetailActions({
         {!isFinal && (
           <button
             disabled={pending}
-            onClick={() => run(() => completeReplacementAction(id))}
+            onClick={() => {
+              setOptimisticallyFinal(true);
+              startTransition(async () => {
+                try {
+                  await completeReplacementAction(id);
+                } catch {
+                  setOptimisticallyFinal(false);
+                }
+                router.refresh();
+              });
+            }}
             className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {lang === "es" ? "Marcar Cumplido" : "Mark Fulfilled"}
@@ -48,7 +59,17 @@ export default function GuestRecoveryDetailActions({
         {!isFinal && (
           <button
             disabled={pending}
-            onClick={() => run(() => markNotRequiredAction(id))}
+            onClick={() => {
+              setOptimisticallyFinal(true);
+              startTransition(async () => {
+                try {
+                  await markNotRequiredAction(id);
+                } catch {
+                  setOptimisticallyFinal(false);
+                }
+                router.refresh();
+              });
+            }}
             className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
           >
             {t(lang, "action_not_required")}

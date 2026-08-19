@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markAckCompletionAction, verifyAckCompletionAction } from "@/app/actions/operationsActions";
 import { Language } from "@/lib/types";
@@ -17,41 +17,59 @@ export interface CompletionRow {
 
 export default function AcknowledgementRow({ completion, lang }: { completion: CompletionRow; lang: Language }) {
   const [pending, startTransition] = useTransition();
+  const [optimisticallyAcknowledged, setOptimisticallyAcknowledged] = useState(false);
+  const [optimisticallyVerified, setOptimisticallyVerified] = useState(false);
   const router = useRouter();
 
-  function run(fn: () => Promise<unknown>) {
-    startTransition(async () => {
-      await fn();
-      router.refresh();
-    });
-  }
+  const completed = !!completion.completed || optimisticallyAcknowledged;
+  const verified = !!completion.verified_at || optimisticallyVerified;
 
   return (
     <div className="flex items-center justify-between px-3 py-2 text-sm">
       <div className="min-w-0">
         <p className="truncate font-medium">{completion.associate_name}</p>
-        {completion.verified_at ? (
+        {verified ? (
           <p className="text-xs text-ok">{t(lang, "status_verified")}</p>
-        ) : completion.completed ? (
+        ) : completed ? (
           <p className="text-xs text-warning">{t(lang, "status_completed")}</p>
         ) : (
           <p className="text-xs text-muted">{t(lang, "status_open")}</p>
         )}
       </div>
       <div className="flex shrink-0 gap-2">
-        {!completion.completed && (
+        {!completed && (
           <button
             disabled={pending}
-            onClick={() => run(() => markAckCompletionAction(completion.id))}
+            onClick={() => {
+              setOptimisticallyAcknowledged(true);
+              startTransition(async () => {
+                try {
+                  await markAckCompletionAction(completion.id);
+                } catch {
+                  setOptimisticallyAcknowledged(false);
+                }
+                router.refresh();
+              });
+            }}
             className="tap-target rounded-full border-2 border-accent px-3 text-xs font-semibold text-accent disabled:opacity-40"
           >
             {t(lang, "action_acknowledge")}
           </button>
         )}
-        {completion.completed && !completion.verified_at && (
+        {completed && !verified && (
           <button
             disabled={pending}
-            onClick={() => run(() => verifyAckCompletionAction(completion.id))}
+            onClick={() => {
+              setOptimisticallyVerified(true);
+              startTransition(async () => {
+                try {
+                  await verifyAckCompletionAction(completion.id);
+                } catch {
+                  setOptimisticallyVerified(false);
+                }
+                router.refresh();
+              });
+            }}
             className="tap-target rounded-full border-2 border-ok px-3 text-xs font-semibold text-ok disabled:opacity-40"
           >
             {t(lang, "action_verify")}

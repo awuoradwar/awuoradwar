@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   adjustInventoryStockAction,
@@ -21,12 +21,20 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
   const [draft, setDraft] = useState(String(item.stock_count));
   const [orderQty, setOrderQty] = useState("");
   const [orderOpen, setOrderOpen] = useState(false);
+  // useOptimistic (not a plain flag) because this counter gets tapped
+  // repeatedly in quick succession -- each tap needs to reconcile against
+  // the LATEST optimistic value, not the stale server prop, and once the
+  // real value lands via router.refresh() the override must clear itself
+  // automatically rather than masking any later server-side change forever.
+  const [displayCount, addOptimisticDelta] = useOptimistic(item.stock_count, (state, delta: number) => state + delta);
+  const [onOrder, setOptimisticOnOrder] = useOptimistic(!!item.on_order, (_state, next: boolean) => next);
   const router = useRouter();
 
-  const isLow = item.par_level != null && item.stock_count <= item.par_level;
+  const isLow = item.par_level != null && displayCount <= item.par_level;
 
   function adjust(delta: number) {
     startTransition(async () => {
+      addOptimisticDelta(delta);
       await adjustInventoryStockAction(item.id, delta);
       router.refresh();
     });
@@ -35,14 +43,15 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
   function commitDraft() {
     const n = Number(draft);
     setEditing(false);
-    if (!Number.isFinite(n) || n === item.stock_count) return;
+    if (!Number.isFinite(n) || n === displayCount) return;
     startTransition(async () => {
+      addOptimisticDelta(n - displayCount);
       await setInventoryStockAction(item.id, n);
       router.refresh();
     });
   }
 
-  if (item.on_order) {
+  if (onOrder) {
     return (
       <div className="flex shrink-0 items-center gap-1.5">
         <span className="rounded-full bg-accent/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-accent">
@@ -51,7 +60,13 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
         <button
           type="button"
           disabled={pending}
-          onClick={() => startTransition(async () => { await markInventoryReceivedAction(item.id); router.refresh(); })}
+          onClick={() => {
+            startTransition(async () => {
+              setOptimisticOnOrder(false);
+              await markInventoryReceivedAction(item.id);
+              router.refresh();
+            });
+          }}
           className="tap-target flex h-7 min-h-0 items-center rounded-full bg-accent px-2 text-xs font-semibold text-accent-foreground disabled:opacity-50"
         >
           {lang === "es" ? "Recibido ✓" : "Received ✓"}
@@ -83,10 +98,10 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
       ) : (
         <button
           type="button"
-          onClick={() => { setDraft(String(item.stock_count)); setEditing(true); }}
+          onClick={() => { setDraft(String(displayCount)); setEditing(true); }}
           className={`h-7 w-8 rounded-md text-center text-sm font-bold ${isLow ? "text-warning" : "text-foreground"}`}
         >
-          {item.stock_count}
+          {displayCount}
         </button>
       )}
       <button
@@ -117,14 +132,16 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
           <button
             type="button"
             disabled={pending}
-            onClick={() =>
+            onClick={() => {
+              setOrderOpen(false);
+              const qty = orderQty;
+              setOrderQty("");
               startTransition(async () => {
-                await markInventoryOrderedAction(item.id, orderQty);
-                setOrderOpen(false);
-                setOrderQty("");
+                setOptimisticOnOrder(true);
+                await markInventoryOrderedAction(item.id, qty);
                 router.refresh();
-              })
-            }
+              });
+            }}
             className="flex h-7 items-center rounded-md bg-accent px-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
           >
             ✓

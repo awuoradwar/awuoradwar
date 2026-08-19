@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { markMaintenanceDoneAction, removeMaintenanceItemAction } from "@/app/actions/inventoryActions";
 import { MaintenanceItem, MaintenanceHistoryRow } from "@/lib/services/maintenanceService";
@@ -27,16 +27,13 @@ export default function MaintenanceItemRow({
   canManage: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [optimisticallyDone, setOptimisticallyDone] = useState(false);
+  const [optimisticallyRemoved, setOptimisticallyRemoved] = useState(false);
   const router = useRouter();
-  const due = dueLabel(item.daysUntilDue, lang);
+  const due = optimisticallyDone ? dueLabel(item.interval_days, lang) : dueLabel(item.daysUntilDue, lang);
   const toneClass = due.tone === "critical" ? "text-critical" : due.tone === "warning" ? "text-warning" : "text-ok";
 
-  function run(fn: () => Promise<unknown>) {
-    startTransition(async () => {
-      await fn();
-      router.refresh();
-    });
-  }
+  if (optimisticallyRemoved) return null;
 
   return (
     <div className="px-3 py-2.5">
@@ -49,27 +46,49 @@ export default function MaintenanceItemRow({
           </p>
           {item.notes && <p className="mt-0.5 text-xs italic text-muted">{item.notes}</p>}
           <p className="mt-0.5 text-xs text-muted">
-            {item.last_done_at
-              ? `${lang === "es" ? "Última vez" : "Last done"}: ${new Date(item.last_done_at).toLocaleDateString()}${item.last_done_by_name ? ` · ${item.last_done_by_name}` : ""}`
-              : lang === "es"
-                ? "Nunca registrado"
-                : "Never logged"}
+            {optimisticallyDone
+              ? `${lang === "es" ? "Última vez" : "Last done"}: ${lang === "es" ? "hoy" : "today"}`
+              : item.last_done_at
+                ? `${lang === "es" ? "Última vez" : "Last done"}: ${new Date(item.last_done_at).toLocaleDateString()}${item.last_done_by_name ? ` · ${item.last_done_by_name}` : ""}`
+                : lang === "es"
+                  ? "Nunca registrado"
+                  : "Never logged"}
           </p>
         </div>
         <span className={`shrink-0 text-xs font-bold ${toneClass}`}>{due.text}</span>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
-          disabled={pending}
-          onClick={() => run(() => markMaintenanceDoneAction(item.id))}
+          disabled={pending || optimisticallyDone}
+          onClick={() => {
+            setOptimisticallyDone(true);
+            startTransition(async () => {
+              try {
+                await markMaintenanceDoneAction(item.id);
+              } catch {
+                setOptimisticallyDone(false);
+              }
+              router.refresh();
+            });
+          }}
           className="tap-target rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground disabled:opacity-50"
         >
-          {lang === "es" ? "Marcar Hecho Hoy" : "Mark Done Today"}
+          {optimisticallyDone ? "✓" : lang === "es" ? "Marcar Hecho Hoy" : "Mark Done Today"}
         </button>
         {canManage && (
           <button
             disabled={pending}
-            onClick={() => run(() => removeMaintenanceItemAction(item.id))}
+            onClick={() => {
+              setOptimisticallyRemoved(true);
+              startTransition(async () => {
+                try {
+                  await removeMaintenanceItemAction(item.id);
+                } catch {
+                  setOptimisticallyRemoved(false);
+                }
+                router.refresh();
+              });
+            }}
             className="tap-target ml-auto px-2 text-xs font-medium text-critical disabled:opacity-50"
           >
             {lang === "es" ? "Quitar" : "Remove"}

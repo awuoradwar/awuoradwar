@@ -33,6 +33,8 @@ export default function TaskDetailActions({
   const [pending, startTransition] = useTransition();
   const [reassignTo, setReassignTo] = useState("");
   const [confirmingSeries, setConfirmingSeries] = useState(false);
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
+  const [optimisticallyVerified, setOptimisticallyVerified] = useState(false);
   const router = useRouter();
 
   function run(fn: () => Promise<unknown>) {
@@ -42,7 +44,20 @@ export default function TaskDetailActions({
     });
   }
 
-  const openish = status !== "COMPLETE" && status !== "CANCELLED";
+  function runStatus(nextStatus: string, fn: () => Promise<unknown>) {
+    setOptimisticStatus(nextStatus);
+    startTransition(async () => {
+      try {
+        await fn();
+      } catch {
+        setOptimisticStatus(null);
+      }
+      router.refresh();
+    });
+  }
+
+  const effectiveStatus = optimisticStatus ?? status;
+  const openish = effectiveStatus !== "COMPLETE" && effectiveStatus !== "CANCELLED";
   const isRecurring = !!templateId;
 
   return (
@@ -51,14 +66,28 @@ export default function TaskDetailActions({
         {openish && (
           <button
             disabled={pending}
-            onClick={() => run(() => completeTaskAction(taskId))}
+            onClick={() => runStatus("COMPLETE", () => completeTaskAction(taskId))}
             className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
           >
             {t(lang, "action_complete")}
           </button>
         )}
-        {verificationRequired && status === "COMPLETE" && (
-          <button disabled={pending} onClick={() => run(() => verifyTaskAction(taskId))} className="tap-target rounded-full border-2 border-ok px-4 text-sm font-semibold text-ok disabled:opacity-50">
+        {verificationRequired && effectiveStatus === "COMPLETE" && !optimisticallyVerified && (
+          <button
+            disabled={pending}
+            onClick={() => {
+              setOptimisticallyVerified(true);
+              startTransition(async () => {
+                try {
+                  await verifyTaskAction(taskId);
+                } catch {
+                  setOptimisticallyVerified(false);
+                }
+                router.refresh();
+              });
+            }}
+            className="tap-target rounded-full border-2 border-ok px-4 text-sm font-semibold text-ok disabled:opacity-50"
+          >
             {t(lang, "action_verify")}
           </button>
         )}
@@ -74,7 +103,7 @@ export default function TaskDetailActions({
         {openish && (
           <button
             disabled={pending}
-            onClick={() => run(() => cancelTaskAction(taskId, lang === "es" ? "Cancelado por gerente" : "Cancelled by manager"))}
+            onClick={() => runStatus("CANCELLED", () => cancelTaskAction(taskId, lang === "es" ? "Cancelado por gerente" : "Cancelled by manager"))}
             className="tap-target rounded-full border border-critical px-4 text-sm font-semibold text-critical disabled:opacity-50"
           >
             {isRecurring ? (lang === "es" ? "Cancelar solo hoy" : "Cancel this day") : t(lang, "action_cancel")}
@@ -100,13 +129,18 @@ export default function TaskDetailActions({
           <div className="flex items-center gap-3">
             <button
               disabled={pending}
-              onClick={() =>
+              onClick={() => {
+                setOptimisticStatus("CANCELLED");
+                setConfirmingSeries(false);
                 startTransition(async () => {
-                  await cancelTaskSeriesAction(templateId as string, lang === "es" ? "Serie cancelada por gerente" : "Series cancelled by manager");
-                  setConfirmingSeries(false);
+                  try {
+                    await cancelTaskSeriesAction(templateId as string, lang === "es" ? "Serie cancelada por gerente" : "Series cancelled by manager");
+                  } catch {
+                    setOptimisticStatus(null);
+                  }
                   router.refresh();
-                })
-              }
+                });
+              }}
               className="tap-target rounded-full bg-critical px-4 text-sm font-semibold text-white disabled:opacity-50"
             >
               {lang === "es" ? "Sí, cancelar serie" : "Yes, cancel series"}

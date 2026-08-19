@@ -30,6 +30,7 @@ export default function IssueDetailActions({
   const [resolving, setResolving] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const router = useRouter();
 
   function run(fn: () => Promise<unknown>) {
@@ -39,7 +40,20 @@ export default function IssueDetailActions({
     });
   }
 
-  const isResolved = status === "RESOLVED";
+  function runStatus(nextStatus: string, fn: () => Promise<unknown>) {
+    setOptimisticStatus(nextStatus);
+    startTransition(async () => {
+      try {
+        await fn();
+      } catch {
+        setOptimisticStatus(null);
+      }
+      router.refresh();
+    });
+  }
+
+  const effectiveStatus = optimisticStatus ?? status;
+  const isResolved = effectiveStatus === "RESOLVED";
 
   if (editing) {
     return (
@@ -125,11 +139,11 @@ export default function IssueDetailActions({
             >
               {t(lang, "action_add_update")}
             </button>
-            {status !== "IN_PROGRESS" && (
+            {effectiveStatus !== "IN_PROGRESS" && (
               <button
                 disabled={pending}
                 onClick={() =>
-                  run(async () => {
+                  runStatus("IN_PROGRESS", async () => {
                     await addIssueUpdateAction(id, note.trim(), "IN_PROGRESS");
                     setNote("");
                   })
@@ -139,11 +153,11 @@ export default function IssueDetailActions({
                 {t(lang, "action_mark_in_progress")}
               </button>
             )}
-            {status !== "WAITING" && (
+            {effectiveStatus !== "WAITING" && (
               <button
                 disabled={pending}
                 onClick={() =>
-                  run(async () => {
+                  runStatus("WAITING", async () => {
                     await addIssueUpdateAction(id, note.trim(), "WAITING");
                     setNote("");
                   })
@@ -175,7 +189,7 @@ export default function IssueDetailActions({
               <button
                 disabled={pending || !resolution.trim()}
                 onClick={() =>
-                  run(async () => {
+                  runStatus("RESOLVED", async () => {
                     await resolveIssueAction(id, resolution.trim());
                     setResolution("");
                     setResolving(false);
@@ -193,7 +207,7 @@ export default function IssueDetailActions({
       {isResolved && (
         <button
           disabled={pending}
-          onClick={() => run(() => reopenIssueAction(id))}
+          onClick={() => runStatus("REOPENED", () => reopenIssueAction(id))}
           className="tap-target self-start rounded-full border border-critical px-4 text-sm font-semibold text-critical disabled:opacity-50"
         >
           {t(lang, "action_reopen")}

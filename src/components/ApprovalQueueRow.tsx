@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { decideRequestAction } from "@/app/actions/schedulingActions";
 import { Language } from "@/lib/types";
@@ -17,14 +17,22 @@ interface RequestRow {
 
 export default function ApprovalQueueRow({ request, lang }: { request: RequestRow; lang: Language }) {
   const [pending, startTransition] = useTransition();
+  const [optimisticallyDecided, setOptimisticallyDecided] = useState(false);
   const router = useRouter();
 
   function decide(decision: "APPROVED" | "DENIED") {
+    setOptimisticallyDecided(true);
     startTransition(async () => {
-      await decideRequestAction(request.id, decision);
+      try {
+        await decideRequestAction(request.id, decision);
+      } catch {
+        setOptimisticallyDecided(false);
+      }
       router.refresh();
     });
   }
+
+  if (optimisticallyDecided) return null;
 
   return (
     <div className="card p-3">

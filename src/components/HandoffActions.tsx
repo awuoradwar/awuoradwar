@@ -19,7 +19,16 @@ interface HandoffLite {
 export default function HandoffActions({ lang, handoff }: { lang: Language; handoff: HandoffLite | null }) {
   const [note, setNote] = useState("");
   const [pending, startTransition] = useTransition();
+  const [optimisticallyAcknowledged, setOptimisticallyAcknowledged] = useState(false);
   const router = useRouter();
+
+  if (optimisticallyAcknowledged) {
+    return (
+      <div className="rounded-xl bg-ok/10 p-3 text-sm text-ok">
+        {lang === "es" ? "Entrega confirmada." : "Handoff acknowledged."}
+      </div>
+    );
+  }
 
   if (!handoff) {
     return (
@@ -29,7 +38,7 @@ export default function HandoffActions({ lang, handoff }: { lang: Language; hand
         onClick={() => startTransition(async () => { await generateHandoffAction(); router.refresh(); })}
         className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
       >
-        {lang === "es" ? "Generar entrega" : "Generate handoff"}
+        {pending ? "…" : lang === "es" ? "Generar entrega" : "Generate handoff"}
       </button>
     );
   }
@@ -50,7 +59,7 @@ export default function HandoffActions({ lang, handoff }: { lang: Language; hand
           onClick={() => startTransition(async () => { await completeOutgoingHandoffAction(handoff.id, note); router.refresh(); })}
           className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
-          {t(lang, "action_complete_handoff")}
+          {pending ? "…" : t(lang, "action_complete_handoff")}
         </button>
       </div>
     );
@@ -63,7 +72,17 @@ export default function HandoffActions({ lang, handoff }: { lang: Language; hand
         <button
           type="button"
           disabled={pending}
-          onClick={() => startTransition(async () => { await acknowledgeHandoffAction(handoff.id); router.refresh(); })}
+          onClick={() => {
+            setOptimisticallyAcknowledged(true);
+            startTransition(async () => {
+              try {
+                await acknowledgeHandoffAction(handoff.id);
+              } catch {
+                setOptimisticallyAcknowledged(false);
+              }
+              router.refresh();
+            });
+          }}
           className="tap-target w-full rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
         >
           {t(lang, "action_acknowledge")}

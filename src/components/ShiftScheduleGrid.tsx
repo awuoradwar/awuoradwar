@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setManagerShiftAction, removeManagerShiftAction } from "@/app/actions/scheduleActions";
 import { ShiftType } from "@/lib/services/scheduleService";
@@ -43,8 +43,23 @@ export default function ShiftScheduleGrid({
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
+  // useOptimistic over the whole schedule array (not a flag per cell) --
+  // planning a week means cycling many cells in quick succession, each tap
+  // needs to reconcile against the latest optimistic grid, and once the
+  // real schedule lands via router.refresh() it must self-clear rather
+  // than permanently hiding another manager's concurrent edit.
+  const [optimisticSchedule, applyOptimisticCycle] = useOptimistic(
+    schedule,
+    (state, change: { userId: string; date: string; next: ShiftType | null }) => {
+      const key = `${change.userId}|${change.date}`;
+      const filtered = state.filter((s) => `${s.user_id}|${s.date}` !== key);
+      if (change.next === null) return filtered;
+      return [...filtered, { id: `optimistic-${key}`, user_id: change.userId, date: change.date, shift_type: change.next }];
+    }
+  );
+
   const byManagerDate = new Map<string, ScheduleEntry>();
-  for (const s of schedule) byManagerDate.set(`${s.user_id}|${s.date}`, s);
+  for (const s of optimisticSchedule) byManagerDate.set(`${s.user_id}|${s.date}`, s);
   // Same id-sorted assignment as the Manager Capacity list above it, so a
   // given manager's dot color matches between the two sections.
   const managerColors = buildManagerColorMap(managers.map((m) => m.id));
@@ -55,6 +70,7 @@ export default function ShiftScheduleGrid({
     const currentIndex = CYCLE.indexOf(current?.shift_type ?? null);
     const next = CYCLE[(currentIndex + 1) % CYCLE.length];
     startTransition(async () => {
+      applyOptimisticCycle({ userId, date, next });
       if (next === null) {
         if (current) await removeManagerShiftAction(current.id);
       } else {

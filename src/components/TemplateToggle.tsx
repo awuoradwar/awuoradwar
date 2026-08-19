@@ -1,12 +1,13 @@
 "use client";
 
-import { useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toggleTemplateActiveAction } from "@/app/actions/templateActions";
 import { Language } from "@/lib/types";
 
 export default function TemplateToggle({ id, active, lang }: { id: string; active: boolean; lang: Language }) {
   const [pending, startTransition] = useTransition();
+  const [displayActive, setOptimisticActive] = useOptimistic(active, (_state, next: boolean) => next);
   const router = useRouter();
 
   return (
@@ -14,13 +15,14 @@ export default function TemplateToggle({ id, active, lang }: { id: string; activ
       disabled={pending}
       onClick={() =>
         startTransition(async () => {
-          await toggleTemplateActiveAction(id, !active);
+          setOptimisticActive(!displayActive);
+          await toggleTemplateActiveAction(id, !displayActive);
           router.refresh();
         })
       }
-      className={`tap-target rounded-full px-3 text-xs font-semibold disabled:opacity-50 ${active ? "bg-ok/10 text-ok" : "bg-muted/10 text-muted"}`}
+      className={`tap-target rounded-full px-3 text-xs font-semibold disabled:opacity-50 ${displayActive ? "bg-ok/10 text-ok" : "bg-muted/10 text-muted"}`}
     >
-      {active ? (lang === "es" ? "Activa" : "Active") : lang === "es" ? "Inactiva" : "Off"}
+      {displayActive ? (lang === "es" ? "Activa" : "Active") : lang === "es" ? "Inactiva" : "Off"}
     </button>
   );
 }

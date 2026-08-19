@@ -21,20 +21,36 @@ function PositionList({
   const [title, setTitle] = useState("");
   const [titleEs, setTitleEs] = useState("");
   const [pending, startTransition] = useTransition();
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
   const router = useRouter();
+  const visibleItems = items.filter((it) => !removedIds.has(it.id));
 
   return (
     <div>
       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">{label}</p>
-      {items.length > 0 && (
+      {visibleItems.length > 0 && (
         <div className="mb-2 card divide-y divide-border">
-          {items.map((it) => (
+          {visibleItems.map((it) => (
             <div key={it.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
               <span>{it.title}</span>
               <button
                 type="button"
                 disabled={pending}
-                onClick={() => startTransition(async () => { await removeTrainingItemAction(it.id); router.refresh(); })}
+                onClick={() => {
+                  setRemovedIds((prev) => new Set(prev).add(it.id));
+                  startTransition(async () => {
+                    try {
+                      await removeTrainingItemAction(it.id);
+                    } catch {
+                      setRemovedIds((prev) => {
+                        const next = new Set(prev);
+                        next.delete(it.id);
+                        return next;
+                      });
+                    }
+                    router.refresh();
+                  });
+                }}
                 className="tap-target shrink-0 px-2 text-xs font-semibold text-critical disabled:opacity-50"
               >
                 {lang === "es" ? "Quitar" : "Remove"}
