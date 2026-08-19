@@ -107,14 +107,40 @@ export default async function MyShiftPage() {
   // A call-in/late/no-show -- or an issue, borrowed item, or meal
   // replacement -- logged during the shift that's happening right now is
   // current information for whoever's on now, not a leftover from a prior
-  // shift. Only items actually opened in an earlier shift window belong
-  // under "From Last Shift".
+  // shift. Only items actually opened in the immediately preceding shift
+  // window belong under "From Last Shift" -- matching by hour-of-day alone
+  // (the old check) ignores the calendar date entirely, so a borrowed item
+  // or maintenance-flavored issue that's been open for days (waiting on a
+  // technician, say) would match "this shift" or "last shift" every single
+  // day forever, as long as it happened to be opened in a window that lines
+  // up with the current one. Anything older than the immediately preceding
+  // shift simply isn't shown here at all -- it's still fully visible on its
+  // own page (Work Orders, Borrowed Items), which is where day-spanning
+  // open items belong long-term.
   const nowWindow = windowForHour(storeLocalHour(user.storeId, now));
-  const inCurrentWindow = (createdAt: string) => windowForHour(storeLocalHour(user.storeId, new Date(createdAt))) === nowWindow;
-  const currentShiftStaffing = summary.staffing.filter((s) => inCurrentWindow(s.created_at));
-  const priorShiftStaffing = summary.staffing.filter((s) => !inCurrentWindow(s.created_at));
-  const currentShiftOpenItems = summary.openItems.filter((it) => inCurrentWindow(it.created_at));
-  const priorShiftOpenItems = summary.openItems.filter((it) => !inCurrentWindow(it.created_at));
+  const yesterday = storeToday(user.storeId, new Date(now.getTime() - 24 * 60 * 60 * 1000));
+  const shiftBucketOf = (createdAt: string): "current" | "prior" | "older" => {
+    const d = new Date(createdAt);
+    const itemDate = storeToday(user.storeId, d);
+    const itemWindow = windowForHour(storeLocalHour(user.storeId, d));
+    if (itemDate === today && itemWindow === nowWindow) return "current";
+    const isImmediatelyPriorShift =
+      nowWindow === "MORNING" ? itemDate === yesterday && itemWindow === "EVENING" : itemDate === today && itemWindow === "MORNING";
+    return isImmediatelyPriorShift ? "prior" : "older";
+  };
+  const currentShiftStaffing = summary.staffing.filter((s) => shiftBucketOf(s.created_at) === "current");
+  const priorShiftStaffing = summary.staffing.filter((s) => shiftBucketOf(s.created_at) === "prior");
+  // A day-spanning open item that's still just quietly pending (waiting on
+  // a technician, say) correctly ages out per the comment above -- but one
+  // that's now actually critical (a CRITICAL issue, or a borrowed/lent item
+  // past its due date) needs to keep surfacing for whoever's on shift right
+  // now regardless of how old it is, same reasoning as CRITICAL tasks
+  // always escalating to NOW.
+  const currentShiftOpenItems = summary.openItems.filter((it) => {
+    const bucket = shiftBucketOf(it.created_at);
+    return bucket === "current" || (bucket === "older" && it.critical);
+  });
+  const priorShiftOpenItems = summary.openItems.filter((it) => shiftBucketOf(it.created_at) === "prior");
   const fromLastShiftCount = priorShiftStaffing.length + priorShiftOpenItems.length + unresolvedForDisplay.length;
   const currentShiftCount = currentShiftStaffing.length + currentShiftOpenItems.length;
 
@@ -151,8 +177,17 @@ export default async function MyShiftPage() {
               </Link>
             ))}
             {currentShiftOpenItems.map((it, i) => (
-              <Link key={`current-open-${i}`} href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`} className="card block p-3 text-sm">
-                {it.kind === "guest_recovery" ? "🍽️" : it.kind === "issue" ? "⚠️" : "📦"} {it.title}
+              <Link
+                key={`current-open-${i}`}
+                href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`}
+                className={`card block p-3 text-sm ${it.critical ? "border-critical/40" : ""}`}
+              >
+                {it.critical ? "🔴" : it.kind === "guest_recovery" ? "🍽️" : it.kind === "issue" ? "⚠️" : "📦"} {it.title}
+                {it.critical && (
+                  <span className="ml-1.5 font-semibold text-critical">
+                    {it.kind === "borrowed_item" ? (user.language === "es" ? "· Vencido" : "· Overdue") : ""}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
