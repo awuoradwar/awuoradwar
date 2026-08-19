@@ -2,7 +2,7 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser } from "../types";
-import { storeToday } from "../storeTime";
+import { storeToday, storeDayRangeUtc } from "../storeTime";
 import { weekStartOf } from "./recurrenceService";
 import { WEEKLY_CLEANING_ROTATION } from "../weeklyCleaningRotation";
 
@@ -266,7 +266,10 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
   const db = getDb();
   const todayStr = storeToday(storeId);
   const todayWeekday = new Date(todayStr + "T00:00:00Z").getDay();
-  const weekStartIso = weekStartOf(todayStr) + "T00:00:00.000Z";
+  // completed_at is a UTC timestamp -- comparing it against store-local
+  // midnight requires the real timezone conversion, not a bare "Z" suffix
+  // (which would be off by the store's UTC offset).
+  const weekStartIso = storeDayRangeUtc(storeId, weekStartOf(todayStr)).start;
 
   db.prepare(
     `UPDATE cleaning_tasks
@@ -290,7 +293,8 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
  */
 export function resetDueDailyCleaningTasks(storeId: string) {
   const db = getDb();
-  const todayIso = storeToday(storeId) + "T00:00:00.000Z";
+  // Same UTC-timestamp-vs-store-local-midnight conversion as above.
+  const todayIso = storeDayRangeUtc(storeId, storeToday(storeId)).start;
 
   db.prepare(
     `UPDATE cleaning_tasks

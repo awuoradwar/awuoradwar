@@ -71,6 +71,27 @@ export function storeLocalIso(storeId: string, dateStr: string, timeStr: string)
 }
 
 /**
+ * The [start, end) UTC instant range for one store-local calendar day --
+ * for "everything that happened today" queries against a UTC-stored
+ * timestamp column. Comparing that column's string prefix against a bare
+ * "YYYY-MM-DD" (`LIKE 'today%'`) silently misfiles anything within a few
+ * hours of local midnight into the wrong day, since the UTC and store-local
+ * calendar dates don't line up there -- a task finished at 11pm store-local
+ * can carry a UTC timestamp already dated tomorrow, and vice versa near the
+ * other edge. Use `completed_at >= start AND completed_at < end` instead.
+ */
+export function storeDayRangeUtc(storeId: string, dateStr: string): { start: string; end: string } {
+  const [y, mo, d] = dateStr.split("-").map(Number);
+  const tz = getStoreTimezone(storeId);
+  const start = zonedWallTimeToUtc(tz, y, mo, d, 0, 0);
+  // Date.UTC normalizes an out-of-range day (e.g. d+1 past month end) into
+  // the correct next month/year, so this is just "the calendar day after."
+  const next = new Date(Date.UTC(y, mo - 1, d + 1));
+  const end = zonedWallTimeToUtc(tz, next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate(), 0, 0);
+  return { start: start.toISOString(), end: end.toISOString() };
+}
+
+/**
  * Format a UTC instant for display in the store's own timezone -- NOT the
  * server's. Server Components run Node's process clock (UTC on Railway),
  * so a bare `new Date(x).toLocaleString()` with no timeZone renders in

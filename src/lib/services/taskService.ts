@@ -2,7 +2,7 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
-import { storeToday, storeLocalHour } from "../storeTime";
+import { storeToday, storeLocalHour, storeDayRangeUtc } from "../storeTime";
 
 export type Section = "NOW" | "TODAY" | "THIS_WEEK";
 
@@ -217,15 +217,16 @@ export function getOpenTasksForStore(storeId: string): TaskRow[] {
  * different collapsed section to be sure it saved." */
 export function getMyShiftTasks(storeId: string, todayStr: string): TaskRow[] {
   const db = getDb();
+  const { start, end } = storeDayRangeUtc(storeId, todayStr);
   return db
     .prepare(
       `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
-       WHERE t.store_id = ? AND (t.status IN ('OPEN','IN_PROGRESS') OR (t.status = 'COMPLETE' AND t.completed_at LIKE ?))
+       WHERE t.store_id = ? AND (t.status IN ('OPEN','IN_PROGRESS') OR (t.status = 'COMPLETE' AND t.completed_at >= ? AND t.completed_at < ?))
        ORDER BY t.due_at IS NULL, t.due_at ASC`
     )
-    .all(storeId, `${todayStr}%`) as TaskRow[];
+    .all(storeId, start, end) as TaskRow[];
 }
 
 export interface CompletedTaskRow extends TaskRow {
@@ -235,16 +236,17 @@ export interface CompletedTaskRow extends TaskRow {
 /** Everything completed today, most recent first -- the record of what actually got done. */
 export function getCompletedTasksToday(storeId: string, todayStr: string): CompletedTaskRow[] {
   const db = getDb();
+  const { start, end } = storeDayRangeUtc(storeId, todayStr);
   return db
     .prepare(
       `SELECT t.*, u.name as owner_name, tt.title_es, cu.name as completed_by_name FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
        LEFT JOIN users cu ON cu.id = t.completed_by
-       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.completed_at LIKE ?
+       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.completed_at >= ? AND t.completed_at < ?
        ORDER BY t.completed_at DESC`
     )
-    .all(storeId, `${todayStr}%`) as CompletedTaskRow[];
+    .all(storeId, start, end) as CompletedTaskRow[];
 }
 
 export function getWeekTasks(storeId: string, weekStart: string, weekEnd: string): TaskRow[] {

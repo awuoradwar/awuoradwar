@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../db";
+import { storeDayRangeUtc } from "../storeTime";
 
 export interface WeekSummary {
   weekStart: string;
@@ -41,15 +42,20 @@ export interface WeekSummary {
  */
 export function getWeekSummary(storeId: string, weekStart: string, weekEnd: string): WeekSummary {
   const db = getDb();
-  const dayEnd = `${weekEnd}T23:59:59`;
+  // scheduled_date is a plain store-local date column, compared as-is
+  // below; everything else here is a UTC timestamp, so the week boundary
+  // has to go through the store's real timezone rather than a bare
+  // string concatenation.
+  const { start: weekStartTs } = storeDayRangeUtc(storeId, weekStart);
+  const { end: dayEnd } = storeDayRangeUtc(storeId, weekEnd);
 
   const tasksScheduled = db
     .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND scheduled_date BETWEEN ? AND ? AND status != 'CANCELLED'`)
     .get(storeId, weekStart, weekEnd) as { n: number };
 
   const tasksCompleted = db
-    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at BETWEEN ? AND ?`)
-    .get(storeId, `${weekStart}T00:00:00`, dayEnd) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at >= ? AND completed_at < ?`)
+    .get(storeId, weekStartTs, dayEnd) as { n: number };
 
   const tasksStillOpen = db
     .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND scheduled_date BETWEEN ? AND ? AND status IN ('OPEN','IN_PROGRESS')`)
@@ -60,30 +66,30 @@ export function getWeekSummary(storeId: string, weekStart: string, weekEnd: stri
       `SELECT COUNT(*) as n FROM audit_events ae
        JOIN cleaning_tasks ct ON ct.id = ae.entity_id
        JOIN cleaning_areas a ON a.id = ct.area_id
-       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED','VERIFIED') AND a.store_id = ? AND ae.created_at BETWEEN ? AND ?`
+       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED','VERIFIED') AND a.store_id = ? AND ae.created_at >= ? AND ae.created_at < ?`
     )
-    .get(storeId, `${weekStart}T00:00:00`, dayEnd) as { n: number };
+    .get(storeId, weekStartTs, dayEnd) as { n: number };
 
   const mealReplacementsHandled = db
-    .prepare(`SELECT COUNT(*) as n FROM guest_recoveries WHERE store_id = ? AND replacement_status = 'COMPLETED' AND completed_at BETWEEN ? AND ?`)
-    .get(storeId, `${weekStart}T00:00:00`, dayEnd) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM guest_recoveries WHERE store_id = ? AND replacement_status = 'COMPLETED' AND completed_at >= ? AND completed_at < ?`)
+    .get(storeId, weekStartTs, dayEnd) as { n: number };
 
   const issuesOpened = db
-    .prepare(`SELECT COUNT(*) as n FROM issues WHERE store_id = ? AND created_at BETWEEN ? AND ?`)
-    .get(storeId, `${weekStart}T00:00:00`, dayEnd) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM issues WHERE store_id = ? AND created_at >= ? AND created_at < ?`)
+    .get(storeId, weekStartTs, dayEnd) as { n: number };
 
   const issuesResolved = db
-    .prepare(`SELECT COUNT(*) as n FROM issues WHERE store_id = ? AND status = 'RESOLVED' AND resolved_at BETWEEN ? AND ?`)
-    .get(storeId, `${weekStart}T00:00:00`, dayEnd) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM issues WHERE store_id = ? AND status = 'RESOLVED' AND resolved_at >= ? AND resolved_at < ?`)
+    .get(storeId, weekStartTs, dayEnd) as { n: number };
 
   const periodRow = db
     .prepare(
       `SELECT id, period_label, net_sales_actual, labor_pct, gem_taste_score, gem_taste_goal, gem_accuracy_score, gem_accuracy_goal, created_at
-       FROM store_pnl_periods WHERE store_id = ? AND created_at <= ? ORDER BY created_at DESC LIMIT 1`
+       FROM store_pnl_periods WHERE store_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT 1`
     )
     .get(storeId, dayEnd) as (Omit<NonNullable<WeekSummary["period"]>, "releasedThisWeek">) | undefined;
   const period: WeekSummary["period"] = periodRow
-    ? { ...periodRow, releasedThisWeek: periodRow.created_at >= `${weekStart}T00:00:00` }
+    ? { ...periodRow, releasedThisWeek: periodRow.created_at >= weekStartTs }
     : null;
 
   return {
@@ -112,14 +118,14 @@ export interface WeekItemRow {
  * a manager taps into always matches the number they tapped on. */
 export function getWeekDetail(storeId: string, weekStart: string, weekEnd: string) {
   const db = getDb();
-  const dayEnd = `${weekEnd}T23:59:59`;
-  const weekStartTs = `${weekStart}T00:00:00`;
+  const { start: weekStartTs } = storeDayRangeUtc(storeId, weekStart);
+  const { end: dayEnd } = storeDayRangeUtc(storeId, weekEnd);
 
   const tasksCompleted = db
     .prepare(
       `SELECT t.id, t.title, t.completed_at as at, u.name as by_name FROM tasks t
        LEFT JOIN users u ON u.id = t.completed_by
-       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.completed_at BETWEEN ? AND ? ORDER BY t.completed_at DESC`
+       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.completed_at >= ? AND t.completed_at < ? ORDER BY t.completed_at DESC`
     )
     .all(storeId, weekStartTs, dayEnd) as Array<{ id: string; title: string; at: string; by_name: string | null }>;
 
@@ -138,7 +144,7 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
        JOIN cleaning_tasks ct ON ct.id = ae.entity_id
        JOIN cleaning_areas a ON a.id = ct.area_id
        LEFT JOIN users u ON u.id = ae.actor_id
-       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED','VERIFIED') AND a.store_id = ? AND ae.created_at BETWEEN ? AND ?
+       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED','VERIFIED') AND a.store_id = ? AND ae.created_at >= ? AND ae.created_at < ?
        ORDER BY ae.created_at DESC`
     )
     .all(storeId, weekStartTs, dayEnd) as Array<{ id: string; title: string; at: string; by_name: string | null }>;
@@ -147,7 +153,7 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
     .prepare(
       `SELECT gr.id, gr.issue_category, gr.guest_name, gr.item_description, gr.completed_at as at, u.name as by_name
        FROM guest_recoveries gr LEFT JOIN users u ON u.id = gr.completed_by
-       WHERE gr.store_id = ? AND gr.replacement_status = 'COMPLETED' AND gr.completed_at BETWEEN ? AND ? ORDER BY gr.completed_at DESC`
+       WHERE gr.store_id = ? AND gr.replacement_status = 'COMPLETED' AND gr.completed_at >= ? AND gr.completed_at < ? ORDER BY gr.completed_at DESC`
     )
     .all(storeId, weekStartTs, dayEnd) as Array<{
     id: string;
@@ -161,7 +167,7 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
   const issuesResolved = db
     .prepare(
       `SELECT i.id, i.description, i.category, i.resolved_at as at FROM issues i
-       WHERE i.store_id = ? AND i.status = 'RESOLVED' AND i.resolved_at BETWEEN ? AND ? ORDER BY i.resolved_at DESC`
+       WHERE i.store_id = ? AND i.status = 'RESOLVED' AND i.resolved_at >= ? AND i.resolved_at < ? ORDER BY i.resolved_at DESC`
     )
     .all(storeId, weekStartTs, dayEnd) as Array<{ id: string; description: string; category: string; at: string }>;
 

@@ -1,5 +1,6 @@
 import "server-only";
 import { getDb } from "../db";
+import { storeDayRangeUtc } from "../storeTime";
 
 function median(values: number[]): number | null {
   if (values.length === 0) return null;
@@ -17,16 +18,22 @@ function median(values: number[]): number | null {
  */
 export function getQualityMetrics(storeId: string, start: string, end: string) {
   const db = getDb();
-  const dayEnd = `${end}T23:59:59`;
+  // start/end here are store-local calendar dates ("YYYY-MM-DD"); the
+  // columns below are UTC timestamps, so the range has to go through a
+  // real timezone conversion rather than naive string concatenation --
+  // otherwise anything within a few hours of local midnight at either edge
+  // gets miscounted in or out of the range.
+  const rangeStart = storeDayRangeUtc(storeId, start).start;
+  const dayEnd = storeDayRangeUtc(storeId, end).end;
 
   // Median quick-add (QUICK-effort) completion time, minutes from creation to completion.
   const quickCompletions = db
     .prepare(
       `SELECT created_at, completed_at FROM tasks
        WHERE store_id = ? AND effort = 'QUICK' AND status = 'COMPLETE' AND completed_at IS NOT NULL
-       AND created_at BETWEEN ? AND ?`
+       AND created_at >= ? AND created_at < ?`
     )
-    .all(storeId, start, dayEnd) as Array<{ created_at: string; completed_at: string }>;
+    .all(storeId, rangeStart, dayEnd) as Array<{ created_at: string; completed_at: string }>;
   const quickAddMinutes = quickCompletions.map((t) => (new Date(t.completed_at).getTime() - new Date(t.created_at).getTime()) / 60000);
   const medianQuickAddMinutes = median(quickAddMinutes);
 
@@ -34,9 +41,9 @@ export function getQualityMetrics(storeId: string, start: string, end: string) {
   const handoffs = db
     .prepare(
       `SELECT created_at, incoming_acknowledged_at FROM handoffs
-       WHERE store_id = ? AND incoming_acknowledged_at IS NOT NULL AND created_at BETWEEN ? AND ?`
+       WHERE store_id = ? AND incoming_acknowledged_at IS NOT NULL AND created_at >= ? AND created_at < ?`
     )
-    .all(storeId, start, dayEnd) as Array<{ created_at: string; incoming_acknowledged_at: string }>;
+    .all(storeId, rangeStart, dayEnd) as Array<{ created_at: string; incoming_acknowledged_at: string }>;
   const ackMinutes = handoffs.map((h) => (new Date(h.incoming_acknowledged_at).getTime() - new Date(h.created_at).getTime()) / 60000);
   const medianHandoffAckMinutes = median(ackMinutes);
 
@@ -54,15 +61,17 @@ export function getQualityMetrics(storeId: string, start: string, end: string) {
       `SELECT ae.created_at FROM audit_events ae
        JOIN tasks t ON t.id = ae.entity_id
        WHERE ae.entity_type = 'task' AND ae.action = 'CARRIED_FORWARD' AND t.store_id = ?
-       AND t.status IN ('OPEN','IN_PROGRESS') AND ae.created_at BETWEEN ? AND ?`
+       AND t.status IN ('OPEN','IN_PROGRESS') AND ae.created_at >= ? AND ae.created_at < ?`
     )
-    .all(storeId, start, dayEnd) as Array<{ created_at: string }>;
+    .all(storeId, rangeStart, dayEnd) as Array<{ created_at: string }>;
   const now = Date.now();
   const carryForwardAgeDays = carriedForward.length
     ? carriedForward.reduce((sum, c) => sum + (now - new Date(c.created_at).getTime()) / 86400000, 0) / carriedForward.length
     : null;
 
-  // Unassigned work scheduled within this range (planning gap).
+  // Unassigned work scheduled within this range (planning gap). scheduled_date
+  // is already a plain store-local "YYYY-MM-DD" column, not a timestamp, so
+  // a direct string comparison against start/end is correct as-is.
   const unassignedThisWeek = db
     .prepare(
       `SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND owner_id IS NULL AND status IN ('OPEN','IN_PROGRESS')
@@ -70,7 +79,7 @@ export function getQualityMetrics(storeId: string, start: string, end: string) {
     )
     .get(storeId, start, end) as { n: number };
 
-  // Weekly active managers/PICs: distinct PIC across shifts in range.
+  // Weekly active managers/PICs: distinct PIC across shifts in range (shifts.date is also a plain date column).
   const activePics = db
     .prepare(`SELECT COUNT(DISTINCT pic_user_id) as n FROM shifts WHERE store_id = ? AND date BETWEEN ? AND ? AND pic_user_id IS NOT NULL`)
     .get(storeId, start, end) as { n: number };
@@ -78,14 +87,14 @@ export function getQualityMetrics(storeId: string, start: string, end: string) {
   // Duplicate/reopened errors: entities reopened in range (data-quality signal, not engagement).
   const reopenedEvents = db
     .prepare(
-      `SELECT COUNT(*) as n FROM audit_events WHERE action = 'REOPENED' AND created_at BETWEEN ? AND ?
+      `SELECT COUNT(*) as n FROM audit_events WHERE action = 'REOPENED' AND created_at >= ? AND created_at < ?
        AND entity_id IN (
          SELECT id FROM tasks WHERE store_id = ?
          UNION SELECT id FROM issues WHERE store_id = ?
          UNION SELECT ct.id FROM cleaning_tasks ct JOIN cleaning_areas a ON a.id = ct.area_id WHERE a.store_id = ?
        )`
     )
-    .get(start, dayEnd, storeId, storeId, storeId) as { n: number };
+    .get(rangeStart, dayEnd, storeId, storeId, storeId) as { n: number };
 
   return {
     medianQuickAddMinutes,
@@ -102,9 +111,10 @@ export function getQualityMetrics(storeId: string, start: string, end: string) {
  * queries getCompletionStats does for the fuller Reports breakdown. */
 export function getCompletedThisShiftCount(storeId: string, viewerId: string, todayStr: string): number {
   const db = getDb();
+  const { start, end } = storeDayRangeUtc(storeId, todayStr);
   const row = db
-    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND completed_by = ? AND status = 'COMPLETE' AND completed_at LIKE ?`)
-    .get(storeId, viewerId, `${todayStr}%`) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND completed_by = ? AND status = 'COMPLETE' AND completed_at >= ? AND completed_at < ?`)
+    .get(storeId, viewerId, start, end) as { n: number };
   return row.n;
 }
 
@@ -112,18 +122,21 @@ export function getCompletedThisShiftCount(storeId: string, viewerId: string, to
  * today store-wide, and this week store-wide. */
 export function getCompletionStats(storeId: string, viewerId: string, todayStr: string, weekStartStr: string, weekEndStr: string) {
   const db = getDb();
+  const { start: dayStart, end: dayEnd } = storeDayRangeUtc(storeId, todayStr);
+  const { start: weekStart } = storeDayRangeUtc(storeId, weekStartStr);
+  const { end: weekEnd } = storeDayRangeUtc(storeId, weekEndStr);
 
   const mine = db
-    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND completed_by = ? AND status = 'COMPLETE' AND completed_at LIKE ?`)
-    .get(storeId, viewerId, `${todayStr}%`) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND completed_by = ? AND status = 'COMPLETE' AND completed_at >= ? AND completed_at < ?`)
+    .get(storeId, viewerId, dayStart, dayEnd) as { n: number };
 
   const today = db
-    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at LIKE ?`)
-    .get(storeId, `${todayStr}%`) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at >= ? AND completed_at < ?`)
+    .get(storeId, dayStart, dayEnd) as { n: number };
 
   const week = db
-    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at BETWEEN ? AND ?`)
-    .get(storeId, `${weekStartStr}T00:00:00`, `${weekEndStr}T23:59:59`) as { n: number };
+    .prepare(`SELECT COUNT(*) as n FROM tasks WHERE store_id = ? AND status = 'COMPLETE' AND completed_at >= ? AND completed_at < ?`)
+    .get(storeId, weekStart, weekEnd) as { n: number };
 
   return { mine: mine.n, today: today.n, week: week.n };
 }

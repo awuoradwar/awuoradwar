@@ -2,7 +2,7 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser, Language } from "../types";
-import { storeToday } from "../storeTime";
+import { storeToday, storeDayRangeUtc } from "../storeTime";
 
 const ISSUE_CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   EQUIPMENT: { en: "Equipment", es: "Equipo" },
@@ -37,6 +37,7 @@ export interface HandoffSummary {
 export function buildLiveSummary(storeId: string, lang: Language = "en"): HandoffSummary {
   const db = getDb();
   const today = storeToday(storeId);
+  const { start: dayStart, end: dayEnd } = storeDayRangeUtc(storeId, today);
 
   // A call-in/late logged today for a future date belongs on THAT date's
   // staffing list, not today's -- event_date (when set) is authoritative;
@@ -47,19 +48,19 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
       `SELECT id, employee_name, type, note, created_at FROM attendance_events
        WHERE store_id = ? AND (
          (event_date IS NOT NULL AND event_date = ?)
-         OR (event_date IS NULL AND created_at LIKE ?)
+         OR (event_date IS NULL AND created_at >= ? AND created_at < ?)
        )
        ORDER BY created_at DESC`
     )
-    .all(storeId, today, `${today}%`) as Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
+    .all(storeId, today, dayStart, dayEnd) as Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
 
   const completedHighValue = db
     .prepare(
       `SELECT t.title, u.name as completed_by_name FROM tasks t LEFT JOIN users u ON u.id = t.completed_by
-       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.effort != 'QUICK' AND t.completed_at LIKE ?
+       WHERE t.store_id = ? AND t.status = 'COMPLETE' AND t.effort != 'QUICK' AND t.completed_at >= ? AND t.completed_at < ?
        ORDER BY t.completed_at DESC LIMIT 10`
     )
-    .all(storeId, `${today}%`) as Array<{ title: string; completed_by_name: string | null }>;
+    .all(storeId, dayStart, dayEnd) as Array<{ title: string; completed_by_name: string | null }>;
 
   const unresolvedTasks = db
     .prepare(`SELECT title FROM tasks WHERE store_id = ? AND status IN ('OPEN','IN_PROGRESS')`)

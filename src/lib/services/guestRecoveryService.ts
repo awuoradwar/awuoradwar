@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
 import { createTask } from "./taskService";
+import { storeDayRangeUtc } from "../storeTime";
 
 export function createGuestRecovery(params: {
   storeId: string;
@@ -106,15 +107,16 @@ export interface MealReplacementRow {
  */
 export function getMealReplacementsGrouped(storeId: string, todayStr: string) {
   const db = getDb();
+  const { start, end } = storeDayRangeUtc(storeId, todayStr);
   const rows = db
     .prepare(
       `SELECT gr.id, gr.contact_channel, gr.order_channel, gr.issue_category, gr.description, gr.item_description,
               gr.guest_name, gr.replacement_status, gr.created_at, gr.completed_at, u.name as created_by_name
        FROM guest_recoveries gr LEFT JOIN users u ON u.id = gr.created_by
-       WHERE gr.store_id = ? AND (gr.replacement_status IN ('PENDING','APPROVED') OR gr.completed_at LIKE ?)
+       WHERE gr.store_id = ? AND (gr.replacement_status IN ('PENDING','APPROVED') OR (gr.completed_at >= ? AND gr.completed_at < ?))
        ORDER BY gr.created_at ASC`
     )
-    .all(storeId, `${todayStr}%`) as MealReplacementRow[];
+    .all(storeId, start, end) as MealReplacementRow[];
 
   const open: MealReplacementRow[] = [];
   const completedToday: MealReplacementRow[] = [];
