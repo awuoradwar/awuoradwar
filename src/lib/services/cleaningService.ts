@@ -272,6 +272,19 @@ export function createCleaningTask(params: {
  * due weekday is today AND its last completion predates this week, so it
  * never touches a task that's already been done this week.
  */
+/** Clears the per-item checklist state (done + assigned associate) for a
+ * batch of tasks being reset -- without this, only the parent task's own
+ * status/completed_at got wiped, so "today's fresh checklist" still showed
+ * every sub-item checked off with yesterday's associate names still
+ * attached, since resetting the task never touched cleaning_task_items at
+ * all. */
+function resetChecklistItemsForTasks(taskIds: string[]) {
+  if (taskIds.length === 0) return;
+  const db = getDb();
+  const placeholders = taskIds.map(() => "?").join(",");
+  db.prepare(`UPDATE cleaning_task_items SET done = 0, associate_name = NULL WHERE cleaning_task_id IN (${placeholders})`).run(...taskIds);
+}
+
 export function resetDueWeeklyCleaningTasks(storeId: string) {
   const db = getDb();
   const todayStr = storeToday(storeId);
@@ -281,18 +294,25 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
   // (which would be off by the store's UTC offset).
   const weekStartIso = storeDayRangeUtc(storeId, weekStartOf(todayStr)).start;
 
+  const dueIds = db
+    .prepare(
+      `SELECT ct.id FROM cleaning_tasks ct
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       WHERE a.store_id = ? AND ct.frequency = 'WEEKLY' AND ct.weekday = ?
+         AND ct.status IN ('COMPLETED','VERIFIED')
+         AND (ct.completed_at IS NULL OR ct.completed_at < ?)`
+    )
+    .all(storeId, todayWeekday, weekStartIso) as Array<{ id: string }>;
+  if (dueIds.length === 0) return;
+  const ids = dueIds.map((r) => r.id);
+  const placeholders = ids.map(() => "?").join(",");
   db.prepare(
     `UPDATE cleaning_tasks
      SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
          photo_before_url = NULL, photo_after_url = NULL
-     WHERE id IN (
-       SELECT ct.id FROM cleaning_tasks ct
-       JOIN cleaning_areas a ON a.id = ct.area_id
-       WHERE a.store_id = ? AND ct.frequency = 'WEEKLY' AND ct.weekday = ?
-         AND ct.status IN ('COMPLETED','VERIFIED')
-         AND (ct.completed_at IS NULL OR ct.completed_at < ?)
-     )`
-  ).run(storeId, todayWeekday, weekStartIso);
+     WHERE id IN (${placeholders})`
+  ).run(...ids);
+  resetChecklistItemsForTasks(ids);
 }
 
 /**
@@ -306,18 +326,25 @@ export function resetDueDailyCleaningTasks(storeId: string) {
   // Same UTC-timestamp-vs-store-local-midnight conversion as above.
   const todayIso = storeDayRangeUtc(storeId, storeToday(storeId)).start;
 
+  const dueIds = db
+    .prepare(
+      `SELECT ct.id FROM cleaning_tasks ct
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       WHERE a.store_id = ? AND ct.frequency = 'DAILY'
+         AND ct.status IN ('COMPLETED','VERIFIED')
+         AND (ct.completed_at IS NULL OR ct.completed_at < ?)`
+    )
+    .all(storeId, todayIso) as Array<{ id: string }>;
+  if (dueIds.length === 0) return;
+  const ids = dueIds.map((r) => r.id);
+  const placeholders = ids.map(() => "?").join(",");
   db.prepare(
     `UPDATE cleaning_tasks
      SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
          photo_before_url = NULL, photo_after_url = NULL
-     WHERE id IN (
-       SELECT ct.id FROM cleaning_tasks ct
-       JOIN cleaning_areas a ON a.id = ct.area_id
-       WHERE a.store_id = ? AND ct.frequency = 'DAILY'
-         AND ct.status IN ('COMPLETED','VERIFIED')
-         AND (ct.completed_at IS NULL OR ct.completed_at < ?)
-     )`
-  ).run(storeId, todayIso);
+     WHERE id IN (${placeholders})`
+  ).run(...ids);
+  resetChecklistItemsForTasks(ids);
 }
 
 export function completeCleaningTask(id: string, actor: SessionUser, afterPhotoUrl?: string | null) {
