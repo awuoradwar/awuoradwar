@@ -53,6 +53,32 @@ export async function createScheduleRequestAction(formData: FormData) {
   return { ok: true };
 }
 
+export async function updateScheduleRequestAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const id = String(formData.get("id") || "");
+  const associateName = String(formData.get("associateName") || "").trim();
+  const requestType = String(formData.get("requestType") || "");
+  const requestedStartDate = String(formData.get("requestedStartDate") || "");
+  if (!id || !associateName || !requestType || !requestedStartDate) {
+    return { error: "Associate, request type and date are required." };
+  }
+  schedulingService.updateScheduleRequest(
+    id,
+    {
+      associateName,
+      requestType,
+      requestedStartDate,
+      requestedEndDate: String(formData.get("requestedEndDate") || "").trim() || null,
+      requestedStartTime: String(formData.get("requestedStartTime") || "").trim() || null,
+      requestedEndTime: String(formData.get("requestedEndTime") || "").trim() || null,
+      notes: String(formData.get("notes") || "").trim() || null,
+    },
+    user
+  );
+  refresh();
+  return { ok: true };
+}
+
 export async function decideRequestAction(requestId: string, decision: "APPROVED" | "DENIED") {
   const user = await requireCurrentUser();
   requireGM(user);

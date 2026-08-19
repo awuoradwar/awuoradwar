@@ -54,6 +54,40 @@ export function addAttachment(requestId: string, fileRef: string, attachmentType
   return id;
 }
 
+/** Fix the request's own details after the fact -- wrong date, typo'd
+ * associate name, wrong type -- separate from decideRequest, which only
+ * ever changes the approval status. Editable regardless of status so a
+ * mistake caught after a decision was made can still be corrected. */
+export function updateScheduleRequest(
+  id: string,
+  params: {
+    associateName: string;
+    requestType: string;
+    requestedStartDate: string;
+    requestedEndDate: string | null;
+    requestedStartTime: string | null;
+    requestedEndTime: string | null;
+    notes: string | null;
+  },
+  actor: SessionUser
+) {
+  const db = getDb();
+  db.prepare(
+    `UPDATE schedule_requests SET associate_name = ?, request_type = ?, requested_start_date = ?, requested_end_date = ?,
+      requested_start_time = ?, requested_end_time = ?, notes = ? WHERE id = ?`
+  ).run(
+    params.associateName,
+    params.requestType,
+    params.requestedStartDate,
+    params.requestedEndDate,
+    params.requestedStartTime,
+    params.requestedEndTime,
+    params.notes,
+    id
+  );
+  writeAudit({ entityType: "schedule_request", entityId: id, actor, action: "EDITED", newValue: params });
+}
+
 export function decideRequest(requestId: string, decision: "APPROVED" | "DENIED", actor: SessionUser) {
   const db = getDb();
   const ts = nowIso();

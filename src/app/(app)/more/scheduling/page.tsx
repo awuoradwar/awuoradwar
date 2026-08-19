@@ -5,7 +5,7 @@ import { getPendingQueue, getAllRequests } from "@/lib/services/schedulingServic
 import ScheduleRequestForm from "@/components/ScheduleRequestForm";
 import ApprovalQueueRow from "@/components/ApprovalQueueRow";
 import ConflictCheckTool from "@/components/ConflictCheckTool";
-import StatusBadge from "@/components/StatusBadge";
+import ScheduleRequestRow from "@/components/ScheduleRequestRow";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -14,6 +14,10 @@ interface RequestRow {
   associate_name: string;
   request_type: string;
   requested_start_date: string;
+  requested_end_date: string | null;
+  requested_start_time: string | null;
+  requested_end_time: string | null;
+  notes: string | null;
   received_via: string;
   received_by_name: string | null;
   status: string;
@@ -70,23 +74,7 @@ export default async function SchedulingPage() {
         </h2>
         <div className="card divide-y divide-border">
           {all.map((r) => (
-            <div key={r.id} className="flex items-center justify-between px-3 py-2 text-sm">
-              <div className="min-w-0">
-                <p className="truncate font-medium">{r.associate_name} · {r.request_type.replace(/_/g, " ")}</p>
-                <p className="text-xs text-muted">
-                  {r.requested_start_date} · {r.received_via} · {r.received_by_name}
-                  {r.attachment_count ? (
-                    <>
-                      {" · "}
-                      <a href={`/api/schedule-attachments/${r.id}`} target="_blank" rel="noreferrer" className="text-accent underline">
-                        📎
-                      </a>
-                    </>
-                  ) : null}
-                </p>
-              </div>
-              <StatusBadge status={r.status} lang={user.language} />
-            </div>
+            <ScheduleRequestRow key={r.id} request={r} lang={user.language} />
           ))}
         </div>
       </section>
