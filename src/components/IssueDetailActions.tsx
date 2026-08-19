@@ -2,16 +2,34 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addIssueUpdateAction, resolveIssueAction, reopenIssueAction } from "@/app/actions/operationsActions";
+import { addIssueUpdateAction, resolveIssueAction, reopenIssueAction, updateIssueAction } from "@/app/actions/operationsActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
-import { textareaClass } from "./forms/FormShell";
+import { Field, inputClass, selectClass, textareaClass } from "./forms/FormShell";
 
-export default function IssueDetailActions({ id, lang, status }: { id: string; lang: Language; status: string }) {
+export default function IssueDetailActions({
+  id,
+  lang,
+  status,
+  category,
+  description,
+  severity,
+  dueDate,
+}: {
+  id: string;
+  lang: Language;
+  status: string;
+  category: string;
+  description: string;
+  severity: string;
+  dueDate: string | null;
+}) {
   const [pending, startTransition] = useTransition();
   const [note, setNote] = useState("");
   const [resolution, setResolution] = useState("");
   const [resolving, setResolving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const router = useRouter();
 
   function run(fn: () => Promise<unknown>) {
@@ -23,8 +41,68 @@ export default function IssueDetailActions({ id, lang, status }: { id: string; l
 
   const isResolved = status === "RESOLVED";
 
+  if (editing) {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          startTransition(async () => {
+            const result = await updateIssueAction(fd);
+            if (result && "error" in result && result.error) {
+              setEditError(result.error);
+              return;
+            }
+            setEditError(null);
+            setEditing(false);
+            router.refresh();
+          });
+        }}
+        className="flex flex-col gap-3"
+      >
+        <input type="hidden" name="id" value={id} />
+        <Field label={lang === "es" ? "Categoría" : "Category"}>
+          <select name="category" defaultValue={category} className={selectClass}>
+            <option value="EQUIPMENT">{lang === "es" ? "Equipo" : "Equipment"}</option>
+            <option value="FACILITIES">{lang === "es" ? "Instalaciones" : "Facilities"}</option>
+            <option value="OPERATIONAL">{lang === "es" ? "Operativo" : "Operational"}</option>
+            <option value="OTHER">{lang === "es" ? "Otro" : "Other"}</option>
+          </select>
+        </Field>
+        <Field label={lang === "es" ? "Descripción" : "Description"}>
+          <textarea name="description" defaultValue={description} required rows={3} className={textareaClass} />
+        </Field>
+        <Field label={lang === "es" ? "Gravedad" : "Severity"}>
+          <select name="severity" defaultValue={severity} className={selectClass}>
+            <option value="NORMAL">{lang === "es" ? "Normal" : "Normal"}</option>
+            <option value="CRITICAL">{lang === "es" ? "Crítico" : "Critical"}</option>
+          </select>
+        </Field>
+        <Field label={lang === "es" ? "Fecha límite (opcional)" : "Due date (optional)"}>
+          <input name="dueDate" type="date" defaultValue={dueDate || ""} className={inputClass} />
+        </Field>
+        {editError && <p className="text-sm text-critical">{editError}</p>}
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={pending} className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground disabled:opacity-50">
+            {lang === "es" ? "Guardar" : "Save"}
+          </button>
+          <button type="button" onClick={() => setEditing(false)} disabled={pending} className="text-sm font-medium text-muted">
+            {lang === "es" ? "Cancelar" : "Cancel"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3">
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="tap-target self-start rounded-full border border-border px-4 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
+      >
+        ✎ {lang === "es" ? "Editar" : "Edit"}
+      </button>
       {!isResolved && (
         <>
           <textarea

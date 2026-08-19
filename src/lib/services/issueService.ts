@@ -45,6 +45,26 @@ function insertIssue(params: {
   return id;
 }
 
+/** Fix the issue's own original fields -- category, description, severity,
+ * due date -- separate from addIssueUpdate, which only ever adds a note or
+ * changes status. A typo in the initial report had no way to be corrected
+ * before this. */
+export function updateIssue(
+  issueId: string,
+  params: { category: string; description: string; severity: "NORMAL" | "CRITICAL"; dueDate: string | null },
+  actor: SessionUser
+) {
+  const db = getDb();
+  db.prepare(`UPDATE issues SET category = ?, description = ?, severity = ?, due_date = ? WHERE id = ?`).run(
+    params.category,
+    params.description,
+    params.severity,
+    params.dueDate,
+    issueId
+  );
+  writeAudit({ entityType: "issue", entityId: issueId, actor, action: "EDITED", newValue: params });
+}
+
 export function addIssueUpdate(issueId: string, note: string, actor: SessionUser, newStatus?: string) {
   const db = getDb();
   if (note.trim()) {

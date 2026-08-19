@@ -81,6 +81,25 @@ export async function settleBorrowedItemAction(id: string, notes?: string) {
   refresh();
 }
 
+export async function updateIssueAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const id = String(formData.get("id") || "");
+  const description = String(formData.get("description") || "").trim();
+  if (!id || !description) return { error: "Description is required." };
+  issueService.updateIssue(
+    id,
+    {
+      category: String(formData.get("category") || "OTHER"),
+      description,
+      severity: String(formData.get("severity") || "NORMAL") === "CRITICAL" ? "CRITICAL" : "NORMAL",
+      dueDate: String(formData.get("dueDate") || "").trim() || null,
+    },
+    user
+  );
+  refresh();
+  return { ok: true };
+}
+
 export async function addIssueUpdateAction(id: string, note: string, newStatus?: string) {
   const user = await requireCurrentUser();
   issueService.addIssueUpdate(id, note, user, newStatus);

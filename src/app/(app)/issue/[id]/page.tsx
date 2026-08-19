@@ -95,7 +95,15 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
       </dl>
 
       <div className="mt-5">
-        <IssueDetailActions id={issue.id} lang={user.language} status={issue.status} />
+        <IssueDetailActions
+          id={issue.id}
+          lang={user.language}
+          status={issue.status}
+          category={issue.category}
+          description={issue.description}
+          severity={issue.severity}
+          dueDate={issue.due_date}
+        />
       </div>
 
       {updates.length > 0 && (
