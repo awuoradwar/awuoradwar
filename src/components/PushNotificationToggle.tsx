@@ -11,11 +11,24 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
-type Status = "unsupported" | "denied" | "off" | "on" | "busy";
+type Status = "unsupported" | "ios-not-installed" | "denied" | "off" | "on" | "busy";
+
+function isIosSafari(): boolean {
+  const ua = navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes("Macintosh") && "ontouchend" in document);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
+  return isIos && !isStandalone;
+}
 
 function initialStatus(): Status {
   if (typeof window === "undefined") return "busy";
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return "unsupported";
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    // iOS Safari only exposes the Push API to a home-screen-installed PWA --
+    // a plain browser tab always fails this check, even on a version that
+    // fully supports it once installed. Distinguish that case so the section
+    // can explain what to do instead of silently vanishing.
+    return isIosSafari() ? "ios-not-installed" : "unsupported";
+  }
   if (Notification.permission === "denied") return "denied";
   return "busy";
 }
@@ -72,6 +85,19 @@ export default function PushNotificationToggle({ lang }: { lang: Language }) {
   }
 
   if (status === "unsupported") return null;
+
+  if (status === "ios-not-installed") {
+    return (
+      <section className="mb-4 card p-4">
+        <p className="text-sm font-medium">{lang === "es" ? "Notificaciones push" : "Push notifications"}</p>
+        <p className="mt-1 text-xs text-muted">
+          {lang === "es"
+            ? "En iPhone/iPad, primero agrega esta app a tu pantalla de inicio: toca el ícono de compartir  y luego \"Agregar a pantalla de inicio\". Después ábrela desde ahí para activar las notificaciones."
+            : "On iPhone/iPad, notifications only work once this app is added to your Home Screen: tap the Share icon, then \"Add to Home Screen.\" Open it from there to turn notifications on."}
+        </p>
+      </section>
+    );
+  }
 
   const label = {
     denied: lang === "es" ? "Bloqueadas en el navegador" : "Blocked in browser settings",
