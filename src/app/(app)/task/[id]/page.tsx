@@ -1,12 +1,13 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { getActivity, lastUpdatedBy } from "@/lib/audit";
+import { lastUpdatedBy } from "@/lib/audit";
 import { canDo } from "@/lib/permissions";
 import { formatStoreDateTime } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
 import TaskEditForm from "@/components/TaskEditForm";
+import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
 import { TaskRow } from "@/lib/services/taskService";
 
@@ -32,14 +33,6 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
     .prepare(`SELECT id, name FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
     .all() as Array<{ id: string; name: string }>;
 
-  const activity = getActivity("task", id) as Array<{
-    id: string;
-    action: string;
-    actor_name: string | null;
-    old_value: string | null;
-    new_value: string | null;
-    created_at: string;
-  }>;
   const last = lastUpdatedBy("task", id) as { actor_name: string | null; created_at: string } | undefined;
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
@@ -93,21 +86,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
         />
       )}
 
-      <details className="mt-6">
-        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-accent">
-          {user.language === "es" ? "Ver actividad" : "View Activity"} ({activity.length})
-        </summary>
-        <div className="card mt-2 divide-y divide-border">
-          {activity.map((a) => (
-            <div key={a.id} className="px-3 py-2 text-xs">
-              <p className="font-medium">
-                {a.action} · {a.actor_name || "system"}
-              </p>
-              <p className="text-muted">{fmt(a.created_at)}</p>
-            </div>
-          ))}
-        </div>
-      </details>
+      <ActivityLog entityType="task" entityId={id} storeId={user.storeId} lang={user.language} />
     </div>
   );
 }

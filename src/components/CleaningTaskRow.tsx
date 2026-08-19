@@ -393,11 +393,10 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
             <button
               type="button"
               disabled={pending}
-              title={lang === "es" ? "Editar" : "Edit"}
               onClick={() => setEditing(true)}
-              className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-accent disabled:opacity-40"
+              className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
             >
-              ✎
+              ✎ {lang === "es" ? "Editar" : "Edit"}
             </button>
             <button
               type="button"

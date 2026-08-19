@@ -4,6 +4,7 @@ import { isGM } from "@/lib/permissions";
 import { getPendingQueue, getAllRequests } from "@/lib/services/schedulingService";
 import { getActivity } from "@/lib/audit";
 import { formatStoreDateTime } from "@/lib/storeTime";
+import { summarizeActivityChange } from "@/lib/activitySummary";
 import ScheduleRequestForm from "@/components/ScheduleRequestForm";
 import ApprovalQueueRow from "@/components/ApprovalQueueRow";
 import ConflictCheckTool from "@/components/ConflictCheckTool";
@@ -35,13 +36,21 @@ export default async function SchedulingPage() {
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const activityByRequest = new Map<string, ActivityEntry[]>(
     all.map((r) => {
-      const rows = getActivity("schedule_request", r.id) as Array<{ id: string; action: string; actor_name: string | null; created_at: string }>;
+      const rows = getActivity("schedule_request", r.id) as Array<{
+        id: string;
+        action: string;
+        actor_name: string | null;
+        old_value: string | null;
+        new_value: string | null;
+        created_at: string;
+      }>;
       return [
         r.id,
         rows.map((a) => ({
           id: a.id,
           action: a.action,
           actorName: a.actor_name,
+          summary: summarizeActivityChange(a.old_value, a.new_value, user.language),
           formattedAt: formatStoreDateTime(user.storeId, a.created_at, locale),
         })),
       ];

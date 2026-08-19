@@ -26,6 +26,7 @@ export interface ActivityEntry {
   id: string;
   action: string;
   actorName: string | null;
+  summary: string | null;
   formattedAt: string;
 }
 
@@ -69,8 +70,12 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <StatusBadge status={request.status} lang={lang} />
-            <button type="button" onClick={() => setEditing(true)} className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-accent">
-              ✎
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
+            >
+              ✎ {lang === "es" ? "Editar" : "Edit"}
             </button>
           </div>
         </div>
@@ -81,9 +86,12 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
             </summary>
             <div className="mt-1.5 flex flex-col gap-1 border-l-2 border-border pl-2.5">
               {activity.map((a) => (
-                <p key={a.id} className="text-xs text-muted">
-                  <span className="font-semibold text-foreground">{a.action}</span> · {a.actorName || (lang === "es" ? "sistema" : "system")} · {a.formattedAt}
-                </p>
+                <div key={a.id} className="text-xs text-muted">
+                  <p>
+                    <span className="font-semibold text-foreground">{a.action}</span> · {a.actorName || (lang === "es" ? "sistema" : "system")} · {a.formattedAt}
+                  </p>
+                  {a.summary && <p className="text-foreground/80">{a.summary}</p>}
+                </div>
               ))}
             </div>
           </details>

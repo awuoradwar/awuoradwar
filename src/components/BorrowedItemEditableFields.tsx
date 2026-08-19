@@ -83,8 +83,12 @@ export default function BorrowedItemEditableFields({
         <dt className="text-muted">{storeFieldLabel}</dt>
         <dd className="flex items-center justify-between gap-2">
           <span>{borrowedFrom}</span>
-          <button type="button" onClick={() => setEditing(true)} className="tap-target flex h-7 w-7 min-h-0 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:text-accent">
-            ✎
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="tap-target flex shrink-0 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            ✎ {lang === "es" ? "Editar" : "Edit"}
           </button>
         </dd>
         <dt className="text-muted">{lang === "es" ? "Artículo" : "Item"}</dt>
