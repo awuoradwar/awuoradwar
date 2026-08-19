@@ -14,7 +14,8 @@ export type AuditAction =
   | "CARRIED_FORWARD"
   | "ACKNOWLEDGED"
   | "DENIED"
-  | "SETTLED";
+  | "SETTLED"
+  | "DELETED";
 
 export function nowIso(): string {
   return new Date().toISOString();

@@ -79,6 +79,13 @@ export async function updateScheduleRequestAction(formData: FormData) {
   return { ok: true };
 }
 
+export async function deleteScheduleRequestAction(id: string) {
+  const user = await requireCurrentUser();
+  schedulingService.deleteScheduleRequest(id, user);
+  refresh();
+  return { ok: true };
+}
+
 export async function decideRequestAction(requestId: string, decision: "APPROVED" | "DENIED") {
   const user = await requireCurrentUser();
   requireGM(user);

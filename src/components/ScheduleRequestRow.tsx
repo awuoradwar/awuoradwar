@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { updateScheduleRequestAction } from "@/app/actions/schedulingActions";
+import { updateScheduleRequestAction, deleteScheduleRequestAction } from "@/app/actions/schedulingActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
 import StatusBadge from "./StatusBadge";
 import { Language } from "@/lib/types";
@@ -123,6 +123,21 @@ export default function ScheduleRequestRow({ request, lang }: { request: Request
         </button>
         <button type="button" onClick={() => setEditing(false)} disabled={pending} className="text-sm font-medium text-muted">
           {lang === "es" ? "Cancelar" : "Cancel"}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            const msg = lang === "es" ? "¿Eliminar esta solicitud? Esto no se puede deshacer." : "Delete this request? This can't be undone.";
+            if (!window.confirm(msg)) return;
+            startTransition(async () => {
+              await deleteScheduleRequestAction(request.id);
+              router.refresh();
+            });
+          }}
+          className="ml-auto text-sm font-medium text-critical disabled:opacity-50"
+        >
+          {lang === "es" ? "Eliminar" : "Delete"}
         </button>
       </div>
     </form>

@@ -88,6 +88,16 @@ export function updateScheduleRequest(
   writeAudit({ entityType: "schedule_request", entityId: id, actor, action: "EDITED", newValue: params });
 }
 
+/** Remove a request entirely -- for duplicates or requests logged in error.
+ * Distinct from decideRequest (DENIED), which keeps the record but marks it
+ * rejected; this drops it from the list completely. */
+export function deleteScheduleRequest(id: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`DELETE FROM schedule_request_attachments WHERE request_id = ?`).run(id);
+  db.prepare(`DELETE FROM schedule_requests WHERE id = ?`).run(id);
+  writeAudit({ entityType: "schedule_request", entityId: id, actor, action: "DELETED" });
+}
+
 export function decideRequest(requestId: string, decision: "APPROVED" | "DENIED", actor: SessionUser) {
   const db = getDb();
   const ts = nowIso();
