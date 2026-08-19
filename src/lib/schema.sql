@@ -264,6 +264,7 @@ CREATE TABLE IF NOT EXISTS attendance_events (
   shift_id TEXT REFERENCES shifts(id),
   employee_name TEXT NOT NULL,
   type TEXT NOT NULL, -- CALL_IN | LATE | NO_SHOW | LEFT_EARLY | SENT_HOME
+  event_date TEXT, -- YYYY-MM-DD store-local, e.g. a call-in logged today for a future date
   scheduled_time TEXT,
   actual_time TEXT,
   minutes_late INTEGER,

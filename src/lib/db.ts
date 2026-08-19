@@ -49,6 +49,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "borrowed_items", "approved_by_name", "approved_by_name TEXT");
   ensureColumn(db, "borrowed_items", "picked_up_by_name", "picked_up_by_name TEXT");
   ensureColumn(db, "borrowed_items", "picked_up_at", "picked_up_at TEXT");
+  ensureColumn(db, "attendance_events", "event_date", "event_date TEXT");
   migrateLegacyTrainingPositions(db);
   return db;
 }

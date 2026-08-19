@@ -27,7 +27,7 @@ const REPLACEMENT_STATUS_LABEL: Record<string, Record<Language, string>> = {
 };
 
 export interface HandoffSummary {
-  staffing: Array<{ employee_name: string; type: string; note: string | null; created_at: string }>;
+  staffing: Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
   completedHighValue: Array<{ title: string; completed_by_name: string | null }>;
   unresolved: Array<{ kind: string; title: string }>;
   openItems: Array<{ kind: string; title: string; id: string; created_at: string }>;
@@ -39,8 +39,8 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
   const today = storeToday(storeId);
 
   const staffing = db
-    .prepare(`SELECT employee_name, type, note, created_at FROM attendance_events WHERE store_id = ? AND created_at LIKE ? ORDER BY created_at DESC`)
-    .all(storeId, `${today}%`) as Array<{ employee_name: string; type: string; note: string | null; created_at: string }>;
+    .prepare(`SELECT id, employee_name, type, note, created_at FROM attendance_events WHERE store_id = ? AND created_at LIKE ? ORDER BY created_at DESC`)
+    .all(storeId, `${today}%`) as Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
 
   const completedHighValue = db
     .prepare(

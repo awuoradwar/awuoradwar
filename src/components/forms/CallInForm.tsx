@@ -17,6 +17,9 @@ export default function CallInForm({ lang }: { lang: Language }) {
       <Field label={lang === "es" ? "Empleado" : "Employee"}>
         <input name="employeeName" required className={inputClass} placeholder={lang === "es" ? "Nombre" : "Name"} />
       </Field>
+      <Field label={lang === "es" ? "Fecha" : "Date"}>
+        <input name="eventDate" type="date" className={inputClass} />
+      </Field>
       <Field label={lang === "es" ? "Turno programado" : "Scheduled shift"}>
         <input name="scheduledTime" type="time" className={inputClass} />
       </Field>

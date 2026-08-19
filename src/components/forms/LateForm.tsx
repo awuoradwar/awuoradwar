@@ -17,6 +17,9 @@ export default function LateForm({ lang }: { lang: Language }) {
       <Field label={lang === "es" ? "Empleado" : "Employee"}>
         <input name="employeeName" required className={inputClass} />
       </Field>
+      <Field label={lang === "es" ? "Fecha" : "Date"}>
+        <input name="eventDate" type="date" className={inputClass} />
+      </Field>
       <Field label={lang === "es" ? "Hora programada" : "Scheduled time"}>
         <input name="scheduledTime" type="time" className={inputClass} />
       </Field>

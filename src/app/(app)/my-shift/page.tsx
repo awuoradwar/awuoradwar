@@ -144,11 +144,11 @@ export default async function MyShiftPage() {
           count={currentShiftCount}
         >
           <div className="flex flex-col gap-2">
-            {currentShiftStaffing.map((s, i) => (
-              <div key={`current-staff-${i}`} className="card p-3 text-sm">
+            {currentShiftStaffing.map((s) => (
+              <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">
                 🧍 {s.employee_name} — {s.type.replace("_", " ")}
                 {s.note ? <span className="text-muted"> · {s.note}</span> : null}
-              </div>
+              </Link>
             ))}
             {currentShiftOpenItems.map((it, i) => (
               <Link key={`current-open-${i}`} href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`} className="card block p-3 text-sm">
@@ -260,11 +260,11 @@ export default async function MyShiftPage() {
           <p className="text-center text-xs text-muted">{t(user.language, "all_clear")}</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {priorShiftStaffing.map((s, i) => (
-              <div key={`staff-${i}`} className="card p-3 text-sm">
+            {priorShiftStaffing.map((s) => (
+              <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">
                 🧍 {s.employee_name} — {s.type.replace("_", " ")}
                 {s.note ? <span className="text-muted"> · {s.note}</span> : null}
-              </div>
+              </Link>
             ))}
             {priorShiftOpenItems.map((it, i) => (
               <Link key={`open-${i}`} href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`} className="card block p-3 text-sm">
