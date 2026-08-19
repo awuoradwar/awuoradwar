@@ -116,15 +116,20 @@ function isDueToday(task: TaskRow, todayStr: string): boolean {
   return task.scheduled_for === "TODAY" || task.scheduled_for === "NEXT_SHIFT";
 }
 
-/** dueToday gates the overdue path so a still-open instance from an earlier day
- * this week (recurring tasks materialize for the whole week up front) doesn't
- * sit in NOW forever just because it's long past due -- only today's own tasks
- * escalate on lateness. CRITICAL severity always escalates regardless of day. */
+/** dueToday gates the overdue path so a still-open RECURRING instance from an
+ * earlier day this week (recurring tasks materialize for the whole week up
+ * front) doesn't sit in NOW forever just because it's long past due -- only
+ * today's own recurring tasks escalate on lateness. A one-off task (no
+ * template_id) has no such "materialized ahead of time" excuse -- if it's
+ * genuinely overdue from an earlier day, it escalates regardless, so it
+ * doesn't quietly sink into This Week forever just because "today" moved on
+ * without it. CRITICAL severity always escalates regardless of day. */
 function isUrgentNow(task: TaskRow, nowDate: Date, dueToday: boolean): boolean {
   if (task.severity === "CRITICAL") return true;
-  if (!task.due_at || !dueToday) return false;
+  if (!task.due_at) return false;
   const hoursUntil = (new Date(task.due_at).getTime() - nowDate.getTime()) / 3600000;
-  return hoursUntil <= 2; // overdue or imminent
+  if (dueToday) return hoursUntil <= 2; // overdue or imminent
+  return !task.template_id && hoursUntil < 0;
 }
 
 /** Store's two shift windows: Morning (open-5pm) and Evening (5pm-11:45pm close). A double spans both. */
