@@ -119,12 +119,17 @@ export interface CleaningTaskDueToday {
   checklistItems: ChecklistItem[];
 }
 
-/** Today's open cleaning work for the My Shift dashboard -- every DAILY task
- * not yet done, plus WEEKLY tasks whose fixed weekday is today (or that have
- * no fixed day, so they stay live all week), same "today's version of the
- * schedule shows itself" rule the Cleaning page itself uses. */
+/** Today's cleaning work for the My Shift dashboard -- every DAILY task not
+ * yet done, plus WEEKLY tasks whose fixed weekday is today (or that have no
+ * fixed day, so they stay live all week), same "today's version of the
+ * schedule shows itself" rule the Cleaning page itself uses. A task
+ * completed or verified earlier today stays in place too (with its
+ * checklist and per-item associates still visible) instead of vanishing the
+ * moment it's marked done -- same "confirmed, still right here" behavior
+ * already applied to regular tasks on My Shift. */
 export function getCleaningTasksDueToday(storeId: string, todayWeekday: number): CleaningTaskDueToday[] {
   const db = getDb();
+  const { start, end } = storeDayRangeUtc(storeId, storeToday(storeId));
   const rows = db
     .prepare(
       `SELECT ct.id, ct.title, ct.title_es, ct.description, ct.description_es, ct.weekday, ct.frequency, ct.status,
@@ -133,11 +138,16 @@ export function getCleaningTasksDueToday(storeId: string, todayWeekday: number):
        FROM cleaning_tasks ct
        JOIN cleaning_areas a ON a.id = ct.area_id
        LEFT JOIN users u ON u.id = a.owner_id
-       WHERE a.store_id = ? AND ct.status IN ('ASSIGNED', 'REOPENED')
+       WHERE a.store_id = ? AND (
+         ct.status IN ('ASSIGNED', 'REOPENED')
+         OR (ct.status IN ('COMPLETED', 'VERIFIED') AND (
+           (ct.completed_at >= ? AND ct.completed_at < ?) OR (ct.verified_at >= ? AND ct.verified_at < ?)
+         ))
+       )
          AND (ct.frequency = 'DAILY' OR ct.weekday IS NULL OR ct.weekday = ?)
-       ORDER BY a.owner_id IS NULL, a.name`
+       ORDER BY ct.status IN ('COMPLETED', 'VERIFIED'), a.owner_id IS NULL, a.name`
     )
-    .all(storeId, todayWeekday) as Array<Omit<CleaningTaskDueToday, "checklistItems">>;
+    .all(storeId, start, end, start, end, todayWeekday) as Array<Omit<CleaningTaskDueToday, "checklistItems">>;
   return rows.map((row) => ({ ...row, checklistItems: ensureChecklistItems(row.id, row.description) }));
 }
 

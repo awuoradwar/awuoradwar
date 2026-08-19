@@ -215,7 +215,7 @@ export default async function MyShiftPage() {
 
       <SectionCard
         title={user.language === "es" ? "Limpieza de Hoy" : "Cleaning Today"}
-        sub={user.language === "es" ? "Tareas de limpieza pendientes de hoy" : "Today's outstanding cleaning tasks"}
+        sub={user.language === "es" ? "Tareas de limpieza de hoy, incluyendo las completadas" : "Today's cleaning tasks, including completed ones"}
         count={cleaningToday.length}
       >
         {cleaningToday.length === 0 ? (
