@@ -38,9 +38,20 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
   const db = getDb();
   const today = storeToday(storeId);
 
+  // A call-in/late logged today for a future date belongs on THAT date's
+  // staffing list, not today's -- event_date (when set) is authoritative;
+  // events without one (older rows, or types that don't take a date) fall
+  // back to the day they were logged, same as before.
   const staffing = db
-    .prepare(`SELECT id, employee_name, type, note, created_at FROM attendance_events WHERE store_id = ? AND created_at LIKE ? ORDER BY created_at DESC`)
-    .all(storeId, `${today}%`) as Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
+    .prepare(
+      `SELECT id, employee_name, type, note, created_at FROM attendance_events
+       WHERE store_id = ? AND (
+         (event_date IS NOT NULL AND event_date = ?)
+         OR (event_date IS NULL AND created_at LIKE ?)
+       )
+       ORDER BY created_at DESC`
+    )
+    .all(storeId, today, `${today}%`) as Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
 
   const completedHighValue = db
     .prepare(
