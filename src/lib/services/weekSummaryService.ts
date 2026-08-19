@@ -1,6 +1,7 @@
 import "server-only";
 import { getDb } from "../db";
 import { storeDayRangeUtc } from "../storeTime";
+import { Language } from "../types";
 
 export interface WeekSummary {
   weekStart: string;
@@ -116,7 +117,7 @@ export interface WeekItemRow {
 /** The actual items behind each Weekly Summary stat tile, using the exact
  * same filter criteria as getWeekSummary's counts -- so the drill-down list
  * a manager taps into always matches the number they tapped on. */
-export function getWeekDetail(storeId: string, weekStart: string, weekEnd: string) {
+export function getWeekDetail(storeId: string, weekStart: string, weekEnd: string, lang: Language = "en") {
   const db = getDb();
   const { start: weekStartTs } = storeDayRangeUtc(storeId, weekStart);
   const { end: dayEnd } = storeDayRangeUtc(storeId, weekEnd);
@@ -139,7 +140,7 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
 
   const cleaningCompletions = db
     .prepare(
-      `SELECT ae.id, ct.title, ae.created_at as at, u.name as by_name
+      `SELECT ae.id, ct.title, ct.associate_name, ae.action, ae.new_value, ae.created_at as at, u.name as by_name
        FROM audit_events ae
        JOIN cleaning_tasks ct ON ct.id = ae.entity_id
        JOIN cleaning_areas a ON a.id = ct.area_id
@@ -147,7 +148,15 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
        WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED','VERIFIED') AND a.store_id = ? AND ae.created_at >= ? AND ae.created_at < ?
        ORDER BY ae.created_at DESC`
     )
-    .all(storeId, weekStartTs, dayEnd) as Array<{ id: string; title: string; at: string; by_name: string | null }>;
+    .all(storeId, weekStartTs, dayEnd) as Array<{
+    id: string;
+    title: string;
+    associate_name: string | null;
+    action: string;
+    new_value: string | null;
+    at: string;
+    by_name: string | null;
+  }>;
 
   const mealReplacements = db
     .prepare(
@@ -174,7 +183,25 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
   return {
     tasksCompleted: tasksCompleted.map((t) => ({ id: t.id, title: t.title, subtitle: t.by_name, at: t.at } satisfies WeekItemRow)),
     tasksStillOpen: tasksStillOpen.map((t) => ({ id: t.id, title: t.title, subtitle: t.by_name, at: t.at || "" } satisfies WeekItemRow)),
-    cleaningCompletions: cleaningCompletions.map((c) => ({ id: c.id, title: c.title, subtitle: c.by_name, at: c.at } satisfies WeekItemRow)),
+    cleaningCompletions: cleaningCompletions.map((c) => {
+      // The live associate_name gets wiped by the next daily/weekly reset,
+      // so prefer the snapshot captured on the audit event itself; older
+      // events written before that snapshot existed fall back to the
+      // (possibly since-reset) live column.
+      let snapshotAssociate: string | null | undefined;
+      try {
+        snapshotAssociate = c.new_value ? (JSON.parse(c.new_value) as { associate_name?: string | null }).associate_name : undefined;
+      } catch {
+        snapshotAssociate = undefined;
+      }
+      const associate = snapshotAssociate !== undefined ? snapshotAssociate : c.associate_name;
+      const byLabel = c.action === "VERIFIED" ? (lang === "es" ? "Verificado por" : "Verified by") : lang === "es" ? "Completado por" : "Completed by";
+      const parts = [
+        associate ? `${lang === "es" ? "Asociado" : "Associate"}: ${associate}` : null,
+        c.by_name ? `${byLabel}: ${c.by_name}` : null,
+      ].filter(Boolean);
+      return { id: c.id, title: c.title, subtitle: parts.length > 0 ? parts.join(" · ") : null, at: c.at } satisfies WeekItemRow;
+    }),
     mealReplacements: mealReplacements.map(
       (m) =>
         ({

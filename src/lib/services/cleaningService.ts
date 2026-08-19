@@ -349,8 +349,8 @@ export function resetDueDailyCleaningTasks(storeId: string) {
 
 export function completeCleaningTask(id: string, actor: SessionUser, afterPhotoUrl?: string | null) {
   const db = getDb();
-  const task = db.prepare(`SELECT photo_required, photo_after_url FROM cleaning_tasks WHERE id = ?`).get(id) as
-    | { photo_required: number; photo_after_url: string | null }
+  const task = db.prepare(`SELECT photo_required, photo_after_url, associate_name FROM cleaning_tasks WHERE id = ?`).get(id) as
+    | { photo_required: number; photo_after_url: string | null; associate_name: string | null }
     | undefined;
   if (task?.photo_required && !task.photo_after_url && !afterPhotoUrl) {
     throw new Error("PHOTO_REQUIRED: This cleaning task requires an after photo before it can be marked complete.");
@@ -359,7 +359,17 @@ export function completeCleaningTask(id: string, actor: SessionUser, afterPhotoU
   db.prepare(
     `UPDATE cleaning_tasks SET status = 'COMPLETED', completed_by = ?, completed_at = ?, photo_after_url = COALESCE(?, photo_after_url) WHERE id = ?`
   ).run(actor.id, ts, afterPhotoUrl || null, id);
-  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "COMPLETED", newValue: afterPhotoUrl ? { photo_after_url: afterPhotoUrl } : undefined });
+  // Snapshot the associate assigned at the moment of completion -- the live
+  // associate_name column gets wiped by the next daily/weekly reset, so a
+  // later "who was assigned" view (Weekly Summary) needs its own copy here
+  // rather than reading the (by-then-cleared) live column.
+  writeAudit({
+    entityType: "cleaning_task",
+    entityId: id,
+    actor,
+    action: "COMPLETED",
+    newValue: { associate_name: task?.associate_name ?? null, ...(afterPhotoUrl ? { photo_after_url: afterPhotoUrl } : {}) },
+  });
 }
 
 /** Attach a before/after photo to a task independent of completion -- every
@@ -375,8 +385,9 @@ export function attachCleaningPhoto(id: string, kind: "before" | "after", photoU
 export function verifyCleaningTask(id: string, actor: SessionUser) {
   const db = getDb();
   const ts = nowIso();
+  const task = db.prepare(`SELECT associate_name FROM cleaning_tasks WHERE id = ?`).get(id) as { associate_name: string | null } | undefined;
   db.prepare(`UPDATE cleaning_tasks SET status = 'VERIFIED', verified_by = ?, verified_at = ? WHERE id = ?`).run(actor.id, ts, id);
-  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "VERIFIED" });
+  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "VERIFIED", newValue: { associate_name: task?.associate_name ?? null } });
 }
 
 /** Scoped to storeId so one store can never fetch another's photo. */

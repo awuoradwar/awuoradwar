@@ -34,7 +34,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
   const weekEnd = addDays(weekStart, 6);
 
   const summary = getWeekSummary(user.storeId, weekStart, weekEnd);
-  const detail = getWeekDetail(user.storeId, weekStart, weekEnd);
+  const detail = getWeekDetail(user.storeId, weekStart, weekEnd, user.language);
   const isCurrentWeek = weekStart === currentWeekStart;
 
   const fmtDate = (d: string) =>
