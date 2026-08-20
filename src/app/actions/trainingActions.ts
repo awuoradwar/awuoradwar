@@ -43,6 +43,14 @@ export async function toggleTrainingItemAction(traineeId: string, trainingItemId
   refresh(traineeId);
 }
 
+export async function setTrainingItemNotesAction(traineeId: string, trainingItemId: string, notes: string) {
+  const user = await requireCurrentUser();
+  const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
+  if (!trainee) throw new Error("NOT_FOUND");
+  trainingService.setTrainingCompletionNotes(traineeId, trainingItemId, notes.trim() || null, user);
+  refresh(traineeId);
+}
+
 export async function markTraineeCompleteAction(traineeId: string) {
   const user = await requireCurrentUser();
   const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);

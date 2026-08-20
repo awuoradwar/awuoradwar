@@ -155,7 +155,8 @@ CREATE TABLE IF NOT EXISTS training_completions (
   trainee_id TEXT NOT NULL REFERENCES trainees(id),
   training_item_id TEXT NOT NULL REFERENCES training_items(id),
   trained_by TEXT REFERENCES users(id),
-  trained_at TEXT NOT NULL
+  trained_at TEXT NOT NULL,
+  notes TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_training_completions_unique ON training_completions(trainee_id, training_item_id);
 

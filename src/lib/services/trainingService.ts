@@ -97,13 +97,14 @@ export function getTraineeDetail(traineeId: string, storeId: string): TraineeDet
 export interface TrainingChecklistRow extends TrainingItem {
   trained_by_name: string | null;
   trained_at: string | null;
+  notes: string | null;
 }
 
 export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRow[] {
   const db = getDb();
   return db
     .prepare(
-      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, u.name as trained_by_name, tc.trained_at
+      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, u.name as trained_by_name, tc.trained_at, tc.notes
        FROM training_items ti
        LEFT JOIN training_completions tc ON tc.training_item_id = ti.id AND tc.trainee_id = ?
        LEFT JOIN users u ON u.id = tc.trained_by
@@ -134,6 +135,18 @@ export function toggleTrainingItem(traineeId: string, trainingItemId: string, ac
   ).run(newId(), traineeId, trainingItemId, actor.id, nowIso());
   writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, trained: true } });
   return true;
+}
+
+/** A note against one trained checklist item -- separate from the trained
+ * checkbox itself, so a manager can flag "needs follow-up/retraining" on a
+ * skill that's still marked trained rather than having to un-check it (which
+ * would misrepresent that the training never happened at all). Only
+ * meaningful once the item has actually been marked trained, since that's
+ * the completion row the note attaches to. */
+export function setTrainingCompletionNotes(traineeId: string, trainingItemId: string, notes: string | null, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE training_completions SET notes = ? WHERE trainee_id = ? AND training_item_id = ?`).run(notes, traineeId, trainingItemId);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, notes } });
 }
 
 export function markTraineeComplete(traineeId: string, actor: SessionUser) {
