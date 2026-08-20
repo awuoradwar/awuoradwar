@@ -145,8 +145,16 @@ export default async function MyShiftPage() {
       nowWindow === "MORNING" ? itemDate === yesterday && itemWindow === "EVENING" : itemDate === today && itemWindow === "MORNING";
     return isImmediatelyPriorShift ? "prior" : "older";
   };
-  const currentShiftStaffing = summary.staffing.filter((s) => shiftBucketOf(s.created_at) === "current");
-  const priorShiftStaffing = summary.staffing.filter((s) => shiftBucketOf(s.created_at) === "prior");
+  // A call-in/late has its own event_date -- the day it's actually about,
+  // set by the manager when logging it -- which is what matters for
+  // bucketing, not when it happened to get typed in. The query already only
+  // ever includes event_date rows for today, so any of those belong under
+  // This Shift regardless of what time it is now; only date-less events
+  // (older rows without one) fall back to the created_at/window check.
+  const staffingBucketOf = (s: (typeof summary.staffing)[number]): "current" | "prior" | "older" =>
+    s.event_date ? "current" : shiftBucketOf(s.created_at);
+  const currentShiftStaffing = summary.staffing.filter((s) => staffingBucketOf(s) === "current");
+  const priorShiftStaffing = summary.staffing.filter((s) => staffingBucketOf(s) === "prior");
   // Meal replacements have no known fulfillment time -- unlike an issue or
   // borrowed item, there's nothing time-bound to surface here, so they stay
   // off My Shift entirely and live only on their own dedicated list

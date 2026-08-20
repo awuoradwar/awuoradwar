@@ -27,7 +27,15 @@ const REPLACEMENT_STATUS_LABEL: Record<string, Record<Language, string>> = {
 };
 
 export interface HandoffSummary {
-  staffing: Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
+  staffing: Array<{
+    id: string;
+    employee_name: string;
+    type: string;
+    note: string | null;
+    created_at: string;
+    event_date: string | null;
+    scheduled_time: string | null;
+  }>;
   completedHighValue: Array<{ title: string; completed_by_name: string | null }>;
   unresolved: Array<{ kind: string; title: string }>;
   // critical: something that needs surfacing regardless of how old it is --
@@ -50,14 +58,22 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
   // back to the day they were logged, same as before.
   const staffing = db
     .prepare(
-      `SELECT id, employee_name, type, note, created_at FROM attendance_events
+      `SELECT id, employee_name, type, note, created_at, event_date, scheduled_time FROM attendance_events
        WHERE store_id = ? AND (
          (event_date IS NOT NULL AND event_date = ?)
          OR (event_date IS NULL AND created_at >= ? AND created_at < ?)
        )
        ORDER BY created_at DESC`
     )
-    .all(storeId, today, dayStart, dayEnd) as Array<{ id: string; employee_name: string; type: string; note: string | null; created_at: string }>;
+    .all(storeId, today, dayStart, dayEnd) as Array<{
+    id: string;
+    employee_name: string;
+    type: string;
+    note: string | null;
+    created_at: string;
+    event_date: string | null;
+    scheduled_time: string | null;
+  }>;
 
   const completedHighValue = db
     .prepare(
