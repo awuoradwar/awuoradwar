@@ -169,18 +169,22 @@ function RemoveButton({ id, lang }: { id: string; lang: Language }) {
 }
 
 export default function InventoryItemGroup({ name, items, lang, canManage }: { name: string; items: InventoryItem[]; lang: Language; canManage: boolean }) {
+  const [expanded, setExpanded] = useState(false);
   const singleItem = items.length === 1 && !items[0].variant;
 
   // The common case -- one item, no size/variant -- is a single compact row:
   // name on the left, controls on the right, nothing else competing for space.
+  // A long name still truncates by default, but tapping it toggles full
+  // wrapped text -- otherwise a name like "Measuring Containers" is
+  // permanently cut off with no way to confirm what it actually says.
   if (singleItem) {
     const item = items[0];
     return (
       <div className="flex items-center gap-2 px-3 py-2">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{name}</p>
-          {item.notes && <p className="truncate text-xs italic text-muted">{item.notes}</p>}
-        </div>
+        <button type="button" onClick={() => setExpanded((v) => !v)} className="min-w-0 flex-1 text-left">
+          <p className={expanded ? "text-sm font-medium" : "truncate text-sm font-medium"}>{name}</p>
+          {item.notes && <p className={expanded ? "text-xs italic text-muted" : "truncate text-xs italic text-muted"}>{item.notes}</p>}
+        </button>
         <Stepper item={item} lang={lang} />
         {canManage && <RemoveButton id={item.id} lang={lang} />}
       </div>
