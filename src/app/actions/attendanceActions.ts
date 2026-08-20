@@ -21,6 +21,8 @@ export async function updateAttendanceEventAction(formData: FormData) {
       eventDate: String(formData.get("eventDate") || "").trim() || null,
       scheduledTime: String(formData.get("scheduledTime") || "").trim() || null,
       actualTime: String(formData.get("actualTime") || "").trim() || null,
+      notifiedAt: String(formData.get("notifiedAt") || "").trim() || null,
+      notificationMethod: String(formData.get("notificationMethod") || "").trim() || null,
       coverageStatus: String(formData.get("coverageStatus") || "").trim() || null,
       coveringPerson: String(formData.get("coveringPerson") || "").trim() || null,
       note: String(formData.get("note") || "").trim() || null,

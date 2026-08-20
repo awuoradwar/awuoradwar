@@ -36,6 +36,8 @@ export default async function AttendanceDetailPage({ params }: PageProps<"/atten
           eventDate={event.event_date}
           scheduledTime={event.scheduled_time}
           actualTime={event.actual_time}
+          notifiedAt={event.notified_at}
+          notificationMethod={event.notification_method}
           coverageStatus={event.coverage_status}
           coveringPerson={event.covering_person}
           note={event.note}

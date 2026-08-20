@@ -13,6 +13,8 @@ export function recordAttendanceEvent(params: {
   eventDate?: string | null;
   scheduledTime?: string | null;
   actualTime?: string | null;
+  notifiedAt?: string | null;
+  notificationMethod?: string | null;
   coverageStatus?: string | null;
   coveringPerson?: string | null;
   note?: string | null;
@@ -31,6 +33,8 @@ function insertAttendanceEvent(params: {
   eventDate?: string | null;
   scheduledTime?: string | null;
   actualTime?: string | null;
+  notifiedAt?: string | null;
+  notificationMethod?: string | null;
   coverageStatus?: string | null;
   coveringPerson?: string | null;
   note?: string | null;
@@ -47,8 +51,8 @@ function insertAttendanceEvent(params: {
   }
   db.prepare(
     `INSERT INTO attendance_events (id, store_id, shift_id, employee_name, type, event_date, scheduled_time, actual_time,
-      minutes_late, coverage_status, covering_person, note, recorded_by, pic_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      minutes_late, notified_at, notification_method, coverage_status, covering_person, note, recorded_by, pic_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -59,6 +63,8 @@ function insertAttendanceEvent(params: {
     params.scheduledTime || null,
     params.actualTime || null,
     minutesLate,
+    params.notifiedAt || null,
+    params.notificationMethod || null,
     params.coverageStatus || null,
     params.coveringPerson || null,
     params.note || null,
@@ -85,6 +91,8 @@ export interface AttendanceEventRow {
   scheduled_time: string | null;
   actual_time: string | null;
   minutes_late: number | null;
+  notified_at: string | null;
+  notification_method: string | null;
   coverage_status: string | null;
   covering_person: string | null;
   note: string | null;
@@ -107,6 +115,8 @@ export function updateAttendanceEvent(
     eventDate: string | null;
     scheduledTime: string | null;
     actualTime: string | null;
+    notifiedAt: string | null;
+    notificationMethod: string | null;
     coverageStatus: string | null;
     coveringPerson: string | null;
     note: string | null;
@@ -122,13 +132,15 @@ export function updateAttendanceEvent(
   }
   db.prepare(
     `UPDATE attendance_events SET employee_name = ?, event_date = ?, scheduled_time = ?, actual_time = ?, minutes_late = ?,
-      coverage_status = ?, covering_person = ?, note = ? WHERE id = ?`
+      notified_at = ?, notification_method = ?, coverage_status = ?, covering_person = ?, note = ? WHERE id = ?`
   ).run(
     params.employeeName,
     params.eventDate,
     params.scheduledTime,
     params.actualTime,
     minutesLate,
+    params.notifiedAt,
+    params.notificationMethod,
     params.coverageStatus,
     params.coveringPerson,
     params.note,

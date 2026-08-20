@@ -4,6 +4,7 @@ import { quickAddCallInAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
 import { Language } from "@/lib/types";
+import { NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
 export default function CallInForm({ lang }: { lang: Language }) {
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
@@ -22,6 +23,19 @@ export default function CallInForm({ lang }: { lang: Language }) {
       </Field>
       <Field label={lang === "es" ? "Turno programado" : "Scheduled shift"}>
         <input name="scheduledTime" type="time" className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Hora en que avisó (opcional)" : "Time notified (optional)"}>
+        <input name="notifiedAt" type="time" className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Cómo avisó" : "How communicated"}>
+        <select name="notificationMethod" defaultValue="" className={selectClass}>
+          <option value="">{lang === "es" ? "Selecciona" : "Select"}</option>
+          {Object.entries(NOTIFICATION_METHOD_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {lang === "es" ? label.es : label.en}
+            </option>
+          ))}
+        </select>
       </Field>
       <Field label={lang === "es" ? "Cobertura" : "Coverage"}>
         <select name="coverageStatus" defaultValue="NEEDED" className={selectClass}>

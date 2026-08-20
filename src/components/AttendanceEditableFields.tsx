@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateAttendanceEventAction } from "@/app/actions/attendanceActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
 import { Language } from "@/lib/types";
-import { attendanceTypeLabel } from "@/lib/attendanceLabels";
+import { attendanceTypeLabel, notificationMethodLabel, NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
 const COVERAGE_LABEL: Record<string, { en: string; es: string }> = {
   NEEDED: { en: "Needed", es: "Necesaria" },
@@ -22,6 +22,8 @@ export default function AttendanceEditableFields({
   eventDate,
   scheduledTime,
   actualTime,
+  notifiedAt,
+  notificationMethod,
   coverageStatus,
   coveringPerson,
   note,
@@ -33,6 +35,8 @@ export default function AttendanceEditableFields({
   eventDate: string | null;
   scheduledTime: string | null;
   actualTime: string | null;
+  notifiedAt: string | null;
+  notificationMethod: string | null;
   coverageStatus: string | null;
   coveringPerson: string | null;
   note: string | null;
@@ -43,6 +47,7 @@ export default function AttendanceEditableFields({
   const router = useRouter();
   const typeLabel = attendanceTypeLabel(type, lang);
   const hasCoverage = type === "CALL_IN";
+  const hasNotification = type === "CALL_IN" || type === "LATE";
 
   if (!editing) {
     return (
@@ -70,6 +75,18 @@ export default function AttendanceEditableFields({
           <>
             <dt className="text-muted">{lang === "es" ? "Hora programada" : "Scheduled time"}</dt>
             <dd>{scheduledTime}</dd>
+          </>
+        )}
+        {hasNotification && notifiedAt && (
+          <>
+            <dt className="text-muted">{lang === "es" ? "Hora en que avisó" : "Time notified"}</dt>
+            <dd>{notifiedAt}</dd>
+          </>
+        )}
+        {hasNotification && notificationMethod && (
+          <>
+            <dt className="text-muted">{lang === "es" ? "Cómo avisó" : "How communicated"}</dt>
+            <dd>{notificationMethodLabel(notificationMethod, lang)}</dd>
           </>
         )}
         {hasCoverage && coverageStatus && (
@@ -127,6 +144,23 @@ export default function AttendanceEditableFields({
           <Field label={lang === "es" ? "Hora real" : "Actual time"}>
             <input name="actualTime" type="time" defaultValue={actualTime || ""} className={inputClass} />
           </Field>
+        )}
+        {hasNotification && (
+          <>
+            <Field label={lang === "es" ? "Hora en que avisó" : "Time notified"}>
+              <input name="notifiedAt" type="time" defaultValue={notifiedAt || ""} className={inputClass} />
+            </Field>
+            <Field label={lang === "es" ? "Cómo avisó" : "How communicated"}>
+              <select name="notificationMethod" defaultValue={notificationMethod || ""} className={selectClass}>
+                <option value="">{lang === "es" ? "Selecciona" : "Select"}</option>
+                {Object.entries(NOTIFICATION_METHOD_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {lang === "es" ? label.es : label.en}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
         )}
         {hasCoverage && (
           <>

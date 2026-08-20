@@ -2,8 +2,9 @@
 
 import { quickAddLateAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
-import { Field, inputClass, SubmitBar } from "./FormShell";
+import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
 import { Language } from "@/lib/types";
+import { NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
 export default function LateForm({ lang }: { lang: Language }) {
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
@@ -22,6 +23,19 @@ export default function LateForm({ lang }: { lang: Language }) {
       </Field>
       <Field label={lang === "es" ? "Hora programada" : "Scheduled time"}>
         <input name="scheduledTime" type="time" className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Hora en que avisó (opcional)" : "Time notified (optional)"}>
+        <input name="notifiedAt" type="time" className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Cómo avisó" : "How communicated"}>
+        <select name="notificationMethod" defaultValue="" className={selectClass}>
+          <option value="">{lang === "es" ? "Selecciona" : "Select"}</option>
+          {Object.entries(NOTIFICATION_METHOD_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {lang === "es" ? label.es : label.en}
+            </option>
+          ))}
+        </select>
       </Field>
       <Field label={lang === "es" ? "Nota (opcional)" : "Note (optional)"}>
         <input name="note" className={inputClass} />
