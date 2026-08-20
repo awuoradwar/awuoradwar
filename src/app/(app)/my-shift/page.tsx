@@ -7,13 +7,16 @@ import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
+import { getCateringDueOn } from "@/lib/services/cateringService";
 import { storeToday, storeLocalHour, formatStoreDateTime } from "@/lib/storeTime";
 import { getDb } from "@/lib/db";
 import { buildManagerColorMap } from "@/lib/managerColor";
+import { attendanceTypeLabel } from "@/lib/attendanceLabels";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
+import CateringOrderRow from "@/components/CateringOrderRow";
 import { t } from "@/lib/i18n";
 
 const OPEN_ITEM_HREF: Record<string, string> = {
@@ -113,6 +116,7 @@ export default async function MyShiftPage() {
   const unresolvedForDisplay = summary.unresolved.filter((u) => u.kind !== "task" && u.kind !== "cleaning");
   const todayWeekday = new Date(today + "T00:00:00Z").getDay();
   const cleaningToday = getCleaningTasksDueToday(user.storeId, todayWeekday);
+  const cateringToday = getCateringDueOn(user.storeId, today);
   // A call-in/late/no-show -- or an issue, borrowed item, or meal
   // replacement -- logged during the shift that's happening right now is
   // current information for whoever's on now, not a leftover from a prior
@@ -179,6 +183,16 @@ export default async function MyShiftPage() {
         )}
       </div>
 
+      {cateringToday.length > 0 && (
+        <SectionCard title={t(user.language, "catering_due_today")} sub={t(user.language, "catering_due_today_sub")} count={cateringToday.length}>
+          <div className="flex flex-col gap-2">
+            {cateringToday.map((order) => (
+              <CateringOrderRow key={order.id} order={order} lang={user.language} />
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
       {currentShiftCount > 0 && (
         <SectionCard
           title={user.language === "es" ? "Este Turno" : "This Shift"}
@@ -188,7 +202,7 @@ export default async function MyShiftPage() {
           <div className="flex flex-col gap-2">
             {currentShiftStaffing.map((s) => (
               <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">
-                🧍 {s.employee_name} — {s.type.replace("_", " ")}
+                🧍 {s.employee_name} — {attendanceTypeLabel(s.type, user.language)}
                 {s.note ? <span className="text-muted"> · {s.note}</span> : null}
               </Link>
             ))}
@@ -313,7 +327,7 @@ export default async function MyShiftPage() {
           <div className="flex flex-col gap-2">
             {priorShiftStaffing.map((s) => (
               <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">
-                🧍 {s.employee_name} — {s.type.replace("_", " ")}
+                🧍 {s.employee_name} — {attendanceTypeLabel(s.type, user.language)}
                 {s.note ? <span className="text-muted"> · {s.note}</span> : null}
               </Link>
             ))}

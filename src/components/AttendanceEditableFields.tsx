@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateAttendanceEventAction } from "@/app/actions/attendanceActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
 import { Language } from "@/lib/types";
-
-const TYPE_LABEL: Record<string, { en: string; es: string }> = {
-  CALL_IN: { en: "Call-in", es: "Aviso de ausencia" },
-  LATE: { en: "Late", es: "Tardanza" },
-  NO_SHOW: { en: "No Show", es: "No se presentó" },
-  LEFT_EARLY: { en: "Left Early", es: "Se fue temprano" },
-  SENT_HOME: { en: "Sent Home", es: "Enviado a casa" },
-};
+import { attendanceTypeLabel } from "@/lib/attendanceLabels";
 
 const COVERAGE_LABEL: Record<string, { en: string; es: string }> = {
   NEEDED: { en: "Needed", es: "Necesaria" },
@@ -48,7 +41,7 @@ export default function AttendanceEditableFields({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const typeLabel = TYPE_LABEL[type]?.[lang] || type;
+  const typeLabel = attendanceTypeLabel(type, lang);
   const hasCoverage = type === "CALL_IN";
 
   if (!editing) {

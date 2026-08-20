@@ -4,6 +4,7 @@ import { getLatestHandoff, getLastAcknowledgedAt } from "@/lib/services/handoffS
 import { getRecentActivity } from "@/lib/services/activityService";
 import { t } from "@/lib/i18n";
 import { formatStoreDateTime } from "@/lib/storeTime";
+import { attendanceTypeLabel } from "@/lib/attendanceLabels";
 import HandoffActions from "@/components/HandoffActions";
 import ActivityFeed from "@/components/ActivityFeed";
 
@@ -43,7 +44,7 @@ export default async function HandoffPage() {
 
       {summary && (
         <>
-          <SummarySection titleKey="handoff_staffing" lang={user.language} items={summary.staffing.map((s: { employee_name: string; type: string }) => `${s.employee_name} — ${s.type.replace("_", " ")}`)} />
+          <SummarySection titleKey="handoff_staffing" lang={user.language} items={summary.staffing.map((s: { employee_name: string; type: string }) => `${s.employee_name} — ${attendanceTypeLabel(s.type, user.language)}`)} />
           <SummarySection titleKey="handoff_completed_work" lang={user.language} items={summary.completedHighValue.map((c: { title: string; completed_by_name: string | null }) => `${c.title}${c.completed_by_name ? " · " + c.completed_by_name : ""}`)} />
           <SummarySection titleKey="handoff_unresolved" lang={user.language} items={summary.unresolved.map((u: { title: string }) => u.title)} />
           <SummarySection titleKey="handoff_open_items" lang={user.language} items={summary.openItems.map((o: { title: string }) => o.title)} />
