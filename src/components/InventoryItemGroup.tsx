@@ -14,13 +14,16 @@ import { Language } from "@/lib/types";
 
 /** The +/-/count/Order controls for one item or size. Used both inline (a
  * single-variant item's whole row) and inside a size chip (a multi-variant
- * group like T-Shirt). */
-function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
+ * group like T-Shirt). Order and Delete are tucked behind a "⋯" toggle --
+ * only −/count/+ (the action taken dozens of times a shift) stay visible by
+ * default, so a row of size chips doesn't turn into a wall of buttons. */
+function Stepper({ item, lang, canManage }: { item: InventoryItem; lang: Language; canManage: boolean }) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(item.stock_count));
   const [orderQty, setOrderQty] = useState("");
   const [orderOpen, setOrderOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   // useOptimistic (not a plain flag) because this counter gets tapped
   // repeatedly in quick succession -- each tap needs to reconcile against
   // the LATEST optimistic value, not the stale server prop, and once the
@@ -51,11 +54,13 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
     });
   }
 
+  // On order -- surfaced as a truck right next to the item instead of a text
+  // pill, so it reads at a glance while scanning down a long list.
   if (onOrder) {
     return (
       <div className="flex shrink-0 items-center gap-1.5">
-        <span className="rounded-full bg-accent/10 px-2 py-1 text-xs font-bold uppercase tracking-wide text-accent">
-          {lang === "es" ? "Pedido" : "Ordered"}
+        <span title={lang === "es" ? "Pedido" : "On order"} className="text-base leading-none">
+          🚚
         </span>
         <button
           type="button"
@@ -93,13 +98,16 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
           onBlur={commitDraft}
           onKeyDown={(e) => e.key === "Enter" && commitDraft()}
           inputMode="numeric"
-          className="h-7 w-8 rounded-md border border-accent bg-card text-center text-sm font-bold outline-none"
+          className="h-7 w-10 rounded-md border border-accent bg-card text-center text-sm font-bold outline-none"
         />
       ) : (
+        // Bordered like a real input (not plain text) -- the box itself is
+        // the affordance that it's tappable to type a value directly,
+        // useful once a count runs into two or three digits.
         <button
           type="button"
           onClick={() => { setDraft(String(displayCount)); setEditing(true); }}
-          className={`h-7 w-8 rounded-md text-center text-sm font-bold ${isLow ? "text-warning" : "text-foreground"}`}
+          className={`h-7 w-10 rounded-md border text-center text-sm font-bold transition-colors hover:border-accent ${isLow ? "border-warning/50 text-warning" : "border-border text-foreground"}`}
         >
           {displayCount}
         </button>
@@ -112,42 +120,54 @@ function Stepper({ item, lang }: { item: InventoryItem; lang: Language }) {
       >
         +
       </button>
-      {!orderOpen ? (
-        <button
-          type="button"
-          onClick={() => setOrderOpen(true)}
-          title={lang === "es" ? "Pedir" : "Order"}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm text-muted transition-colors hover:text-accent"
-        >
-          📦
-        </button>
-      ) : (
-        <div className="flex items-center gap-1">
-          <input
-            value={orderQty}
-            onChange={(e) => setOrderQty(e.target.value)}
-            placeholder={lang === "es" ? "Cant." : "Qty"}
-            className="h-7 w-12 rounded-md border border-border bg-card px-1 text-xs outline-none focus:border-accent"
-          />
+      <button
+        type="button"
+        onClick={() => setMoreOpen((v) => !v)}
+        title={lang === "es" ? "Más" : "More"}
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm transition-colors ${moreOpen ? "bg-accent/10 text-accent" : "text-muted hover:text-accent"}`}
+      >
+        ⋯
+      </button>
+      {moreOpen &&
+        (orderOpen ? (
+          <div className="flex items-center gap-1">
+            <input
+              autoFocus
+              value={orderQty}
+              onChange={(e) => setOrderQty(e.target.value)}
+              placeholder={lang === "es" ? "Cant." : "Qty"}
+              className="h-7 w-12 rounded-md border border-border bg-card px-1 text-xs outline-none focus:border-accent"
+            />
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setOrderOpen(false);
+                setMoreOpen(false);
+                const qty = orderQty;
+                setOrderQty("");
+                startTransition(async () => {
+                  setOptimisticOnOrder(true);
+                  await markInventoryOrderedAction(item.id, qty);
+                  router.refresh();
+                });
+              }}
+              className="flex h-7 items-center rounded-md bg-accent px-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              ✓
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
-            disabled={pending}
-            onClick={() => {
-              setOrderOpen(false);
-              const qty = orderQty;
-              setOrderQty("");
-              startTransition(async () => {
-                setOptimisticOnOrder(true);
-                await markInventoryOrderedAction(item.id, qty);
-                router.refresh();
-              });
-            }}
-            className="flex h-7 items-center rounded-md bg-accent px-1.5 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+            onClick={() => setOrderOpen(true)}
+            title={lang === "es" ? "Pedir" : "Order"}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm text-muted transition-colors hover:text-accent"
           >
-            ✓
+            📦
           </button>
-        </div>
-      )}
+        ))}
+      {moreOpen && canManage && <RemoveButton id={item.id} lang={lang} />}
     </div>
   );
 }
@@ -185,8 +205,7 @@ export default function InventoryItemGroup({ name, items, lang, canManage }: { n
           <p className={expanded ? "text-sm font-medium" : "truncate text-sm font-medium"}>{name}</p>
           {item.notes && <p className={expanded ? "text-xs italic text-muted" : "truncate text-xs italic text-muted"}>{item.notes}</p>}
         </button>
-        <Stepper item={item} lang={lang} />
-        {canManage && <RemoveButton id={item.id} lang={lang} />}
+        <Stepper item={item} lang={lang} canManage={canManage} />
       </div>
     );
   }
@@ -201,8 +220,7 @@ export default function InventoryItemGroup({ name, items, lang, canManage }: { n
         {items.map((it) => (
           <div key={it.id} className="flex items-center gap-1.5 rounded-lg border border-border py-1 pl-2 pr-1">
             <span className="w-6 shrink-0 text-xs font-bold text-muted">{it.variant}</span>
-            <Stepper item={it} lang={lang} />
-            {canManage && <RemoveButton id={it.id} lang={lang} />}
+            <Stepper item={it} lang={lang} canManage={canManage} />
           </div>
         ))}
       </div>
