@@ -56,10 +56,10 @@ function groupByScheduledDate<T extends { scheduled_date: string | null }>(tasks
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
 }
 
-/** Every My Shift section lives inside the same bordered card, header and
- * content together -- matching how This Week/Completed already look, so a
- * section doesn't visually change containers depending on whether it's
- * collapsible. */
+/** Every My Shift section is collapsible -- same <details> markup as
+ * This Week/Completed below, open by default so nothing changes at a
+ * glance, but tappable shut once a section (TODAY with 9 items, say) is
+ * done being useful and just taking up scroll space. */
 function SectionCard({
   title,
   sub,
@@ -72,16 +72,16 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="card overflow-hidden">
-      <div className="flex items-center justify-between gap-2 px-3 py-3">
+    <details className="card overflow-hidden" open>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-3">
         <div className="min-w-0">
           <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{title}</h2>
           <p className="text-xs text-muted">{sub}</p>
         </div>
         {!!count && <span className="shrink-0 text-xs font-semibold text-muted">{count}</span>}
-      </div>
+      </summary>
       <div className="border-t border-border p-3">{children}</div>
-    </section>
+    </details>
   );
 }
 

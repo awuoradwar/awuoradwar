@@ -29,8 +29,10 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
 
   const today = storeToday(user.storeId);
   const currentWeekStart = weekStartOf(today);
-  const lastCompletedWeekStart = addDays(currentWeekStart, -7);
-  const weekStart = (sp.weekStart as string) || lastCompletedWeekStart;
+  // Defaults to the week in progress -- live, updating as the week
+  // happens -- not last week's already-closed numbers. Prev/Next still
+  // reach any past week from here.
+  const weekStart = (sp.weekStart as string) || currentWeekStart;
   const weekEnd = addDays(weekStart, 6);
 
   const summary = getWeekSummary(user.storeId, weekStart, weekEnd);
