@@ -71,6 +71,52 @@ export function createInventoryItem(
   return id;
 }
 
+/** Edits the shared fields (name/category/notes/par level) across every row
+ * in a name+category group at once -- a group is presented as a single row
+ * in the UI (even a multi-variant one like T-Shirt XS..3XL shares one name),
+ * so editing it edits all of its underlying item rows together rather than
+ * silently forking one variant onto a different name/category than its
+ * siblings. Only fields actually present in `fields` are touched. */
+export function updateInventoryItemGroup(
+  storeId: string,
+  oldName: string,
+  oldCategory: InventoryCategory,
+  fields: { name?: string; category?: InventoryCategory; notes?: string | null; parLevel?: number | null },
+  actor: SessionUser
+) {
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT id FROM inventory_items WHERE store_id = ? AND name = ? AND category = ? AND active = 1`)
+    .all(storeId, oldName, oldCategory) as { id: string }[];
+  if (rows.length === 0) return;
+
+  const sets: string[] = [];
+  const args: unknown[] = [];
+  if (fields.name !== undefined) {
+    sets.push("name = ?");
+    args.push(fields.name);
+  }
+  if (fields.category !== undefined) {
+    sets.push("category = ?");
+    args.push(fields.category);
+  }
+  if (fields.notes !== undefined) {
+    sets.push("notes = ?");
+    args.push(fields.notes || null);
+  }
+  if (fields.parLevel !== undefined) {
+    sets.push("par_level = ?");
+    args.push(fields.parLevel);
+  }
+  if (sets.length === 0) return;
+
+  const ids = rows.map((r) => r.id);
+  db.prepare(`UPDATE inventory_items SET ${sets.join(", ")} WHERE id IN (${ids.map(() => "?").join(",")})`).run(...args, ...ids);
+  for (const id of ids) {
+    writeAudit({ entityType: "inventory_item", entityId: id, actor, action: "EDITED", newValue: fields });
+  }
+}
+
 export function removeInventoryItem(id: string, actor: SessionUser) {
   const db = getDb();
   db.prepare(`UPDATE inventory_items SET active = 0 WHERE id = ?`).run(id);

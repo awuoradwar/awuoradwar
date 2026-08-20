@@ -21,6 +21,26 @@ export async function addInventoryItemAction(name: string, category: InventoryCa
   return { ok: true };
 }
 
+export async function updateInventoryItemGroupAction(
+  oldName: string,
+  oldCategory: InventoryCategory,
+  fields: { name: string; category: InventoryCategory; notes: string; parLevel: string }
+) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "inventory.manage")) throw new Error("FORBIDDEN");
+  if (!fields.name.trim()) return { error: "Name is required." };
+  const par = fields.parLevel.trim() ? Number(fields.parLevel) : null;
+  inventoryService.updateInventoryItemGroup(
+    user.storeId,
+    oldName,
+    oldCategory,
+    { name: fields.name.trim(), category: fields.category, notes: fields.notes.trim() || null, parLevel: par },
+    user
+  );
+  refresh();
+  return { ok: true };
+}
+
 export async function removeInventoryItemAction(id: string) {
   const user = await requireCurrentUser();
   if (!canDo(user, "inventory.manage")) throw new Error("FORBIDDEN");

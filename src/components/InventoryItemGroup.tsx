@@ -8,9 +8,19 @@ import {
   markInventoryOrderedAction,
   markInventoryReceivedAction,
   removeInventoryItemAction,
+  updateInventoryItemGroupAction,
 } from "@/app/actions/inventoryActions";
-import { InventoryItem } from "@/lib/services/inventoryService";
+import { InventoryItem, InventoryCategory } from "@/lib/services/inventoryService";
+import { Field, inputClass, selectClass, btnPrimary } from "./forms/FormShell";
 import { Language } from "@/lib/types";
+
+const CATEGORY_OPTIONS: Array<{ value: InventoryCategory; en: string; es: string }> = [
+  { value: "SUPPLIES", en: "Supplies", es: "Suministros" },
+  { value: "UNIFORMS", en: "Uniforms", es: "Uniformes" },
+  { value: "EQUIPMENT", en: "Equipment", es: "Equipo" },
+  { value: "TOOLS", en: "Tools", es: "Herramientas" },
+  { value: "OTHER", en: "Other", es: "Otro" },
+];
 
 /** The +/-/count/Order controls for one item or size. Used both inline (a
  * single-variant item's whole row) and inside a size chip (a multi-variant
@@ -173,6 +183,86 @@ function Stepper({ item, lang, canManage }: { item: InventoryItem; lang: Languag
   );
 }
 
+/** Name/category/notes/par level are shared across every row in a group
+ * (even a multi-variant one), so editing them edits the whole group at
+ * once rather than a single stepper's underlying item. */
+function EditGroupForm({
+  name,
+  category,
+  notes,
+  parLevel,
+  lang,
+  onDone,
+}: {
+  name: string;
+  category: InventoryCategory;
+  notes: string;
+  parLevel: string;
+  lang: Language;
+  onDone: () => void;
+}) {
+  const [draftName, setDraftName] = useState(name);
+  const [draftCategory, setDraftCategory] = useState<InventoryCategory>(category);
+  const [draftNotes, setDraftNotes] = useState(notes);
+  const [draftPar, setDraftPar] = useState(parLevel);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  return (
+    <div className="flex flex-col gap-2.5 rounded-lg border border-accent/30 bg-accent/5 p-3">
+      <Field label={lang === "es" ? "Nombre" : "Name"}>
+        <input value={draftName} onChange={(e) => setDraftName(e.target.value)} className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Categoría" : "Category"}>
+        <select value={draftCategory} onChange={(e) => setDraftCategory(e.target.value as InventoryCategory)} className={selectClass}>
+          {CATEGORY_OPTIONS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {lang === "es" ? c.es : c.en}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={lang === "es" ? "Notas (opcional)" : "Notes (optional)"}>
+        <input value={draftNotes} onChange={(e) => setDraftNotes(e.target.value)} className={inputClass} />
+      </Field>
+      <Field label={lang === "es" ? "Nivel mínimo (opcional)" : "Par level (optional)"}>
+        <input value={draftPar} onChange={(e) => setDraftPar(e.target.value)} type="number" min={0} className={inputClass} />
+      </Field>
+      {error && <p className="text-xs text-critical">{error}</p>}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={pending || !draftName.trim()}
+          onClick={() => {
+            setError(null);
+            startTransition(async () => {
+              const result = await updateInventoryItemGroupAction(name, category, {
+                name: draftName,
+                category: draftCategory,
+                notes: draftNotes,
+                parLevel: draftPar,
+              });
+              if (result && "error" in result && result.error) {
+                setError(result.error);
+                return;
+              }
+              onDone();
+              router.refresh();
+            });
+          }}
+          className={btnPrimary}
+        >
+          {lang === "es" ? "Guardar" : "Save"}
+        </button>
+        <button type="button" onClick={onDone} disabled={pending} className="text-sm font-medium text-muted">
+          {lang === "es" ? "Cancelar" : "Cancel"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RemoveButton({ id, lang }: { id: string; lang: Language }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -191,7 +281,19 @@ function RemoveButton({ id, lang }: { id: string; lang: Language }) {
 
 export default function InventoryItemGroup({ name, items, lang, canManage }: { name: string; items: InventoryItem[]; lang: Language; canManage: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
   const singleItem = items.length === 1 && !items[0].variant;
+  const category = items[0].category;
+  const notes = items[0]?.notes || "";
+  const parLevel = items[0]?.par_level != null ? String(items[0].par_level) : "";
+
+  if (editing) {
+    return (
+      <div className="p-3">
+        <EditGroupForm name={name} category={category} notes={notes} parLevel={parLevel} lang={lang} onDone={() => setEditing(false)} />
+      </div>
+    );
+  }
 
   // The common case -- one item, no size/variant -- is a single compact row:
   // name on the left, controls on the right, nothing else competing for space.
@@ -206,6 +308,16 @@ export default function InventoryItemGroup({ name, items, lang, canManage }: { n
           <p className={expanded ? "text-sm font-medium" : "truncate text-sm font-medium"}>{name}</p>
           {item.notes && <p className={expanded ? "text-xs italic text-muted" : "truncate text-xs italic text-muted"}>{item.notes}</p>}
         </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            title={lang === "es" ? "Editar" : "Edit"}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm text-muted transition-colors hover:text-accent"
+          >
+            ✎
+          </button>
+        )}
         <Stepper item={item} lang={lang} canManage={canManage} />
       </div>
     );
@@ -216,7 +328,19 @@ export default function InventoryItemGroup({ name, items, lang, canManage }: { n
   // with its own controls instead of running into its neighbor.
   return (
     <div className="px-3 py-2.5">
-      <p className="mb-1.5 text-sm font-medium">{name}</p>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">{name}</p>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            title={lang === "es" ? "Editar" : "Edit"}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm text-muted transition-colors hover:text-accent"
+          >
+            ✎
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">
         {items.map((it) => (
           <div key={it.id} className="flex items-center gap-1.5 rounded-lg border border-border py-1 pl-2 pr-1">
