@@ -2,7 +2,7 @@
 
 import { quickAddLateAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
-import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
+import { Field, inputClass, selectClass, FileField, SubmitBar } from "./FormShell";
 import { Language } from "@/lib/types";
 import { NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
@@ -36,6 +36,9 @@ export default function LateForm({ lang }: { lang: Language }) {
             </option>
           ))}
         </select>
+      </Field>
+      <Field label={lang === "es" ? "Captura de pantalla (opcional)" : "Screenshot (optional)"}>
+        <FileField name="attachment" accept="image/*" lang={lang} />
       </Field>
       <Field label={lang === "es" ? "Nota (opcional)" : "Note (optional)"}>
         <input name="note" className={inputClass} />

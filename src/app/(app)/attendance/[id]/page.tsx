@@ -38,6 +38,7 @@ export default async function AttendanceDetailPage({ params }: PageProps<"/atten
           actualTime={event.actual_time}
           notifiedAt={event.notified_at}
           notificationMethod={event.notification_method}
+          attachmentRef={event.attachment_ref}
           coverageStatus={event.coverage_status}
           coveringPerson={event.covering_person}
           note={event.note}

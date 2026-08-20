@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateAttendanceEventAction } from "@/app/actions/attendanceActions";
-import { Field, inputClass, selectClass } from "./forms/FormShell";
+import { Field, inputClass, selectClass, FileField } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import { attendanceTypeLabel, notificationMethodLabel, NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
@@ -24,6 +24,7 @@ export default function AttendanceEditableFields({
   actualTime,
   notifiedAt,
   notificationMethod,
+  attachmentRef,
   coverageStatus,
   coveringPerson,
   note,
@@ -37,6 +38,7 @@ export default function AttendanceEditableFields({
   actualTime: string | null;
   notifiedAt: string | null;
   notificationMethod: string | null;
+  attachmentRef: string | null;
   coverageStatus: string | null;
   coveringPerson: string | null;
   note: string | null;
@@ -107,6 +109,16 @@ export default function AttendanceEditableFields({
             <dd>{note}</dd>
           </>
         )}
+        {hasNotification && attachmentRef && (
+          <>
+            <dt className="text-muted">{lang === "es" ? "Captura de pantalla" : "Screenshot"}</dt>
+            <dd>
+              <a href={`/api/attendance-attachments/${id}`} target="_blank" rel="noreferrer" className="text-accent underline">
+                {lang === "es" ? "Ver" : "View"}
+              </a>
+            </dd>
+          </>
+        )}
       </>
     );
   }
@@ -159,6 +171,10 @@ export default function AttendanceEditableFields({
                   </option>
                 ))}
               </select>
+            </Field>
+            <Field label={lang === "es" ? "Captura de pantalla" : "Screenshot"}>
+              <FileField name="attachment" accept="image/*" lang={lang} />
+              {attachmentRef && <p className="mt-1 text-xs text-muted">{lang === "es" ? "Deja en blanco para conservar la actual." : "Leave blank to keep the current one."}</p>}
             </Field>
           </>
         )}

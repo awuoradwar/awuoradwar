@@ -286,6 +286,7 @@ CREATE TABLE IF NOT EXISTS attendance_events (
   minutes_late INTEGER,
   notified_at TEXT, -- HH:MM store-local, when the employee actually notified (vs scheduled_time, when they were due in)
   notification_method TEXT, -- PHONE_CALL | TEXT | APP | IN_PERSON | OTHER
+  attachment_ref TEXT, -- stored filename under data/private-uploads/attendance, e.g. a screenshot of the text/call log
   coverage_status TEXT, -- NEEDED | FOUND | NOT_FOUND | NOT_REQUIRED
   covering_person TEXT,
   note TEXT,

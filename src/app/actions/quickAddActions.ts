@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { requireCurrentUser, getCurrentPicForStore } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { newId, nowIso, writeAudit } from "@/lib/audit";
@@ -16,6 +19,22 @@ import * as pushService from "@/lib/services/pushService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { canDo } from "@/lib/permissions";
 import { storeToday, storeLocalIso } from "@/lib/storeTime";
+
+// Same private-storage pattern as the P&L file upload: a real file on disk
+// outside public/, only reachable through the authenticated
+// /api/attendance-attachments/[eventId] route.
+const ATTACHMENT_DIR = path.join(process.cwd(), "data", "private-uploads", "attendance");
+
+async function storeAttendanceAttachment(storeId: string, formData: FormData): Promise<string | null> {
+  const file = formData.get("attachment");
+  if (!(file instanceof File) || file.size === 0) return null;
+  await mkdir(ATTACHMENT_DIR, { recursive: true });
+  const ext = path.extname(file.name) || "";
+  const storedName = `${storeId}-${randomUUID()}${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(path.join(ATTACHMENT_DIR, storedName), buffer);
+  return storedName;
+}
 
 function refresh() {
   revalidatePath("/my-shift");
@@ -95,6 +114,7 @@ export async function quickAddCallInAction(formData: FormData) {
   const shift = getCurrentPicForStore(user.storeId);
   const employeeName = fd(formData, "employeeName");
   if (!employeeName) return { error: "Employee name is required." };
+  const attachmentRef = await storeAttendanceAttachment(user.storeId, formData);
   attendanceService.recordAttendanceEvent({
     storeId: user.storeId,
     shiftId: shift?.id,
@@ -104,6 +124,7 @@ export async function quickAddCallInAction(formData: FormData) {
     scheduledTime: fd(formData, "scheduledTime") || null,
     notifiedAt: fd(formData, "notifiedAt") || null,
     notificationMethod: fd(formData, "notificationMethod") || null,
+    attachmentRef,
     coverageStatus: fd(formData, "coverageStatus") || "NEEDED",
     coveringPerson: fd(formData, "coveringPerson") || null,
     note: fd(formData, "note") || null,
@@ -120,6 +141,7 @@ export async function quickAddLateAction(formData: FormData) {
   const shift = getCurrentPicForStore(user.storeId);
   const employeeName = fd(formData, "employeeName");
   if (!employeeName) return { error: "Employee name is required." };
+  const attachmentRef = await storeAttendanceAttachment(user.storeId, formData);
   attendanceService.recordAttendanceEvent({
     storeId: user.storeId,
     shiftId: shift?.id,
@@ -130,6 +152,7 @@ export async function quickAddLateAction(formData: FormData) {
     actualTime: fd(formData, "actualTime") || new Date().toISOString(),
     notifiedAt: fd(formData, "notifiedAt") || null,
     notificationMethod: fd(formData, "notificationMethod") || null,
+    attachmentRef,
     note: fd(formData, "note") || null,
     actor: user,
     picId: shift?.pic_user_id ?? null,
@@ -262,12 +285,13 @@ export async function quickAddBorrowedItemAction(formData: FormData) {
   return { ok: true };
 }
 
-function dueDateForWhen(when: string, storeId: string): string | null {
+function dueDateForWhen(when: string, storeId: string, customDate?: string | null): string | null {
   const todayStr = storeToday(storeId);
   if (when === "TODAY") return todayStr;
   if (when === "THIS_WEEK") {
     return new Date(new Date(todayStr + "T00:00:00Z").getTime() + 6 * 86400000).toISOString().slice(0, 10);
   }
+  if (when === "CUSTOM") return customDate || null;
   return null;
 }
 
@@ -281,7 +305,7 @@ export async function quickAddIssueAction(formData: FormData) {
     category: fd(formData, "category") || "EQUIPMENT",
     description,
     severity,
-    dueDate: dueDateForWhen(fd(formData, "when"), user.storeId),
+    dueDate: dueDateForWhen(fd(formData, "when"), user.storeId, fd(formData, "customDate")),
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });

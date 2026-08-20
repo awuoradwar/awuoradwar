@@ -62,6 +62,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "tasks", "owner_auto_assigned", "owner_auto_assigned INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "attendance_events", "notified_at", "notified_at TEXT");
   ensureColumn(db, "attendance_events", "notification_method", "notification_method TEXT");
+  ensureColumn(db, "attendance_events", "attachment_ref", "attachment_ref TEXT");
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   unassignStaleAutoAssignedTasks(db);

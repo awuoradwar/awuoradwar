@@ -286,6 +286,7 @@ create table attendance_events (
   minutes_late integer,
   notified_at text, -- HH:MM store-local, when the employee actually notified
   notification_method text check (notification_method in ('PHONE_CALL','TEXT','APP','IN_PERSON','OTHER')),
+  attachment_path text, -- e.g. a screenshot of the text/call log
   coverage_status text check (coverage_status in ('NEEDED','FOUND','NOT_REQUIRED')),
   covering_person text,
   note text,
