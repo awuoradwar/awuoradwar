@@ -451,7 +451,8 @@ create table store_pnl_periods (
   labor_pct numeric,
   controllable_profit_actual numeric, -- CP $
   controllable_profit_pct numeric, -- CP %
-  restaurant_contribution numeric, -- RC
+  restaurant_contribution numeric, -- RC $
+  restaurant_contribution_pct numeric, -- RC %
   gem_score numeric, -- legacy single-number field, superseded by the two headline metrics below
   gem_taste_score numeric, -- GEM: Taste of Food, this period's score
   gem_taste_goal numeric, -- GEM: Taste of Food, company goal

@@ -28,7 +28,6 @@ function refresh() {
 function periodFields(formData: FormData) {
   return {
     netSalesActual: num(formData, "netSalesActual"),
-    netSalesPlan: num(formData, "netSalesPlan"),
     netSalesPriorYear: num(formData, "netSalesPriorYear"),
     sssPct: num(formData, "sssPct"),
     sstPct: num(formData, "sstPct"),
@@ -38,6 +37,7 @@ function periodFields(formData: FormData) {
     controllableProfitActual: num(formData, "controllableProfitActual"),
     controllableProfitPct: num(formData, "controllableProfitPct"),
     restaurantContribution: num(formData, "restaurantContribution"),
+    restaurantContributionPct: num(formData, "restaurantContributionPct"),
     notes: String(formData.get("notes") || "").trim() || null,
   };
 }

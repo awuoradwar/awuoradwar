@@ -33,7 +33,7 @@ export default async function StoreProfilePage() {
   const kpis = latest
     ? [
         { label: t(user.language, "store_profile_net_sales"), value: fmtMoney(latest.net_sales_actual) },
-        { label: t(user.language, "store_profile_net_sales_plan"), value: fmtMoney(latest.net_sales_plan) },
+        { label: t(user.language, "store_profile_net_sales_prior_year"), value: fmtMoney(latest.net_sales_prior_year) },
         { label: t(user.language, "store_profile_sss"), value: fmtPct(latest.sss_pct) },
         { label: t(user.language, "store_profile_sst"), value: fmtPct(latest.sst_pct) },
         { label: t(user.language, "store_profile_check_average"), value: latest.check_average === null ? "—" : `$${latest.check_average.toFixed(2)}` },
@@ -42,6 +42,7 @@ export default async function StoreProfilePage() {
         { label: t(user.language, "store_profile_cp_actual"), value: fmtMoney(latest.controllable_profit_actual) },
         { label: t(user.language, "store_profile_cp_pct"), value: fmtPct(latest.controllable_profit_pct) },
         { label: t(user.language, "store_profile_restaurant_contribution"), value: fmtMoney(latest.restaurant_contribution) },
+        { label: t(user.language, "store_profile_restaurant_contribution_pct"), value: fmtPct(latest.restaurant_contribution_pct) },
       ]
     : [];
 

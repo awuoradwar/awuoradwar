@@ -8,7 +8,6 @@ export interface StorePnlPeriod {
   store_id: string;
   period_label: string;
   net_sales_actual: number | null;
-  net_sales_plan: number | null;
   net_sales_prior_year: number | null;
   sss_pct: number | null;
   sst_pct: number | null;
@@ -18,6 +17,7 @@ export interface StorePnlPeriod {
   controllable_profit_actual: number | null;
   controllable_profit_pct: number | null;
   restaurant_contribution: number | null;
+  restaurant_contribution_pct: number | null;
   pnl_file_ref: string | null;
   notes: string | null;
   created_by: string | null;
@@ -59,7 +59,6 @@ export function createPeriod(params: {
   storeId: string;
   periodLabel: string;
   netSalesActual: number | null;
-  netSalesPlan: number | null;
   netSalesPriorYear: number | null;
   sssPct: number | null;
   sstPct: number | null;
@@ -69,6 +68,7 @@ export function createPeriod(params: {
   controllableProfitActual: number | null;
   controllableProfitPct: number | null;
   restaurantContribution: number | null;
+  restaurantContributionPct: number | null;
   pnlFileRef: string | null;
   notes: string | null;
   actor: SessionUser;
@@ -77,9 +77,9 @@ export function createPeriod(params: {
   const id = newId();
   db.prepare(
     `INSERT INTO store_pnl_periods (
-      id, store_id, period_label, net_sales_actual, net_sales_plan, net_sales_prior_year,
+      id, store_id, period_label, net_sales_actual, net_sales_prior_year,
       sss_pct, sst_pct, check_average, cogs_pct, labor_pct,
-      controllable_profit_actual, controllable_profit_pct, restaurant_contribution,
+      controllable_profit_actual, controllable_profit_pct, restaurant_contribution, restaurant_contribution_pct,
       pnl_file_ref, notes, created_by, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
@@ -87,7 +87,6 @@ export function createPeriod(params: {
     params.storeId,
     params.periodLabel,
     params.netSalesActual,
-    params.netSalesPlan,
     params.netSalesPriorYear,
     params.sssPct,
     params.sstPct,
@@ -97,6 +96,7 @@ export function createPeriod(params: {
     params.controllableProfitActual,
     params.controllableProfitPct,
     params.restaurantContribution,
+    params.restaurantContributionPct,
     params.pnlFileRef,
     params.notes,
     params.actor.id,
@@ -119,7 +119,6 @@ export function updatePeriod(params: {
   id: string;
   periodLabel: string;
   netSalesActual: number | null;
-  netSalesPlan: number | null;
   netSalesPriorYear: number | null;
   sssPct: number | null;
   sstPct: number | null;
@@ -129,6 +128,7 @@ export function updatePeriod(params: {
   controllableProfitActual: number | null;
   controllableProfitPct: number | null;
   restaurantContribution: number | null;
+  restaurantContributionPct: number | null;
   pnlFileRef?: string | null;
   notes: string | null;
   actor: SessionUser;
@@ -137,16 +137,15 @@ export function updatePeriod(params: {
   const setPnlFile = params.pnlFileRef !== undefined;
   db.prepare(
     `UPDATE store_pnl_periods SET
-      period_label = ?, net_sales_actual = ?, net_sales_plan = ?, net_sales_prior_year = ?,
+      period_label = ?, net_sales_actual = ?, net_sales_prior_year = ?,
       sss_pct = ?, sst_pct = ?, check_average = ?, cogs_pct = ?, labor_pct = ?,
-      controllable_profit_actual = ?, controllable_profit_pct = ?, restaurant_contribution = ?,
+      controllable_profit_actual = ?, controllable_profit_pct = ?, restaurant_contribution = ?, restaurant_contribution_pct = ?,
       notes = ?${setPnlFile ? ", pnl_file_ref = ?" : ""}
      WHERE id = ?`
   ).run(
     ...[
       params.periodLabel,
       params.netSalesActual,
-      params.netSalesPlan,
       params.netSalesPriorYear,
       params.sssPct,
       params.sstPct,
@@ -156,6 +155,7 @@ export function updatePeriod(params: {
       params.controllableProfitActual,
       params.controllableProfitPct,
       params.restaurantContribution,
+      params.restaurantContributionPct,
       params.notes,
       ...(setPnlFile ? [params.pnlFileRef] : []),
       params.id,

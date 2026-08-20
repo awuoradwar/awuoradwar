@@ -9,7 +9,6 @@ import { t } from "@/lib/i18n";
 
 const NUMERIC_FIELDS = [
   "netSalesActual",
-  "netSalesPlan",
   "netSalesPriorYear",
   "sssPct",
   "sstPct",
@@ -19,11 +18,11 @@ const NUMERIC_FIELDS = [
   "controllableProfitActual",
   "controllableProfitPct",
   "restaurantContribution",
+  "restaurantContributionPct",
 ] as const;
 
 const NUMERIC_LABEL_KEY: Record<(typeof NUMERIC_FIELDS)[number], Parameters<typeof t>[1]> = {
   netSalesActual: "store_profile_net_sales",
-  netSalesPlan: "store_profile_net_sales_plan",
   netSalesPriorYear: "store_profile_net_sales_prior_year",
   sssPct: "store_profile_sss",
   sstPct: "store_profile_sst",
@@ -33,13 +32,13 @@ const NUMERIC_LABEL_KEY: Record<(typeof NUMERIC_FIELDS)[number], Parameters<type
   controllableProfitActual: "store_profile_cp_actual",
   controllableProfitPct: "store_profile_cp_pct",
   restaurantContribution: "store_profile_restaurant_contribution",
+  restaurantContributionPct: "store_profile_restaurant_contribution_pct",
 };
 
 export interface StorePeriodDefaults {
   id: string;
   period_label: string;
   net_sales_actual: number | null;
-  net_sales_plan: number | null;
   net_sales_prior_year: number | null;
   sss_pct: number | null;
   sst_pct: number | null;
@@ -49,12 +48,12 @@ export interface StorePeriodDefaults {
   controllable_profit_actual: number | null;
   controllable_profit_pct: number | null;
   restaurant_contribution: number | null;
+  restaurant_contribution_pct: number | null;
   notes: string | null;
 }
 
 const NUMERIC_DB_KEY: Record<(typeof NUMERIC_FIELDS)[number], keyof StorePeriodDefaults> = {
   netSalesActual: "net_sales_actual",
-  netSalesPlan: "net_sales_plan",
   netSalesPriorYear: "net_sales_prior_year",
   sssPct: "sss_pct",
   sstPct: "sst_pct",
@@ -64,6 +63,7 @@ const NUMERIC_DB_KEY: Record<(typeof NUMERIC_FIELDS)[number], keyof StorePeriodD
   controllableProfitActual: "controllable_profit_actual",
   controllableProfitPct: "controllable_profit_pct",
   restaurantContribution: "restaurant_contribution",
+  restaurantContributionPct: "restaurant_contribution_pct",
 };
 
 export default function StorePeriodForm({ lang, period, onDone }: { lang: Language; period?: StorePeriodDefaults; onDone?: () => void }) {

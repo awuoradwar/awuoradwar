@@ -451,7 +451,8 @@ CREATE TABLE IF NOT EXISTS store_pnl_periods (
   labor_pct REAL,
   controllable_profit_actual REAL, -- CP $
   controllable_profit_pct REAL, -- CP %
-  restaurant_contribution REAL, -- RC
+  restaurant_contribution REAL, -- RC $
+  restaurant_contribution_pct REAL, -- RC %
   gem_score REAL, -- legacy single-number field, superseded by the two headline metrics below
   gem_taste_score REAL, -- GEM: Taste of Food, this period's score
   gem_taste_goal REAL, -- GEM: Taste of Food, company goal
