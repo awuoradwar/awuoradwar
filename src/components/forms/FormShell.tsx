@@ -25,8 +25,11 @@ export const textareaClass = `${fieldBase} py-2.5 leading-snug`;
  * Reopen, Verify, Settle, ...) app-wide -- they vary only by color/fill, never
  * by height, padding, or font-weight, so a row of two or three actions next
  * to each other always reads as one deliberate set instead of the odd one
- * out looking smaller or different. */
-const actionBase = "tap-target rounded-full px-3 text-sm font-semibold transition-colors disabled:opacity-50";
+ * out looking smaller or different. Deliberately smaller than the
+ * `tap-target` 48px floor used for primary screen-level buttons -- on a
+ * dense card of text-sm/text-xs content, a 48px pill reads as oversized
+ * next to it; h-9 stays comfortably tappable without dominating the row. */
+const actionBase = "h-9 min-h-0 inline-flex items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors disabled:opacity-50";
 export const btnPrimary = `${actionBase} bg-accent text-accent-foreground shadow-sm hover:bg-accent-hover`;
 export const btnOutline = `${actionBase} border border-accent text-accent hover:bg-accent hover:text-accent-foreground`;
 export const btnDanger = `${actionBase} border border-critical/40 text-critical hover:bg-critical/10`;

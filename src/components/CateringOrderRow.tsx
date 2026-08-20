@@ -155,7 +155,7 @@ export default function CateringOrderRow({ order, lang }: { order: CateringOrder
               {lang === "es" ? "Reabrir" : "Reopen"}
             </button>
           )}
-          <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`flex items-center gap-1 ${btnOutline}`}>
+          <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
             ✎ {lang === "es" ? "Editar" : "Edit"}
           </button>
         </div>
