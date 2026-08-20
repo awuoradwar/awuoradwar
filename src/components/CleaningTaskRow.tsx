@@ -339,9 +339,9 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
 
   return (
     <div className="card flex flex-col gap-2 p-3">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{title}</p>
+          <p className="truncate text-base font-semibold">{title}</p>
           <div className="flex flex-wrap items-center gap-x-1 text-sm text-muted">
             {dueDay && <span>{lang === "es" ? "Vence" : "Due"}: {dueDay} ·</span>}
             <AssociateEditor taskId={task.id} associateName={task.associate_name} lang={lang} />
@@ -370,37 +370,44 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
             <StatusBadge status={task.status} lang={lang} />
           </div>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          {task.status === "ASSIGNED" &&
-            (needsAfterPhotoToComplete ? (
-              <span className="text-xs font-medium text-warning">{lang === "es" ? "Falta foto de después" : "Needs after photo"}</span>
-            ) : (
-              <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className={btnPrimary}>
-                {t(lang, "action_complete")}
+        {/* Status action top-right, Edit/Delete bottom-right -- keeps the
+            task title as the row's primary read instead of Complete
+            competing with it for attention right at the top. */}
+        <div className="flex shrink-0 flex-col items-end justify-between gap-2">
+          <div>
+            {task.status === "ASSIGNED" &&
+              (needsAfterPhotoToComplete ? (
+                <span className="text-xs font-medium text-warning">{lang === "es" ? "Falta foto de después" : "Needs after photo"}</span>
+              ) : (
+                <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className={btnPrimary}>
+                  {t(lang, "action_complete")}
+                </button>
+              ))}
+            {task.status === "COMPLETED" && (
+              <button disabled={pending} onClick={() => run(() => verifyCleaningAction(task.id))} className={btnOk}>
+                {t(lang, "action_verify")}
               </button>
-            ))}
-          {task.status === "COMPLETED" && (
-            <button disabled={pending} onClick={() => run(() => verifyCleaningAction(task.id))} className={btnOk}>
-              {t(lang, "action_verify")}
+            )}
+            {task.status === "VERIFIED" && (
+              <button disabled={pending} onClick={() => run(() => reopenCleaningAction(task.id))} className={btnNeutral}>
+                {lang === "es" ? "Reabrir" : "Reopen"}
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
+              ✎ {lang === "es" ? "Editar" : "Edit"}
             </button>
-          )}
-          {task.status === "VERIFIED" && (
-            <button disabled={pending} onClick={() => run(() => reopenCleaningAction(task.id))} className={btnNeutral}>
-              {lang === "es" ? "Reabrir" : "Reopen"}
+            <button
+              type="button"
+              disabled={pending}
+              title={lang === "es" ? "Eliminar" : "Delete"}
+              onClick={() => run(() => deleteCleaningTaskAction(task.id))}
+              className="tap-target flex h-9 w-9 min-h-0 min-w-0 items-center justify-center rounded-full text-muted transition-colors hover:text-critical disabled:opacity-40"
+            >
+              🗑
             </button>
-          )}
-          <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
-            ✎ {lang === "es" ? "Editar" : "Edit"}
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            title={lang === "es" ? "Eliminar" : "Delete"}
-            onClick={() => run(() => deleteCleaningTaskAction(task.id))}
-            className="tap-target flex h-9 w-9 min-h-0 min-w-0 items-center justify-center rounded-full text-muted transition-colors hover:text-critical disabled:opacity-40"
-          >
-            🗑
-          </button>
+          </div>
         </div>
       </div>
 
