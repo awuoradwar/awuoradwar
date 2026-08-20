@@ -186,6 +186,11 @@ CREATE TABLE IF NOT EXISTS tasks (
   area TEXT,
   category TEXT,
   owner_id TEXT REFERENCES users(id),
+  -- 1 when owner_id was set by the recurring-instance/schedule resolver
+  -- rather than a manager explicitly picking someone -- lets a later
+  -- schedule change safely re-resolve (or clear) this task's owner without
+  -- ever overwriting a deliberate manual (re)assignment.
+  owner_auto_assigned INTEGER NOT NULL DEFAULT 0,
   support_ids TEXT, -- JSON array of user ids
   due_at TEXT,
   scheduled_for TEXT, -- TODAY | NEXT_SHIFT | TOMORROW | LATER_THIS_WEEK | DATE
@@ -279,6 +284,8 @@ CREATE TABLE IF NOT EXISTS attendance_events (
   scheduled_time TEXT,
   actual_time TEXT,
   minutes_late INTEGER,
+  notified_at TEXT, -- HH:MM store-local, when the employee actually notified (vs scheduled_time, when they were due in)
+  notification_method TEXT, -- PHONE_CALL | TEXT | APP | IN_PERSON | OTHER
   coverage_status TEXT, -- NEEDED | FOUND | NOT_FOUND | NOT_REQUIRED
   covering_person TEXT,
   note TEXT,

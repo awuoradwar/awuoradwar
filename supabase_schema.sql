@@ -208,6 +208,7 @@ create table tasks (
   area text,
   category text,
   owner_id uuid references users(id),
+  owner_auto_assigned boolean not null default false, -- true when set by the schedule resolver, not a manual pick
   support_ids uuid[],
   due_at timestamptz,
   scheduled_for text check (scheduled_for in ('TODAY','NEXT_SHIFT','TOMORROW','LATER_THIS_WEEK','DATE')),
@@ -283,6 +284,8 @@ create table attendance_events (
   scheduled_time timestamptz,
   actual_time timestamptz,
   minutes_late integer,
+  notified_at text, -- HH:MM store-local, when the employee actually notified
+  notification_method text check (notification_method in ('PHONE_CALL','TEXT','APP','IN_PERSON','OTHER')),
   coverage_status text check (coverage_status in ('NEEDED','FOUND','NOT_REQUIRED')),
   covering_person text,
   note text,

@@ -59,6 +59,9 @@ function createConnection(): Database.Database {
   ensureColumn(db, "stores", "gem_updated_at", "gem_updated_at TEXT");
   ensureColumn(db, "store_pnl_periods", "restaurant_contribution_pct", "restaurant_contribution_pct REAL");
   ensureColumn(db, "store_pnl_periods", "released_at", "released_at TEXT");
+  ensureColumn(db, "tasks", "owner_auto_assigned", "owner_auto_assigned INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "attendance_events", "notified_at", "notified_at TEXT");
+  ensureColumn(db, "attendance_events", "notification_method", "notification_method TEXT");
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   return db;
