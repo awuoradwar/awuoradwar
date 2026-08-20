@@ -12,7 +12,7 @@ import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import { cateringChannelLabel } from "@/lib/cateringLabels";
 import StatusBadge from "./StatusBadge";
-import { Field, inputClass, selectClass, textareaClass } from "./forms/FormShell";
+import { Field, inputClass, selectClass, textareaClass, btnPrimary, btnOutline, btnDanger, btnNeutral } from "./forms/FormShell";
 
 export interface CateringOrderData {
   id: string;
@@ -139,28 +139,23 @@ export default function CateringOrderRow({ order, lang }: { order: CateringOrder
             <StatusBadge status={order.status} lang={lang} />
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {order.status === "OPEN" && (
-            <div className="flex gap-1">
-              <button disabled={pending} onClick={() => run(() => completeCateringOrderAction(order.id))} className="tap-target rounded-full bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
+            <>
+              <button disabled={pending} onClick={() => run(() => completeCateringOrderAction(order.id))} className={btnPrimary}>
                 {t(lang, "action_complete")}
               </button>
-              <button disabled={pending} onClick={() => run(() => cancelCateringOrderAction(order.id))} className="tap-target rounded-full border border-critical/40 px-3 text-sm font-semibold text-critical disabled:opacity-50">
+              <button disabled={pending} onClick={() => run(() => cancelCateringOrderAction(order.id))} className={btnDanger}>
                 {lang === "es" ? "Cancelar" : "Cancel"}
               </button>
-            </div>
+            </>
           )}
           {order.status !== "OPEN" && (
-            <button disabled={pending} onClick={() => run(() => reopenCateringOrderAction(order.id))} className="tap-target rounded-full border border-border px-3 text-sm text-muted disabled:opacity-50">
+            <button disabled={pending} onClick={() => run(() => reopenCateringOrderAction(order.id))} className={btnNeutral}>
               {lang === "es" ? "Reabrir" : "Reopen"}
             </button>
           )}
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setEditing(true)}
-            className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
-          >
+          <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`flex items-center gap-1 ${btnOutline}`}>
             ✎ {lang === "es" ? "Editar" : "Edit"}
           </button>
         </div>

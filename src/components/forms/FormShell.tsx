@@ -21,6 +21,18 @@ export const inputClass = fieldBase;
 export const selectClass = fieldBase;
 export const textareaClass = `${fieldBase} py-2.5 leading-snug`;
 
+/** One size for every row-level action button (Complete, Cancel, Edit,
+ * Reopen, Verify, Settle, ...) app-wide -- they vary only by color/fill, never
+ * by height, padding, or font-weight, so a row of two or three actions next
+ * to each other always reads as one deliberate set instead of the odd one
+ * out looking smaller or different. */
+const actionBase = "tap-target rounded-full px-3 text-sm font-semibold transition-colors disabled:opacity-50";
+export const btnPrimary = `${actionBase} bg-accent text-accent-foreground shadow-sm hover:bg-accent-hover`;
+export const btnOutline = `${actionBase} border border-accent text-accent hover:bg-accent hover:text-accent-foreground`;
+export const btnDanger = `${actionBase} border border-critical/40 text-critical hover:bg-critical/10`;
+export const btnNeutral = `${actionBase} border border-border text-muted hover:border-muted/50`;
+export const btnOk = `${actionBase} border-2 border-ok text-ok hover:bg-ok/10`;
+
 /** File inputs render with the browser's own default styling, which barely
  * changes once a file is picked -- the button and the resulting filename end
  * up nearly the same color/weight, so it's genuinely hard to tell whether an

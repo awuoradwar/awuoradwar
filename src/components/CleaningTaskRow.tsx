@@ -16,7 +16,7 @@ import {
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
-import { Field, inputClass, selectClass } from "./forms/FormShell";
+import { Field, inputClass, selectClass, btnPrimary, btnOutline, btnNeutral, btnOk } from "./forms/FormShell";
 
 interface ChecklistItemData {
   id: string;
@@ -370,44 +370,37 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
             <StatusBadge status={task.status} lang={lang} />
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {task.status === "ASSIGNED" &&
             (needsAfterPhotoToComplete ? (
               <span className="text-xs font-medium text-warning">{lang === "es" ? "Falta foto de después" : "Needs after photo"}</span>
             ) : (
-              <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className="tap-target rounded-full bg-accent px-3 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50">
+              <button disabled={pending} onClick={() => run(() => completeCleaningAction(task.id))} className={btnPrimary}>
                 {t(lang, "action_complete")}
               </button>
             ))}
           {task.status === "COMPLETED" && (
-            <button disabled={pending} onClick={() => run(() => verifyCleaningAction(task.id))} className="tap-target rounded-full border-2 border-ok px-3 text-sm font-semibold text-ok disabled:opacity-50">
+            <button disabled={pending} onClick={() => run(() => verifyCleaningAction(task.id))} className={btnOk}>
               {t(lang, "action_verify")}
             </button>
           )}
           {task.status === "VERIFIED" && (
-            <button disabled={pending} onClick={() => run(() => reopenCleaningAction(task.id))} className="tap-target rounded-full border border-border px-3 text-sm text-muted disabled:opacity-50">
+            <button disabled={pending} onClick={() => run(() => reopenCleaningAction(task.id))} className={btnNeutral}>
               {lang === "es" ? "Reabrir" : "Reopen"}
             </button>
           )}
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setEditing(true)}
-              className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40"
-            >
-              ✎ {lang === "es" ? "Editar" : "Edit"}
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              title={lang === "es" ? "Eliminar" : "Delete"}
-              onClick={() => run(() => deleteCleaningTaskAction(task.id))}
-              className="tap-target flex h-7 w-7 min-h-0 items-center justify-center rounded-full text-muted transition-colors hover:text-critical disabled:opacity-40"
-            >
-              🗑
-            </button>
-          </div>
+          <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`flex items-center gap-1 ${btnOutline}`}>
+            ✎ {lang === "es" ? "Editar" : "Edit"}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            title={lang === "es" ? "Eliminar" : "Delete"}
+            onClick={() => run(() => deleteCleaningTaskAction(task.id))}
+            className="tap-target flex h-9 w-9 min-h-0 min-w-0 items-center justify-center rounded-full text-muted transition-colors hover:text-critical disabled:opacity-40"
+          >
+            🗑
+          </button>
         </div>
       </div>
 

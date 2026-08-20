@@ -70,7 +70,7 @@ export default function TaskForm({
             <button
               type="button"
               onClick={() => setSelectedDays(allDaysSelected ? [] : WEEKDAYS.map((d) => d.value))}
-              className="tap-target h-7 min-h-0 rounded-lg border border-dashed border-accent px-2.5 text-xs font-semibold text-accent"
+              className="rounded-lg border border-accent px-2 py-1 text-xs font-semibold text-accent"
             >
               {allDaysSelected ? (lang === "es" ? "Ninguno" : "Clear") : lang === "es" ? "Todos los días" : "Every day"}
             </button>
