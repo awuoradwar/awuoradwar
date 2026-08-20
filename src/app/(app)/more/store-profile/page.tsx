@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
 import { getLatestPeriod, getPeriodHistory } from "@/lib/services/storeProfileService";
 import StorePeriodForm from "@/components/StorePeriodForm";
+import StorePeriodEditToggle from "@/components/StorePeriodEditToggle";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -58,60 +59,70 @@ export default async function StoreProfilePage() {
       <p className="-mt-3 mb-4 text-xs text-muted">{t(user.language, "store_profile_gm_only_note")}</p>
 
       <section className="mb-6">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
-          {t(user.language, "store_profile_latest")}
-          {latest ? ` — ${latest.period_label}` : ""}
-        </h2>
         {!latest && (
-          <div className="card p-4 text-center text-sm text-muted">{t(user.language, "store_profile_no_data")}</div>
+          <>
+            <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_latest")}</h2>
+            <div className="card p-4 text-center text-sm text-muted">{t(user.language, "store_profile_no_data")}</div>
+          </>
         )}
         {latest && (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              {kpis.map((k) => (
-                <div key={k.label} className="card p-3">
-                  <p className="text-lg font-bold">{k.value}</p>
-                  <p className="text-xs text-muted">{k.label}</p>
-                </div>
-              ))}
-            </div>
-            {gemMetrics.length > 0 && (
-              <div className="mt-3">
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_gem_score")}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {gemMetrics.map((m) => {
-                    const overGoal = m.score !== null && m.goal !== null ? m.score - m.goal : null;
-                    return (
-                      <div key={m.label} className="card p-3">
-                        <p className="text-lg font-bold">{fmtNum(m.score, 1)}</p>
-                        <p className="text-xs text-muted">{m.label}</p>
-                        {m.goal !== null && (
-                          <p className={`mt-1 text-xs font-semibold ${overGoal !== null && overGoal >= 0 ? "text-ok" : "text-critical"}`}>
-                            {es ? "Meta" : "Goal"} {fmtNum(m.goal, 1)}
-                            {overGoal !== null && ` · ${overGoal >= 0 ? "+" : ""}${overGoal.toFixed(1)}`}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+          <StorePeriodEditToggle
+            lang={user.language}
+            period={latest}
+            canEdit={gm}
+            header={
+              <h2 className="text-xs font-bold uppercase tracking-wide text-accent">
+                {t(user.language, "store_profile_latest")} — {latest.period_label}
+              </h2>
+            }
+          >
+            <div>
+              <div className="grid grid-cols-2 gap-3">
+                {kpis.map((k) => (
+                  <div key={k.label} className="card p-3">
+                    <p className="text-lg font-bold">{k.value}</p>
+                    <p className="text-xs text-muted">{k.label}</p>
+                  </div>
+                ))}
               </div>
-            )}
-            {latest.pnl_file_ref && (
-              <a
-                href={`/api/store-pnl/${latest.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tap-target mt-3 flex items-center justify-center rounded-xl border border-border text-sm font-medium text-accent"
-              >
-                📄 {t(user.language, "store_profile_view_pnl")}
-              </a>
-            )}
-            {latest.notes && <p className="mt-3 text-sm text-muted">{latest.notes}</p>}
-            <p className="mt-2 text-xs text-muted">
-              {t(user.language, "field_last_updated_by")}: {latest.created_by_name || "—"}
-            </p>
-          </>
+              {gemMetrics.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_gem_score")}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {gemMetrics.map((m) => {
+                      const overGoal = m.score !== null && m.goal !== null ? m.score - m.goal : null;
+                      return (
+                        <div key={m.label} className="card p-3">
+                          <p className="text-lg font-bold">{fmtNum(m.score, 1)}</p>
+                          <p className="text-xs text-muted">{m.label}</p>
+                          {m.goal !== null && (
+                            <p className={`mt-1 text-xs font-semibold ${overGoal !== null && overGoal >= 0 ? "text-ok" : "text-critical"}`}>
+                              {es ? "Meta" : "Goal"} {fmtNum(m.goal, 1)}
+                              {overGoal !== null && ` · ${overGoal >= 0 ? "+" : ""}${overGoal.toFixed(1)}`}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {latest.pnl_file_ref && (
+                <a
+                  href={`/api/store-pnl/${latest.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tap-target mt-3 flex items-center justify-center rounded-xl border border-border text-sm font-medium text-accent"
+                >
+                  📄 {t(user.language, "store_profile_view_pnl")}
+                </a>
+              )}
+              {latest.notes && <p className="mt-3 text-sm text-muted">{latest.notes}</p>}
+              <p className="mt-2 text-xs text-muted">
+                {t(user.language, "field_last_updated_by")}: {latest.created_by_name || "—"}
+              </p>
+            </div>
+          </StorePeriodEditToggle>
         )}
       </section>
 
@@ -127,11 +138,22 @@ export default async function StoreProfilePage() {
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_history")}</h2>
           <div className="card divide-y divide-border text-sm">
             {history.slice(1).map((p) => (
-              <div key={p.id} className="flex items-center justify-between px-3 py-2">
-                <span className="font-medium">{p.period_label}</span>
-                <span className="text-xs text-muted">
-                  {fmtMoney(p.net_sales_actual)} · {t(user.language, "store_profile_sss")}: {fmtPct(p.sss_pct)}
-                </span>
+              <div key={p.id} className="px-3 py-2">
+                <StorePeriodEditToggle
+                  lang={user.language}
+                  period={p}
+                  canEdit={gm}
+                  header={
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{p.period_label}</p>
+                      <p className="text-xs text-muted">
+                        {fmtMoney(p.net_sales_actual)} · {t(user.language, "store_profile_sss")}: {fmtPct(p.sss_pct)}
+                      </p>
+                    </div>
+                  }
+                >
+                  {null}
+                </StorePeriodEditToggle>
               </div>
             ))}
           </div>

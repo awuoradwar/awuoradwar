@@ -25,27 +25,8 @@ function refresh() {
   revalidatePath("/my-shift");
 }
 
-export async function createStorePeriodAction(formData: FormData) {
-  const user = await requireCurrentUser();
-  if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };
-
-  const periodLabel = String(formData.get("periodLabel") || "").trim();
-  if (!periodLabel) return { error: "Period label is required." };
-
-  let pnlFileRef: string | null = null;
-  const file = formData.get("pnlFile");
-  if (file instanceof File && file.size > 0) {
-    await mkdir(PNL_DIR, { recursive: true });
-    const ext = path.extname(file.name) || "";
-    const storedName = `${user.storeId}-${randomUUID()}${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(PNL_DIR, storedName), buffer);
-    pnlFileRef = storedName;
-  }
-
-  storeProfileService.createPeriod({
-    storeId: user.storeId,
-    periodLabel,
+function periodFields(formData: FormData) {
+  return {
     netSalesActual: num(formData, "netSalesActual"),
     netSalesPlan: num(formData, "netSalesPlan"),
     netSalesPriorYear: num(formData, "netSalesPriorYear"),
@@ -61,8 +42,57 @@ export async function createStorePeriodAction(formData: FormData) {
     gemTasteGoal: num(formData, "gemTasteGoal"),
     gemAccuracyScore: num(formData, "gemAccuracyScore"),
     gemAccuracyGoal: num(formData, "gemAccuracyGoal"),
-    pnlFileRef,
     notes: String(formData.get("notes") || "").trim() || null,
+  };
+}
+
+async function storePnlFile(storeId: string, formData: FormData): Promise<string | null> {
+  const file = formData.get("pnlFile");
+  if (!(file instanceof File) || file.size === 0) return null;
+  await mkdir(PNL_DIR, { recursive: true });
+  const ext = path.extname(file.name) || "";
+  const storedName = `${storeId}-${randomUUID()}${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(path.join(PNL_DIR, storedName), buffer);
+  return storedName;
+}
+
+export async function createStorePeriodAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };
+
+  const periodLabel = String(formData.get("periodLabel") || "").trim();
+  if (!periodLabel) return { error: "Period label is required." };
+
+  const pnlFileRef = await storePnlFile(user.storeId, formData);
+
+  storeProfileService.createPeriod({
+    storeId: user.storeId,
+    periodLabel,
+    ...periodFields(formData),
+    pnlFileRef,
+    actor: user,
+  });
+
+  refresh();
+  return { ok: true };
+}
+
+export async function updateStorePeriodAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };
+
+  const id = String(formData.get("id") || "");
+  const periodLabel = String(formData.get("periodLabel") || "").trim();
+  if (!id || !periodLabel) return { error: "Period label is required." };
+
+  const pnlFileRef = await storePnlFile(user.storeId, formData);
+
+  storeProfileService.updatePeriod({
+    id,
+    periodLabel,
+    ...periodFields(formData),
+    ...(pnlFileRef ? { pnlFileRef } : {}),
     actor: user,
   });
 

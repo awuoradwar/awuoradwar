@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createStorePeriodAction } from "@/app/actions/storeProfileActions";
+import { createStorePeriodAction, updateStorePeriodAction } from "@/app/actions/storeProfileActions";
 import { Field, inputClass, textareaClass, FileField } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
@@ -35,10 +35,46 @@ const NUMERIC_LABEL_KEY: Record<(typeof NUMERIC_FIELDS)[number], Parameters<type
   restaurantContribution: "store_profile_restaurant_contribution",
 };
 
-export default function StorePeriodForm({ lang }: { lang: Language }) {
+export interface StorePeriodDefaults {
+  id: string;
+  period_label: string;
+  net_sales_actual: number | null;
+  net_sales_plan: number | null;
+  net_sales_prior_year: number | null;
+  sss_pct: number | null;
+  sst_pct: number | null;
+  check_average: number | null;
+  cogs_pct: number | null;
+  labor_pct: number | null;
+  controllable_profit_actual: number | null;
+  controllable_profit_pct: number | null;
+  restaurant_contribution: number | null;
+  gem_taste_score: number | null;
+  gem_taste_goal: number | null;
+  gem_accuracy_score: number | null;
+  gem_accuracy_goal: number | null;
+  notes: string | null;
+}
+
+const NUMERIC_DB_KEY: Record<(typeof NUMERIC_FIELDS)[number], keyof StorePeriodDefaults> = {
+  netSalesActual: "net_sales_actual",
+  netSalesPlan: "net_sales_plan",
+  netSalesPriorYear: "net_sales_prior_year",
+  sssPct: "sss_pct",
+  sstPct: "sst_pct",
+  checkAverage: "check_average",
+  cogsPct: "cogs_pct",
+  laborPct: "labor_pct",
+  controllableProfitActual: "controllable_profit_actual",
+  controllableProfitPct: "controllable_profit_pct",
+  restaurantContribution: "restaurant_contribution",
+};
+
+export default function StorePeriodForm({ lang, period, onDone }: { lang: Language; period?: StorePeriodDefaults; onDone?: () => void }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const isEdit = !!period;
 
   return (
     <form
@@ -47,25 +83,33 @@ export default function StorePeriodForm({ lang }: { lang: Language }) {
         const fd = new FormData(e.currentTarget);
         setError(null);
         startTransition(async () => {
-          const result = await createStorePeriodAction(fd);
+          const result = isEdit ? await updateStorePeriodAction(fd) : await createStorePeriodAction(fd);
           if (result?.error) {
             setError(result.error);
             return;
           }
-          (e.target as HTMLFormElement).reset();
+          if (!isEdit) (e.target as HTMLFormElement).reset();
           router.refresh();
+          onDone?.();
         });
       }}
       className="card flex flex-col gap-3 p-3"
     >
+      {isEdit && <input type="hidden" name="id" value={period.id} />}
       <Field label={t(lang, "store_profile_period_label")}>
-        <input name="periodLabel" required placeholder={lang === "es" ? "ej. Período 8, 2026" : "e.g. Period 8, 2026"} className={inputClass} />
+        <input
+          name="periodLabel"
+          required
+          defaultValue={period?.period_label}
+          placeholder={lang === "es" ? "ej. Período 8, 2026" : "e.g. Period 8, 2026"}
+          className={inputClass}
+        />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
         {NUMERIC_FIELDS.map((field) => (
           <Field key={field} label={t(lang, NUMERIC_LABEL_KEY[field])}>
-            <input name={field} type="number" step="any" inputMode="decimal" className={inputClass} />
+            <input name={field} type="number" step="any" inputMode="decimal" defaultValue={period?.[NUMERIC_DB_KEY[field]] ?? undefined} className={inputClass} />
           </Field>
         ))}
       </div>
@@ -74,32 +118,44 @@ export default function StorePeriodForm({ lang }: { lang: Language }) {
         <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-accent">{t(lang, "store_profile_gem_score")}</p>
         <div className="grid grid-cols-2 gap-3">
           <Field label={lang === "es" ? "Sabor de Comida — Puntaje" : "Taste of Food — Score"}>
-            <input name="gemTasteScore" type="number" step="any" inputMode="decimal" className={inputClass} />
+            <input name="gemTasteScore" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_taste_score ?? undefined} className={inputClass} />
           </Field>
           <Field label={lang === "es" ? "Sabor de Comida — Meta" : "Taste of Food — Goal"}>
-            <input name="gemTasteGoal" type="number" step="any" inputMode="decimal" className={inputClass} />
+            <input name="gemTasteGoal" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_taste_goal ?? undefined} className={inputClass} />
           </Field>
           <Field label={lang === "es" ? "Exactitud del Pedido — Puntaje" : "Accuracy of Order — Score"}>
-            <input name="gemAccuracyScore" type="number" step="any" inputMode="decimal" className={inputClass} />
+            <input name="gemAccuracyScore" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_accuracy_score ?? undefined} className={inputClass} />
           </Field>
           <Field label={lang === "es" ? "Exactitud del Pedido — Meta" : "Accuracy of Order — Goal"}>
-            <input name="gemAccuracyGoal" type="number" step="any" inputMode="decimal" className={inputClass} />
+            <input name="gemAccuracyGoal" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_accuracy_goal ?? undefined} className={inputClass} />
           </Field>
         </div>
       </div>
 
       <Field label={t(lang, "store_profile_pnl_file")}>
         <FileField name="pnlFile" accept="application/pdf,image/*" lang={lang} />
+        {isEdit && <p className="mt-1 text-xs text-muted">{lang === "es" ? "Deja en blanco para conservar el archivo actual." : "Leave blank to keep the current file."}</p>}
       </Field>
 
       <Field label={t(lang, "field_notes")}>
-        <textarea name="notes" rows={2} className={textareaClass} />
+        <textarea name="notes" rows={2} defaultValue={period?.notes ?? undefined} className={textareaClass} />
       </Field>
 
       {error && <p className="text-sm text-critical">{error}</p>}
-      <button type="submit" disabled={pending} className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60">
-        {pending ? "…" : t(lang, "action_save")}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          className="tap-target flex-1 rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
+        >
+          {pending ? "…" : t(lang, "action_save")}
+        </button>
+        {isEdit && (
+          <button type="button" onClick={onDone} disabled={pending} className="text-sm font-medium text-muted">
+            {lang === "es" ? "Cancelar" : "Cancel"}
+          </button>
+        )}
+      </div>
     </form>
   );
 }

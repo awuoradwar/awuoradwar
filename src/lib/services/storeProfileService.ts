@@ -124,3 +124,70 @@ export function createPeriod(params: {
   });
   return id;
 }
+
+/** Fix or fill in a period's numbers after the fact -- a period is often
+ * created as a placeholder (label only, numbers added once the P&L
+ * document actually comes in) rather than fully filled out at creation. */
+export function updatePeriod(params: {
+  id: string;
+  periodLabel: string;
+  netSalesActual: number | null;
+  netSalesPlan: number | null;
+  netSalesPriorYear: number | null;
+  sssPct: number | null;
+  sstPct: number | null;
+  checkAverage: number | null;
+  cogsPct: number | null;
+  laborPct: number | null;
+  controllableProfitActual: number | null;
+  controllableProfitPct: number | null;
+  restaurantContribution: number | null;
+  gemTasteScore: number | null;
+  gemTasteGoal: number | null;
+  gemAccuracyScore: number | null;
+  gemAccuracyGoal: number | null;
+  pnlFileRef?: string | null;
+  notes: string | null;
+  actor: SessionUser;
+}) {
+  const db = getDb();
+  const setPnlFile = params.pnlFileRef !== undefined;
+  db.prepare(
+    `UPDATE store_pnl_periods SET
+      period_label = ?, net_sales_actual = ?, net_sales_plan = ?, net_sales_prior_year = ?,
+      sss_pct = ?, sst_pct = ?, check_average = ?, cogs_pct = ?, labor_pct = ?,
+      controllable_profit_actual = ?, controllable_profit_pct = ?, restaurant_contribution = ?,
+      gem_taste_score = ?, gem_taste_goal = ?, gem_accuracy_score = ?, gem_accuracy_goal = ?,
+      notes = ?${setPnlFile ? ", pnl_file_ref = ?" : ""}
+     WHERE id = ?`
+  ).run(
+    ...[
+      params.periodLabel,
+      params.netSalesActual,
+      params.netSalesPlan,
+      params.netSalesPriorYear,
+      params.sssPct,
+      params.sstPct,
+      params.checkAverage,
+      params.cogsPct,
+      params.laborPct,
+      params.controllableProfitActual,
+      params.controllableProfitPct,
+      params.restaurantContribution,
+      params.gemTasteScore,
+      params.gemTasteGoal,
+      params.gemAccuracyScore,
+      params.gemAccuracyGoal,
+      params.notes,
+      ...(setPnlFile ? [params.pnlFileRef] : []),
+      params.id,
+    ]
+  );
+  writeAudit({
+    entityType: "store_pnl_period",
+    entityId: params.id,
+    actor: params.actor,
+    action: "EDITED",
+    newValue: { period_label: params.periodLabel, net_sales_actual: params.netSalesActual },
+  });
+}
