@@ -54,30 +54,12 @@ function Stepper({ item, lang, canManage }: { item: InventoryItem; lang: Languag
     });
   }
 
-  // On order -- surfaced as a truck right next to the item instead of a text
-  // pill, so it reads at a glance while scanning down a long list.
-  if (onOrder) {
-    return (
-      <div className="flex shrink-0 items-center gap-1.5">
-        <span title={lang === "es" ? "Pedido" : "On order"} className="text-base leading-none">
-          🚚
-        </span>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            startTransition(async () => {
-              setOptimisticOnOrder(false);
-              await markInventoryReceivedAction(item.id);
-              router.refresh();
-            });
-          }}
-          className="tap-target flex h-7 min-h-0 items-center rounded-full bg-accent px-2 text-xs font-semibold text-accent-foreground disabled:opacity-50"
-        >
-          {lang === "es" ? "Recibido ✓" : "Received ✓"}
-        </button>
-      </div>
-    );
+  function markReceived() {
+    startTransition(async () => {
+      setOptimisticOnOrder(false);
+      await markInventoryReceivedAction(item.id);
+      router.refresh();
+    });
   }
 
   return (
@@ -103,7 +85,9 @@ function Stepper({ item, lang, canManage }: { item: InventoryItem; lang: Languag
       ) : (
         // Bordered like a real input (not plain text) -- the box itself is
         // the affordance that it's tappable to type a value directly,
-        // useful once a count runs into two or three digits.
+        // useful once a count runs into two or three digits. Stays visible
+        // and editable even while on order -- the count is still real
+        // information (e.g. what's left while you wait on the delivery).
         <button
           type="button"
           onClick={() => { setDraft(String(displayCount)); setEditing(true); }}
@@ -120,6 +104,14 @@ function Stepper({ item, lang, canManage }: { item: InventoryItem; lang: Languag
       >
         +
       </button>
+      {/* A plain inline glyph, not a button/pill -- just enough to read "on
+          order" at a glance without taking up row space the way the old
+          "Ordered" badge + "Received" button pair did. */}
+      {onOrder && (
+        <span title={lang === "es" ? "Pedido" : "On order"} className="shrink-0 text-sm leading-none">
+          🚚
+        </span>
+      )}
       <button
         type="button"
         onClick={() => setMoreOpen((v) => !v)}
@@ -129,7 +121,16 @@ function Stepper({ item, lang, canManage }: { item: InventoryItem; lang: Languag
         ⋯
       </button>
       {moreOpen &&
-        (orderOpen ? (
+        (onOrder ? (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={markReceived}
+            className="flex h-7 min-h-0 items-center rounded-full bg-accent px-2 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+          >
+            {lang === "es" ? "Recibido ✓" : "Received ✓"}
+          </button>
+        ) : orderOpen ? (
           <div className="flex items-center gap-1">
             <input
               autoFocus
