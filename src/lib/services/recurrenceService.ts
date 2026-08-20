@@ -92,10 +92,10 @@ export function ensureInstancesForDate(storeId: string, dateStr: string) {
     const ownerId = config.dueTime ? resolveShiftOwnerForWindow(storeId, dateStr, windowForHour(Number(config.dueTime.split(":")[0]))) : null;
     const id = newId();
     db.prepare(
-      `INSERT INTO tasks (id, store_id, template_id, title, description, area, category, owner_id, support_ids,
+      `INSERT INTO tasks (id, store_id, template_id, title, description, area, category, owner_id, owner_auto_assigned, support_ids,
         due_at, scheduled_for, scheduled_date, effort, priority, severity, status, verification_required,
         depends_on_task_id, source, checklist_role, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'DATE', ?, ?, 'NORMAL', 'NORMAL', 'OPEN', ?, ?, 'recurring', ?, NULL, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?, 'DATE', ?, ?, 'NORMAL', 'NORMAL', 'OPEN', ?, ?, 'recurring', ?, NULL, ?)`
     ).run(
       id,
       storeId,

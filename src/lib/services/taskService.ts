@@ -400,11 +400,15 @@ export function verifyTask(taskId: string, actor: SessionUser, picId: string | n
   writeAudit({ entityType: "task", entityId: taskId, actor, picId, action: "VERIFIED" });
 }
 
+/** A manager picking a new owner is a deliberate decision -- once reassigned,
+ * this task is no longer "whoever the schedule resolver says," so it's
+ * excluded from future automatic re-resolution when the schedule changes
+ * (see scheduleService.resyncAutoAssignedTaskOwners). */
 export function reassignTask(taskId: string, newOwnerId: string, actor: SessionUser) {
   const db = getDb();
   const task = db.prepare(`SELECT owner_id FROM tasks WHERE id = ?`).get(taskId) as { owner_id: string | null };
   const ts = nowIso();
-  db.prepare(`UPDATE tasks SET owner_id = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`).run(
+  db.prepare(`UPDATE tasks SET owner_id = ?, owner_auto_assigned = 0, last_edited_by = ?, last_edited_at = ? WHERE id = ?`).run(
     newOwnerId,
     actor.id,
     ts,

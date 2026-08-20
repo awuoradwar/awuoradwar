@@ -37,7 +37,7 @@ export function setManagerShift(storeId: string, userId: string, date: string, s
   if (existing) {
     db.prepare(`UPDATE manager_shifts SET shift_type = ?, created_by = ? WHERE id = ?`).run(shiftType, actor.id, existing.id);
     writeAudit({ entityType: "manager_shift", entityId: existing.id, actor, action: "EDITED", newValue: { date, shiftType } });
-    backfillTaskOwnersForDate(storeId, date);
+    resyncAutoAssignedTaskOwners(storeId, date);
     return existing.id;
   }
   const id = newId();
@@ -45,14 +45,20 @@ export function setManagerShift(storeId: string, userId: string, date: string, s
     `INSERT INTO manager_shifts (id, store_id, user_id, date, shift_type, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).run(id, storeId, userId, date, shiftType, actor.id, nowIso());
   writeAudit({ entityType: "manager_shift", entityId: id, actor, action: "CREATED", newValue: { date, shiftType } });
-  backfillTaskOwnersForDate(storeId, date);
+  resyncAutoAssignedTaskOwners(storeId, date);
   return id;
 }
 
 export function removeManagerShift(id: string, actor: SessionUser) {
   const db = getDb();
+  const row = db.prepare(`SELECT store_id, date FROM manager_shifts WHERE id = ?`).get(id) as { store_id: string; date: string } | undefined;
   db.prepare(`DELETE FROM manager_shifts WHERE id = ?`).run(id);
   writeAudit({ entityType: "manager_shift", entityId: id, actor, action: "CANCELLED" });
+  // Pulling someone off the schedule can leave an already-generated
+  // recurring task instance still pointing at them as owner -- re-resolve
+  // (see resyncAutoAssignedTaskOwners below) so it drops back to unassigned
+  // instead of silently showing an owner who's no longer working.
+  if (row) resyncAutoAssignedTaskOwners(row.store_id, row.date);
 }
 
 /** What shift (if any) this specific user is scheduled to work today at this
@@ -139,17 +145,23 @@ export function resolveTodaysPic(storeId: string, dateStr: string, nowDate: Date
   return row ? { id: userId, name: row.name } : null;
 }
 
-export function backfillTaskOwnersForDate(storeId: string, date: string) {
+/** Re-resolves owner_id for every still-open, auto-assigned recurring task
+ * instance on this date whenever the schedule changes -- whether that fills
+ * in a still-unassigned task now that someone's covering the window, moves
+ * it to whoever's covering now, or clears it back to unassigned because
+ * nobody covers that window anymore. Scoped to owner_auto_assigned = 1 so a
+ * manager's deliberate manual reassignment (which clears that flag) is
+ * never silently overwritten by a later schedule edit. */
+export function resyncAutoAssignedTaskOwners(storeId: string, date: string) {
   const db = getDb();
   const tasks = db
-    .prepare(`SELECT id, due_at FROM tasks WHERE store_id = ? AND scheduled_date = ? AND owner_id IS NULL AND status IN ('OPEN','IN_PROGRESS') AND due_at IS NOT NULL`)
+    .prepare(
+      `SELECT id, due_at FROM tasks WHERE store_id = ? AND scheduled_date = ? AND owner_auto_assigned = 1 AND status IN ('OPEN','IN_PROGRESS') AND due_at IS NOT NULL`
+    )
     .all(storeId, date) as Array<{ id: string; due_at: string }>;
-  if (tasks.length === 0) return;
   for (const task of tasks) {
     const window = windowForHour(storeLocalHour(storeId, new Date(task.due_at)));
     const ownerId = resolveShiftOwnerForWindow(storeId, date, window);
-    if (ownerId) {
-      db.prepare(`UPDATE tasks SET owner_id = ? WHERE id = ?`).run(ownerId, task.id);
-    }
+    db.prepare(`UPDATE tasks SET owner_id = ? WHERE id = ?`).run(ownerId, task.id);
   }
 }
