@@ -64,7 +64,25 @@ function createConnection(): Database.Database {
   ensureColumn(db, "attendance_events", "notification_method", "notification_method TEXT");
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
+  unassignStaleAutoAssignedTasks(db);
   return db;
+}
+
+/** Recurring task instances used to auto-resolve their owner from the
+ * schedule at creation time; now they default to unassigned instead (a
+ * manager assigns on the day of, if needed) unless a template explicitly
+ * opts back in. That code change alone doesn't touch rows that already
+ * materialized under the old behavior -- ensureInstancesForDate only ever
+ * inserts a new row for a template+date that doesn't already have one, so
+ * an already-generated instance for today or later this week keeps
+ * whatever owner it was auto-assigned at the time, forever, without this.
+ * One-time, idempotent: only ever matches owner_auto_assigned = 1, which
+ * this clears to 0 -- a no-op on every boot after the first. */
+function unassignStaleAutoAssignedTasks(db: Database.Database) {
+  db.prepare(
+    `UPDATE tasks SET owner_id = NULL, owner_auto_assigned = 0
+     WHERE owner_auto_assigned = 1 AND source = 'recurring' AND status IN ('OPEN', 'IN_PROGRESS')`
+  ).run();
 }
 
 /** GEM used to live on the most recent P&L period row -- moved to a single
