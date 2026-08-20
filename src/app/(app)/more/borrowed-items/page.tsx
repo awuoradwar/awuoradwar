@@ -15,7 +15,7 @@ export default async function BorrowedItemsPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
-      <PageHeader backHref="/more" lang={lang} title={lang === "es" ? "Préstamos" : "Borrowed / Lent"} />
+      <PageHeader backHref="/add" lang={lang} title={lang === "es" ? "Préstamos" : "Borrowed / Lent"} />
 
       <Link href="/add/borrowed-item" className="tap-target flex w-full items-center justify-center rounded-xl border-2 border-dashed border-accent text-sm font-semibold text-accent">
         {lang === "es" ? "+ Agregar préstamo" : "+ Add borrowed/lent item"}

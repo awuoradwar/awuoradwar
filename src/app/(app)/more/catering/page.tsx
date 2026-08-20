@@ -67,7 +67,7 @@ export default async function CateringPage() {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
-      <PageHeader backHref="/more" lang={lang} title={t(lang, "catering_title")} />
+      <PageHeader backHref="/add" lang={lang} title={t(lang, "catering_title")} />
 
       <Link href="/add/catering" className="tap-target flex w-full items-center justify-center rounded-xl border-2 border-dashed border-accent text-sm font-semibold text-accent">
         {t(lang, "catering_add")}
