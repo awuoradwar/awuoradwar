@@ -143,17 +143,22 @@ export default async function MyShiftPage() {
   };
   const currentShiftStaffing = summary.staffing.filter((s) => shiftBucketOf(s.created_at) === "current");
   const priorShiftStaffing = summary.staffing.filter((s) => shiftBucketOf(s.created_at) === "prior");
+  // Meal replacements have no known fulfillment time -- unlike an issue or
+  // borrowed item, there's nothing time-bound to surface here, so they stay
+  // off My Shift entirely and live only on their own dedicated list
+  // (More > Meal Replacements).
+  const openItemsForMyShift = summary.openItems.filter((it) => it.kind !== "guest_recovery");
   // A day-spanning open item that's still just quietly pending (waiting on
   // a technician, say) correctly ages out per the comment above -- but one
   // that's now actually critical (a CRITICAL issue, or a borrowed/lent item
   // past its due date) needs to keep surfacing for whoever's on shift right
   // now regardless of how old it is, same reasoning as CRITICAL tasks
   // always escalating to NOW.
-  const currentShiftOpenItems = summary.openItems.filter((it) => {
+  const currentShiftOpenItems = openItemsForMyShift.filter((it) => {
     const bucket = shiftBucketOf(it.created_at);
     return bucket === "current" || (bucket === "older" && it.critical);
   });
-  const priorShiftOpenItems = summary.openItems.filter((it) => shiftBucketOf(it.created_at) === "prior");
+  const priorShiftOpenItems = openItemsForMyShift.filter((it) => shiftBucketOf(it.created_at) === "prior");
   const fromLastShiftCount = priorShiftStaffing.length + priorShiftOpenItems.length + unresolvedForDisplay.length;
   // Catering folds into This Shift rather than getting its own top-level
   // card -- a store sees maybe 1-3 orders a shift, not enough volume to
