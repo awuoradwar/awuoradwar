@@ -82,6 +82,7 @@ const es: Record<DictKeys, string> = {
   add_note: "Nota",
   add_schedule_request: "Solicitud de Asociado",
   add_catering: "Pedido de Catering",
+  add_attendance_history: "Historial de Avisos/Tardanzas",
 
   field_title: "Título",
   field_owner: "Responsable",

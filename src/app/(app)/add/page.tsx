@@ -20,6 +20,7 @@ const GROUPS = [
     items: [
       { slug: "call-in", key: "add_call_in", icon: "phone" },
       { slug: "late", key: "add_late", icon: "clock" },
+      { slug: "attendance-history", key: "add_attendance_history", icon: "history", href: "/more/attendance" },
     ],
   },
   {

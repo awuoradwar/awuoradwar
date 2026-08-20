@@ -80,6 +80,7 @@ const en = {
   add_note: "Note",
   add_schedule_request: "Associate Request",
   add_catering: "Catering Order",
+  add_attendance_history: "Call-in / Late History",
 
   field_title: "Title",
   field_owner: "Owner",
