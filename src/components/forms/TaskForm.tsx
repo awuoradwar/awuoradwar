@@ -28,6 +28,8 @@ export default function TaskForm({
   currentUserId: string;
 }) {
   const [recurring, setRecurring] = useState(false);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const allDaysSelected = selectedDays.length === WEEKDAYS.length;
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     recurring ? null : "task",
     quickAddTaskAction,
@@ -49,13 +51,29 @@ export default function TaskForm({
 
       {recurring ? (
         <Field label={lang === "es" ? "Se repite los" : "Repeats on"}>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {WEEKDAYS.map((d) => (
               <label key={d.value} className="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs">
-                <input type="checkbox" name="weekdays" value={d.value} className="h-3.5 w-3.5" />
+                <input
+                  type="checkbox"
+                  name="weekdays"
+                  value={d.value}
+                  checked={selectedDays.includes(d.value)}
+                  onChange={(e) =>
+                    setSelectedDays((prev) => (e.target.checked ? [...prev, d.value] : prev.filter((v) => v !== d.value)))
+                  }
+                  className="h-3.5 w-3.5"
+                />
                 {lang === "es" ? d.es : d.en}
               </label>
             ))}
+            <button
+              type="button"
+              onClick={() => setSelectedDays(allDaysSelected ? [] : WEEKDAYS.map((d) => d.value))}
+              className="tap-target h-7 min-h-0 rounded-lg border border-dashed border-accent px-2.5 text-xs font-semibold text-accent"
+            >
+              {allDaysSelected ? (lang === "es" ? "Ninguno" : "Clear") : lang === "es" ? "Todos los días" : "Every day"}
+            </button>
           </div>
         </Field>
       ) : (
