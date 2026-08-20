@@ -8,6 +8,7 @@ import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
 import { getCateringDueOn } from "@/lib/services/cateringService";
+import { getOpenBorrowedItemsDueOn } from "@/lib/services/borrowingService";
 import { storeToday, storeLocalHour, formatStoreDateTime } from "@/lib/storeTime";
 import { getDb } from "@/lib/db";
 import { buildManagerColorMap } from "@/lib/managerColor";
@@ -17,6 +18,7 @@ import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
 import CateringOrderRow from "@/components/CateringOrderRow";
+import BorrowedItemRow from "@/components/BorrowedItemRow";
 import { t } from "@/lib/i18n";
 
 const OPEN_ITEM_HREF: Record<string, string> = {
@@ -117,6 +119,8 @@ export default async function MyShiftPage() {
   const todayWeekday = new Date(today + "T00:00:00Z").getDay();
   const cleaningToday = getCleaningTasksDueToday(user.storeId, todayWeekday);
   const cateringToday = getCateringDueOn(user.storeId, today);
+  const borrowedDueToday = getOpenBorrowedItemsDueOn(user.storeId, today);
+  const borrowedDueTodayIds = new Set(borrowedDueToday.map((b) => b.id));
   // A call-in/late/no-show -- or an issue, borrowed item, or meal
   // replacement -- logged during the shift that's happening right now is
   // current information for whoever's on now, not a leftover from a prior
@@ -155,15 +159,21 @@ export default async function MyShiftPage() {
   // now regardless of how old it is, same reasoning as CRITICAL tasks
   // always escalating to NOW.
   const currentShiftOpenItems = openItemsForMyShift.filter((it) => {
+    // A borrowed/lent item due back today already gets its own row (see
+    // borrowedDueToday below) -- skip it here so it doesn't render twice
+    // when it's also, say, something that was opened this very shift.
+    if (it.kind === "borrowed_item" && borrowedDueTodayIds.has(it.id)) return false;
     const bucket = shiftBucketOf(it.created_at);
     return bucket === "current" || (bucket === "older" && it.critical);
   });
-  const priorShiftOpenItems = openItemsForMyShift.filter((it) => shiftBucketOf(it.created_at) === "prior");
+  const priorShiftOpenItems = openItemsForMyShift.filter(
+    (it) => shiftBucketOf(it.created_at) === "prior" && !(it.kind === "borrowed_item" && borrowedDueTodayIds.has(it.id))
+  );
   const fromLastShiftCount = priorShiftStaffing.length + priorShiftOpenItems.length + unresolvedForDisplay.length;
-  // Catering folds into This Shift rather than getting its own top-level
-  // card -- a store sees maybe 1-3 orders a shift, not enough volume to
-  // earn a standalone section without crowding the home page.
-  const currentShiftCount = currentShiftStaffing.length + currentShiftOpenItems.length + cateringToday.length;
+  // Catering and borrowed/lent due today both fold into This Shift rather
+  // than getting their own top-level card -- low enough volume per shift
+  // that a standalone section would just crowd the home page.
+  const currentShiftCount = currentShiftStaffing.length + currentShiftOpenItems.length + cateringToday.length + borrowedDueToday.length;
 
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const dateLabel = formatStoreDateTime(user.storeId, now.toISOString(), locale, {
@@ -194,12 +204,15 @@ export default async function MyShiftPage() {
       {currentShiftCount > 0 && (
         <SectionCard
           title={user.language === "es" ? "Este Turno" : "This Shift"}
-          sub={user.language === "es" ? "Personal, catering, problemas y artículos abiertos en este turno" : "Staffing, catering, issues, and items opened this shift"}
+          sub={user.language === "es" ? "Personal, catering, préstamos, problemas y artículos abiertos en este turno" : "Staffing, catering, borrowed/lent, issues, and items opened this shift"}
           count={currentShiftCount}
         >
           <div className="flex flex-col gap-2">
             {cateringToday.map((order) => (
               <CateringOrderRow key={order.id} order={order} lang={user.language} />
+            ))}
+            {borrowedDueToday.map((item) => (
+              <BorrowedItemRow key={item.id} item={item} lang={user.language} storeId={user.storeId} />
             ))}
             {currentShiftStaffing.map((s) => (
               <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">

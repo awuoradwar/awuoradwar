@@ -2,6 +2,7 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
+import { storeDayRangeUtc } from "../storeTime";
 
 export type BorrowDirection = "BORROWED" | "LENT";
 
@@ -132,6 +133,17 @@ export interface BorrowedItemRow {
 export function getOpenBorrowedItems(storeId: string): BorrowedItemRow[] {
   const db = getDb();
   return db.prepare(`SELECT * FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED' ORDER BY due_at IS NULL, due_at, created_at DESC`).all(storeId) as BorrowedItemRow[];
+}
+
+/** Everything due back today, any direction -- shown on My Shift's This
+ * Shift section the same way Catering Due Today is, so it can't get missed
+ * the day it's actually due instead of only surfacing once it's overdue. */
+export function getOpenBorrowedItemsDueOn(storeId: string, dueDate: string): BorrowedItemRow[] {
+  const db = getDb();
+  const { start, end } = storeDayRangeUtc(storeId, dueDate);
+  return db
+    .prepare(`SELECT * FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED' AND due_at >= ? AND due_at < ? ORDER BY due_at`)
+    .all(storeId, start, end) as BorrowedItemRow[];
 }
 
 export function getSettledBorrowedItems(storeId: string, limit = 30): BorrowedItemRow[] {
