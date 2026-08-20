@@ -6,6 +6,8 @@ import * as guestRecoveryService from "@/lib/services/guestRecoveryService";
 import * as borrowingService from "@/lib/services/borrowingService";
 import * as issueService from "@/lib/services/issueService";
 import * as acknowledgementService from "@/lib/services/acknowledgementService";
+import * as cateringService from "@/lib/services/cateringService";
+import { CateringChannel } from "@/lib/services/cateringService";
 import { storeLocalIso } from "@/lib/storeTime";
 
 function refresh() {
@@ -15,6 +17,7 @@ function refresh() {
   revalidatePath("/more/search");
   revalidatePath("/more/acknowledgements");
   revalidatePath("/more/work-orders");
+  revalidatePath("/more/catering");
 }
 
 export async function approveReplacementAction(id: string) {
@@ -118,6 +121,47 @@ export async function resolveIssueAction(id: string, resolution: string) {
 export async function reopenIssueAction(id: string) {
   const user = await requireCurrentUser();
   issueService.reopenIssue(id, user);
+  refresh();
+}
+
+export async function updateCateringOrderAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const id = String(formData.get("id") || "");
+  const dueDate = String(formData.get("dueDate") || "").trim();
+  if (!id || !dueDate) return { error: "Due date is required." };
+  const numberOfPeopleRaw = String(formData.get("numberOfPeople") || "").trim();
+  cateringService.updateCateringOrder(
+    id,
+    user.storeId,
+    {
+      dueDate,
+      pickupTime: String(formData.get("pickupTime") || "").trim() || null,
+      customerName: String(formData.get("customerName") || "").trim() || null,
+      numberOfPeople: numberOfPeopleRaw ? Number(numberOfPeopleRaw) : null,
+      channel: (String(formData.get("channel") || "PHONE") as CateringChannel),
+      notes: String(formData.get("notes") || "").trim() || null,
+    },
+    user
+  );
+  refresh();
+  return { ok: true };
+}
+
+export async function completeCateringOrderAction(id: string) {
+  const user = await requireCurrentUser();
+  cateringService.completeCateringOrder(id, user);
+  refresh();
+}
+
+export async function cancelCateringOrderAction(id: string) {
+  const user = await requireCurrentUser();
+  cateringService.cancelCateringOrder(id, user);
+  refresh();
+}
+
+export async function reopenCateringOrderAction(id: string) {
+  const user = await requireCurrentUser();
+  cateringService.reopenCateringOrder(id, user);
   refresh();
 }
 

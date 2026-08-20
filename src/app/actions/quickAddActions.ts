@@ -10,6 +10,8 @@ import * as borrowingService from "@/lib/services/borrowingService";
 import * as issueService from "@/lib/services/issueService";
 import * as acknowledgementService from "@/lib/services/acknowledgementService";
 import * as taskService from "@/lib/services/taskService";
+import * as cateringService from "@/lib/services/cateringService";
+import { CateringChannel } from "@/lib/services/cateringService";
 import * as pushService from "@/lib/services/pushService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { canDo } from "@/lib/permissions";
@@ -24,6 +26,7 @@ function refresh() {
   revalidatePath("/more/work-orders");
   revalidatePath("/week");
   revalidatePath("/more/templates");
+  revalidatePath("/more/catering");
 }
 
 function fd(formData: FormData, key: string): string {
@@ -200,6 +203,25 @@ export async function quickAddMealReplacementAction(formData: FormData) {
     valueEstimate: valueStr ? Number(valueStr) : null,
     actor: user,
     picId: shift?.pic_user_id ?? null,
+    idempotencyKey: fd(formData, "idempotencyKey") || undefined,
+  });
+  refresh();
+  return { ok: true };
+}
+
+export async function quickAddCateringAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const dueDate = fd(formData, "dueDate") || storeToday(user.storeId);
+  const numberOfPeopleRaw = fd(formData, "numberOfPeople");
+  cateringService.createCateringOrder({
+    storeId: user.storeId,
+    dueDate,
+    pickupTime: fd(formData, "pickupTime") || null,
+    customerName: fd(formData, "customerName") || null,
+    numberOfPeople: numberOfPeopleRaw ? Number(numberOfPeopleRaw) : null,
+    channel: (fd(formData, "channel") || "PHONE") as CateringChannel,
+    notes: fd(formData, "notes") || null,
+    actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });
   refresh();

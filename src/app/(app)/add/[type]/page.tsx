@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { isGM } from "@/lib/permissions";
 import { t } from "@/lib/i18n";
+import { storeToday } from "@/lib/storeTime";
 import PageHeader from "@/components/PageHeader";
 import TaskForm from "@/components/forms/TaskForm";
 import CallInForm from "@/components/forms/CallInForm";
@@ -13,6 +14,7 @@ import BorrowedItemForm from "@/components/forms/BorrowedItemForm";
 import IssueForm from "@/components/forms/IssueForm";
 import AcknowledgementForm from "@/components/forms/AcknowledgementForm";
 import NoteForm from "@/components/forms/NoteForm";
+import CateringForm from "@/components/forms/CateringForm";
 
 const TITLE_KEYS: Record<string, string> = {
   task: "add_task",
@@ -24,6 +26,7 @@ const TITLE_KEYS: Record<string, string> = {
   issue: "add_issue",
   acknowledgement: "add_acknowledgement",
   note: "add_note",
+  catering: "add_catering",
 };
 
 // Types reached from their own More page (rather than the /add grid) fall
@@ -33,6 +36,7 @@ const BACK_HREF: Record<string, string> = {
   "meal-replacement": "/more/meal-replacements",
   issue: "/more/work-orders",
   acknowledgement: "/more/acknowledgements",
+  catering: "/more/catering",
 };
 
 export default async function AddTypePage({ params }: PageProps<"/add/[type]">) {
@@ -64,6 +68,7 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
       {type === "issue" && <IssueForm lang={user.language} />}
       {type === "acknowledgement" && <AcknowledgementForm lang={user.language} />}
       {type === "note" && <NoteForm lang={user.language} />}
+      {type === "catering" && <CateringForm lang={user.language} defaultDueDate={storeToday(user.storeId)} />}
     </div>
   );
 }

@@ -99,6 +99,34 @@ export function searchAll(storeId: string, query: string, filters: SearchFilters
     results.push(...cleaning.filter((c) => matchesStatus(c.status)).map((c) => ({ kind: "cleaning", id: c.id, title: c.title, status: c.status, date: c.created_at })));
   }
 
+  if (wantKind("catering")) {
+    const catering = db
+      .prepare(
+        `SELECT id, customer_name, number_of_people, channel, status, created_at FROM catering_orders
+         WHERE store_id = ? AND (lower(coalesce(customer_name, '')) LIKE ? OR lower(channel) LIKE ?)
+         AND created_at >= ? AND created_at < ? ORDER BY created_at DESC LIMIT 50`
+      )
+      .all(storeId, q, q, dateFrom, dateTo) as Array<{
+      id: string;
+      customer_name: string | null;
+      number_of_people: number | null;
+      channel: string;
+      status: string;
+      created_at: string;
+    }>;
+    results.push(
+      ...catering
+        .filter((c) => matchesStatus(c.status))
+        .map((c) => ({
+          kind: "catering",
+          id: c.id,
+          title: `Catering: ${c.customer_name ? `${c.customer_name} · ` : ""}${c.number_of_people ?? "?"} pax`,
+          status: c.status,
+          date: c.created_at,
+        }))
+    );
+  }
+
   if (wantKind("trainee")) {
     const trainees = db
       .prepare(`SELECT id, name, status, started_at FROM trainees WHERE store_id = ? AND lower(name) LIKE ? AND started_at >= ? AND started_at < ? ORDER BY started_at DESC LIMIT 50`)

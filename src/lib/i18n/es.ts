@@ -81,6 +81,7 @@ const es: Record<DictKeys, string> = {
   add_acknowledgement: "Confirmación",
   add_note: "Nota",
   add_schedule_request: "Solicitud de Asociado",
+  add_catering: "Pedido de Catering",
 
   field_title: "Título",
   field_owner: "Responsable",
@@ -164,6 +165,18 @@ const es: Record<DictKeys, string> = {
   more_weekly_summary: "Resumen Semanal",
   more_training: "Capacitación de Nuevos Asociados",
   more_inventory: "Inventario y Mantenimiento",
+  more_catering: "Catering",
+
+  catering_title: "Catering",
+  catering_due_today: "Catering Que Vence Hoy",
+  catering_due_today_sub: "Pedidos de catering de hoy, incluyendo los completados",
+  catering_upcoming: "Próximos",
+  catering_add: "+ Agregar pedido de catering",
+  field_due_date: "Fecha de Entrega",
+  field_pickup_time: "Hora de Recogida",
+  field_number_of_people: "Número de Personas",
+  field_channel: "Canal",
+  field_customer_name: "Nombre del Cliente",
 
   work_orders_title: "Órdenes de Trabajo",
   work_orders_needs_followup: "Necesita Seguimiento",

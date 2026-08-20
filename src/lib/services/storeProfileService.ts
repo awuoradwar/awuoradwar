@@ -19,6 +19,7 @@ export interface StorePnlPeriod {
   restaurant_contribution: number | null;
   restaurant_contribution_pct: number | null;
   pnl_file_ref: string | null;
+  released_at: string | null;
   notes: string | null;
   created_by: string | null;
   created_by_name: string | null;
@@ -70,6 +71,7 @@ export function createPeriod(params: {
   restaurantContribution: number | null;
   restaurantContributionPct: number | null;
   pnlFileRef: string | null;
+  releasedAt: string | null;
   notes: string | null;
   actor: SessionUser;
 }): string {
@@ -80,8 +82,8 @@ export function createPeriod(params: {
       id, store_id, period_label, net_sales_actual, net_sales_prior_year,
       sss_pct, sst_pct, check_average, cogs_pct, labor_pct,
       controllable_profit_actual, controllable_profit_pct, restaurant_contribution, restaurant_contribution_pct,
-      pnl_file_ref, notes, created_by, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      pnl_file_ref, released_at, notes, created_by, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -98,6 +100,7 @@ export function createPeriod(params: {
     params.restaurantContribution,
     params.restaurantContributionPct,
     params.pnlFileRef,
+    params.releasedAt,
     params.notes,
     params.actor.id,
     nowIso()
@@ -130,6 +133,7 @@ export function updatePeriod(params: {
   restaurantContribution: number | null;
   restaurantContributionPct: number | null;
   pnlFileRef?: string | null;
+  releasedAt: string | null;
   notes: string | null;
   actor: SessionUser;
 }) {
@@ -140,7 +144,7 @@ export function updatePeriod(params: {
       period_label = ?, net_sales_actual = ?, net_sales_prior_year = ?,
       sss_pct = ?, sst_pct = ?, check_average = ?, cogs_pct = ?, labor_pct = ?,
       controllable_profit_actual = ?, controllable_profit_pct = ?, restaurant_contribution = ?, restaurant_contribution_pct = ?,
-      notes = ?${setPnlFile ? ", pnl_file_ref = ?" : ""}
+      released_at = ?, notes = ?${setPnlFile ? ", pnl_file_ref = ?" : ""}
      WHERE id = ?`
   ).run(
     ...[
@@ -156,6 +160,7 @@ export function updatePeriod(params: {
       params.controllableProfitPct,
       params.restaurantContribution,
       params.restaurantContributionPct,
+      params.releasedAt,
       params.notes,
       ...(setPnlFile ? [params.pnlFileRef] : []),
       params.id,

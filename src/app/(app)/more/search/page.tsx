@@ -17,6 +17,7 @@ const KIND_ICON: Record<string, string> = {
   borrowed_item: "📦",
   cleaning: "🧹",
   trainee: "🎓",
+  catering: "🍱",
 };
 
 const KIND_HREF: Record<string, string> = {
@@ -25,6 +26,7 @@ const KIND_HREF: Record<string, string> = {
   guest_recovery: "/guest-recovery",
   borrowed_item: "/borrowed-item",
   trainee: "/more/training",
+  catering: "/catering",
 };
 
 const KIND_LABEL_EN: Record<string, string> = {
@@ -34,6 +36,7 @@ const KIND_LABEL_EN: Record<string, string> = {
   borrowed_item: "Borrowed Item",
   cleaning: "Cleaning",
   trainee: "Training",
+  catering: "Catering",
 };
 const KIND_LABEL_ES: Record<string, string> = {
   task: "Tarea",
@@ -42,6 +45,7 @@ const KIND_LABEL_ES: Record<string, string> = {
   borrowed_item: "Artículo Prestado",
   cleaning: "Limpieza",
   trainee: "Capacitación",
+  catering: "Catering",
 };
 
 const STATUS_OPTIONS = ["OPEN", "IN_PROGRESS", "WAITING", "COMPLETE", "COMPLETED", "VERIFIED", "PENDING", "APPROVED", "RESOLVED", "SETTLED", "CANCELLED"];

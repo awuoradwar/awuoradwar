@@ -330,6 +330,24 @@ CREATE TABLE IF NOT EXISTS borrowed_items (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS catering_orders (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  due_date TEXT NOT NULL, -- YYYY-MM-DD, the day the order is picked up/delivered; drives "due today" pinning
+  pickup_time TEXT, -- HH:MM local, optional
+  due_at TEXT, -- due_date+pickup_time combined into a store-timezone-correct UTC ISO, when a time was given
+  customer_name TEXT,
+  number_of_people INTEGER,
+  channel TEXT NOT NULL DEFAULT 'PHONE', -- OLO | EZCATERING | IN_STORE | PHONE
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'OPEN', -- OPEN | COMPLETED | CANCELLED
+  owner_id TEXT REFERENCES users(id),
+  completed_by TEXT REFERENCES users(id),
+  completed_at TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS issues (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
@@ -459,6 +477,13 @@ CREATE TABLE IF NOT EXISTS store_pnl_periods (
   gem_accuracy_score REAL, -- GEM: Accuracy of Order, this period's score
   gem_accuracy_goal REAL, -- GEM: Accuracy of Order, company goal
   pnl_file_ref TEXT, -- stored filename under data/private-uploads/store-pnl
+  -- The actual date corporate released this period's P&L (every first
+  -- Friday of a new period) -- distinct from created_at, which is just
+  -- whenever a manager got around to typing the numbers into this app and
+  -- can lag the real release by days. "Released this week" on Weekly
+  -- Summary reads this field when set, falling back to created_at for
+  -- periods entered before this existed.
+  released_at TEXT,
   notes TEXT,
   created_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL

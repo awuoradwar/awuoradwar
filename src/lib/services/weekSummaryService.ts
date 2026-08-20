@@ -19,6 +19,7 @@ export interface WeekSummary {
     net_sales_actual: number | null;
     labor_pct: number | null;
     created_at: string;
+    released_at: string | null;
     releasedThisWeek: boolean;
   } | null;
 }
@@ -81,12 +82,23 @@ export function getWeekSummary(storeId: string, weekStart: string, weekEnd: stri
 
   const periodRow = db
     .prepare(
-      `SELECT id, period_label, net_sales_actual, labor_pct, created_at
+      `SELECT id, period_label, net_sales_actual, labor_pct, created_at, released_at
        FROM store_pnl_periods WHERE store_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT 1`
     )
     .get(storeId, dayEnd) as (Omit<NonNullable<WeekSummary["period"]>, "releasedThisWeek">) | undefined;
   const period: WeekSummary["period"] = periodRow
-    ? { ...periodRow, releasedThisWeek: periodRow.created_at >= weekStartTs }
+    ? {
+        ...periodRow,
+        // released_at is the real release date (first Friday of the
+        // period) when a manager has set it -- a plain calendar date,
+        // compared directly against the week's own YYYY-MM-DD bounds.
+        // Falls back to created_at (when the numbers were typed into the
+        // app, which can lag the real release by days) for periods logged
+        // before this field existed.
+        releasedThisWeek: periodRow.released_at
+          ? periodRow.released_at >= weekStart && periodRow.released_at <= weekEnd
+          : periodRow.created_at >= weekStartTs,
+      }
     : null;
 
   return {

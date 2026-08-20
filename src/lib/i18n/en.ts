@@ -79,6 +79,7 @@ const en = {
   add_acknowledgement: "Acknowledgement",
   add_note: "Note",
   add_schedule_request: "Associate Request",
+  add_catering: "Catering Order",
 
   field_title: "Title",
   field_owner: "Owner",
@@ -162,6 +163,18 @@ const en = {
   more_weekly_summary: "Weekly Summary",
   more_training: "New Associate Training",
   more_inventory: "Inventory & Maintenance",
+  more_catering: "Catering",
+
+  catering_title: "Catering",
+  catering_due_today: "Catering Due Today",
+  catering_due_today_sub: "Today's catering orders, including completed ones",
+  catering_upcoming: "Upcoming",
+  catering_add: "+ Add catering order",
+  field_due_date: "Due Date",
+  field_pickup_time: "Pickup Time",
+  field_number_of_people: "Number of People",
+  field_channel: "Channel",
+  field_customer_name: "Customer Name",
 
   work_orders_title: "Work Orders",
   work_orders_needs_followup: "Needs Follow-up",

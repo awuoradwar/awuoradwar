@@ -58,6 +58,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "stores", "gem_updated_by", "gem_updated_by TEXT REFERENCES users(id)");
   ensureColumn(db, "stores", "gem_updated_at", "gem_updated_at TEXT");
   ensureColumn(db, "store_pnl_periods", "restaurant_contribution_pct", "restaurant_contribution_pct REAL");
+  ensureColumn(db, "store_pnl_periods", "released_at", "released_at TEXT");
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   return db;

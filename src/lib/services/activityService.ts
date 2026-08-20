@@ -66,7 +66,16 @@ export function getRecentActivity(storeId: string, sinceIso: string, limit = 50)
        LEFT JOIN users u ON u.id = ae.actor_id
        WHERE ae.entity_type = 'borrowed_item' AND bi.store_id = ? AND ae.created_at > ?
 
+       UNION ALL
+
+       SELECT ae.id, 'catering_order', ae.action, ae.created_at, u.name,
+         'Catering: ' || coalesce(co.customer_name || ' · ', '') || coalesce(co.number_of_people, '?') || ' people'
+       FROM audit_events ae
+       JOIN catering_orders co ON co.id = ae.entity_id
+       LEFT JOIN users u ON u.id = ae.actor_id
+       WHERE ae.entity_type = 'catering_order' AND co.store_id = ? AND ae.created_at > ?
+
        ORDER BY created_at DESC LIMIT ?`
     )
-    .all(storeId, sinceIso, storeId, sinceIso, storeId, sinceIso, storeId, sinceIso, storeId, sinceIso, limit) as ActivityItem[];
+    .all(storeId, sinceIso, storeId, sinceIso, storeId, sinceIso, storeId, sinceIso, storeId, sinceIso, storeId, sinceIso, limit) as ActivityItem[];
 }

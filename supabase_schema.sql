@@ -329,6 +329,24 @@ create table borrowed_items (
   created_at timestamptz not null default now()
 );
 
+create table catering_orders (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  due_date date not null,
+  pickup_time text,
+  due_at timestamptz,
+  customer_name text,
+  number_of_people integer,
+  channel text not null default 'PHONE' check (channel in ('OLO','EZCATERING','IN_STORE','PHONE')),
+  notes text,
+  status text not null default 'OPEN' check (status in ('OPEN','COMPLETED','CANCELLED')),
+  owner_id uuid references users(id),
+  completed_by uuid references users(id),
+  completed_at timestamptz,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
 create table issues (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
@@ -459,6 +477,7 @@ create table store_pnl_periods (
   gem_accuracy_score numeric, -- GEM: Accuracy of Order, this period's score
   gem_accuracy_goal numeric, -- GEM: Accuracy of Order, company goal
   storage_path text, -- Supabase Storage object path (private bucket) for the uploaded P&L document
+  released_at date, -- actual corporate release date (first Friday of the period), distinct from created_at
   notes text,
   created_by uuid references users(id),
   created_at timestamptz not null default now()

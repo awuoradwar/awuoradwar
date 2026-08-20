@@ -13,7 +13,8 @@ export type QueueKind =
   | "late"
   | "guestRecovery"
   | "borrowedItem"
-  | "issue";
+  | "issue"
+  | "catering";
 
 export interface QueuedItem {
   id: string; // idempotency key, also the queue entry id

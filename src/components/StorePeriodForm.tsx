@@ -49,6 +49,7 @@ export interface StorePeriodDefaults {
   controllable_profit_pct: number | null;
   restaurant_contribution: number | null;
   restaurant_contribution_pct: number | null;
+  released_at: string | null;
   notes: string | null;
 }
 
@@ -109,6 +110,15 @@ export default function StorePeriodForm({ lang, period, onDone }: { lang: Langua
           </Field>
         ))}
       </div>
+
+      <Field label={lang === "es" ? "Fecha de lanzamiento" : "Release date"}>
+        <input name="releasedAt" type="date" defaultValue={period?.released_at ?? ""} className={inputClass} />
+        <p className="mt-1 text-xs text-muted">
+          {lang === "es"
+            ? "La fecha real en que corporativo publicó este período (normalmente el primer viernes). Se usa para el aviso de 'Publicado esta semana'."
+            : "The actual date corporate released this period (usually the first Friday). Drives the \"Released this week\" badge."}
+        </p>
+      </Field>
 
       <Field label={t(lang, "store_profile_pnl_file")}>
         <FileField name="pnlFile" accept="application/pdf,image/*" lang={lang} />

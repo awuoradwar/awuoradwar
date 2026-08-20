@@ -38,6 +38,7 @@ function periodFields(formData: FormData) {
     controllableProfitPct: num(formData, "controllableProfitPct"),
     restaurantContribution: num(formData, "restaurantContribution"),
     restaurantContributionPct: num(formData, "restaurantContributionPct"),
+    releasedAt: String(formData.get("releasedAt") || "").trim() || null,
     notes: String(formData.get("notes") || "").trim() || null,
   };
 }

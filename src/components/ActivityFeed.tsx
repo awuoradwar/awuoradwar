@@ -9,6 +9,7 @@ const ENTITY_ICON: Record<string, string> = {
   guest_recovery: "🍽️",
   issue: "⚠️",
   borrowed_item: "📦",
+  catering_order: "🍱",
 };
 
 const ACTION_LABEL: Record<string, Record<Language, string>> = {

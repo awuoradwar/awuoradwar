@@ -9,6 +9,7 @@ import {
   quickAddMealReplacementAction,
   quickAddBorrowedItemAction,
   quickAddIssueAction,
+  quickAddCateringAction,
 } from "@/app/actions/quickAddActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
@@ -20,6 +21,7 @@ const DISPATCH: Record<QueuedItem["kind"], (fd: FormData) => Promise<unknown>> =
   guestRecovery: quickAddMealReplacementAction,
   borrowedItem: quickAddBorrowedItemAction,
   issue: quickAddIssueAction,
+  catering: quickAddCateringAction,
 };
 
 export default function OfflineQueueBanner({ lang }: { lang: Language }) {
