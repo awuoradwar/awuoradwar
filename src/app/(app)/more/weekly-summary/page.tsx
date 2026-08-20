@@ -140,9 +140,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
       </section>
 
       <section>
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
-          {es ? "Negocio (P&L / GEM)" : "Business (P&L / GEM)"}
-        </h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{es ? "Negocio (P&L)" : "Business (P&L)"}</h2>
         {!summary.period ? (
           <div className="card p-4 text-center text-sm text-muted">
             {es ? "Aún no se ha registrado ningún período de P&L." : "No P&L period has been logged yet."}
@@ -162,30 +160,8 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
                 {es ? "Ventas netas" : "Net sales"}: {fmtMoney(summary.period.net_sales_actual)} · {es ? "Mano de obra" : "Labor"}: {fmtPct(summary.period.labor_pct)}
               </p>
             </div>
-            {(summary.period.gem_taste_score !== null || summary.period.gem_accuracy_score !== null) && (
-              <div className="grid grid-cols-2 gap-3 px-3 py-3">
-                {summary.period.gem_taste_score !== null && (
-                  <div>
-                    <p className="text-lg font-bold">{summary.period.gem_taste_score.toFixed(1)}</p>
-                    <p className="text-xs text-muted">{es ? "Sabor de Comida" : "Taste of Food"}</p>
-                    {summary.period.gem_taste_goal !== null && (
-                      <p className="text-xs text-muted">{es ? "Meta" : "Goal"} {summary.period.gem_taste_goal.toFixed(1)}</p>
-                    )}
-                  </div>
-                )}
-                {summary.period.gem_accuracy_score !== null && (
-                  <div>
-                    <p className="text-lg font-bold">{summary.period.gem_accuracy_score.toFixed(1)}</p>
-                    <p className="text-xs text-muted">{es ? "Exactitud del Pedido" : "Accuracy of Order"}</p>
-                    {summary.period.gem_accuracy_goal !== null && (
-                      <p className="text-xs text-muted">{es ? "Meta" : "Goal"} {summary.period.gem_accuracy_goal.toFixed(1)}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
             <Link href="/more/store-profile" className="block px-3 py-2 text-xs font-medium text-accent">
-              {es ? "Ver Perfil de Tienda →" : "View Store Profile →"}
+              {es ? "Ver Perfil de Tienda (P&L y GEM) →" : "View Store Profile (P&L and GEM) →"}
             </Link>
           </div>
         )}

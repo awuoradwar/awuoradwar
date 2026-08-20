@@ -18,10 +18,6 @@ export interface StorePnlPeriod {
   controllable_profit_actual: number | null;
   controllable_profit_pct: number | null;
   restaurant_contribution: number | null;
-  gem_taste_score: number | null;
-  gem_taste_goal: number | null;
-  gem_accuracy_score: number | null;
-  gem_accuracy_goal: number | null;
   pnl_file_ref: string | null;
   notes: string | null;
   created_by: string | null;
@@ -73,10 +69,6 @@ export function createPeriod(params: {
   controllableProfitActual: number | null;
   controllableProfitPct: number | null;
   restaurantContribution: number | null;
-  gemTasteScore: number | null;
-  gemTasteGoal: number | null;
-  gemAccuracyScore: number | null;
-  gemAccuracyGoal: number | null;
   pnlFileRef: string | null;
   notes: string | null;
   actor: SessionUser;
@@ -88,9 +80,8 @@ export function createPeriod(params: {
       id, store_id, period_label, net_sales_actual, net_sales_plan, net_sales_prior_year,
       sss_pct, sst_pct, check_average, cogs_pct, labor_pct,
       controllable_profit_actual, controllable_profit_pct, restaurant_contribution,
-      gem_taste_score, gem_taste_goal, gem_accuracy_score, gem_accuracy_goal,
       pnl_file_ref, notes, created_by, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -106,10 +97,6 @@ export function createPeriod(params: {
     params.controllableProfitActual,
     params.controllableProfitPct,
     params.restaurantContribution,
-    params.gemTasteScore,
-    params.gemTasteGoal,
-    params.gemAccuracyScore,
-    params.gemAccuracyGoal,
     params.pnlFileRef,
     params.notes,
     params.actor.id,
@@ -142,10 +129,6 @@ export function updatePeriod(params: {
   controllableProfitActual: number | null;
   controllableProfitPct: number | null;
   restaurantContribution: number | null;
-  gemTasteScore: number | null;
-  gemTasteGoal: number | null;
-  gemAccuracyScore: number | null;
-  gemAccuracyGoal: number | null;
   pnlFileRef?: string | null;
   notes: string | null;
   actor: SessionUser;
@@ -157,7 +140,6 @@ export function updatePeriod(params: {
       period_label = ?, net_sales_actual = ?, net_sales_plan = ?, net_sales_prior_year = ?,
       sss_pct = ?, sst_pct = ?, check_average = ?, cogs_pct = ?, labor_pct = ?,
       controllable_profit_actual = ?, controllable_profit_pct = ?, restaurant_contribution = ?,
-      gem_taste_score = ?, gem_taste_goal = ?, gem_accuracy_score = ?, gem_accuracy_goal = ?,
       notes = ?${setPnlFile ? ", pnl_file_ref = ?" : ""}
      WHERE id = ?`
   ).run(
@@ -174,10 +156,6 @@ export function updatePeriod(params: {
       params.controllableProfitActual,
       params.controllableProfitPct,
       params.restaurantContribution,
-      params.gemTasteScore,
-      params.gemTasteGoal,
-      params.gemAccuracyScore,
-      params.gemAccuracyGoal,
       params.notes,
       ...(setPnlFile ? [params.pnlFileRef] : []),
       params.id,
@@ -189,5 +167,53 @@ export function updatePeriod(params: {
     actor: params.actor,
     action: "EDITED",
     newValue: { period_label: params.periodLabel, net_sales_actual: params.netSalesActual },
+  });
+}
+
+export interface StoreGemScore {
+  gem_taste_score: number | null;
+  gem_taste_goal: number | null;
+  gem_accuracy_score: number | null;
+  gem_accuracy_goal: number | null;
+  gem_updated_by_name: string | null;
+  gem_updated_at: string | null;
+}
+
+/** GEM lives on the store itself, not on any one P&L period -- it's a
+ * live figure that can move day to day, unlike the period numbers (a
+ * lagging report released once per period). Just the current standing;
+ * no history is kept. */
+export function getGemScore(storeId: string): StoreGemScore | undefined {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT s.gem_taste_score, s.gem_taste_goal, s.gem_accuracy_score, s.gem_accuracy_goal, s.gem_updated_at, u.name as gem_updated_by_name
+       FROM stores s LEFT JOIN users u ON u.id = s.gem_updated_by
+       WHERE s.id = ?`
+    )
+    .get(storeId) as StoreGemScore | undefined;
+}
+
+export function updateGemScore(
+  storeId: string,
+  params: { gemTasteScore: number | null; gemTasteGoal: number | null; gemAccuracyScore: number | null; gemAccuracyGoal: number | null },
+  actor: SessionUser
+) {
+  const db = getDb();
+  const ts = nowIso();
+  db.prepare(
+    `UPDATE stores SET gem_taste_score = ?, gem_taste_goal = ?, gem_accuracy_score = ?, gem_accuracy_goal = ?, gem_updated_by = ?, gem_updated_at = ? WHERE id = ?`
+  ).run(params.gemTasteScore, params.gemTasteGoal, params.gemAccuracyScore, params.gemAccuracyGoal, actor.id, ts, storeId);
+  writeAudit({
+    entityType: "store",
+    entityId: storeId,
+    actor,
+    action: "EDITED",
+    newValue: {
+      gem_taste_score: params.gemTasteScore,
+      gem_taste_goal: params.gemTasteGoal,
+      gem_accuracy_score: params.gemAccuracyScore,
+      gem_accuracy_goal: params.gemAccuracyGoal,
+    },
   });
 }

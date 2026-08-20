@@ -29,6 +29,15 @@ create table stores (
   name text not null,
   timezone text not null default 'America/Chicago',
   language_default text not null default 'en',
+  -- Current GEM standing -- a live figure that can move day to day, unlike
+  -- the P&L period numbers (a lagging report released once per period), so
+  -- it's a single current value on the store itself, not tied to any period.
+  gem_taste_score numeric,
+  gem_taste_goal numeric,
+  gem_accuracy_score numeric,
+  gem_accuracy_goal numeric,
+  gem_updated_by uuid, -- fk to users(id) added below, once that table exists
+  gem_updated_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -43,6 +52,8 @@ create table users (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table stores add constraint stores_gem_updated_by_fkey foreign key (gem_updated_by) references users(id);
 
 create table store_memberships (
   id uuid primary key default gen_random_uuid(),

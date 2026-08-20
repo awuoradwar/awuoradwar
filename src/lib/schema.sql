@@ -7,6 +7,17 @@ CREATE TABLE IF NOT EXISTS stores (
   name TEXT NOT NULL,
   timezone TEXT NOT NULL DEFAULT 'America/Chicago',
   language_default TEXT NOT NULL DEFAULT 'en',
+  -- Current GEM standing -- unlike the P&L period numbers below (a lagging
+  -- report, released once per multi-week period), GEM is a live figure that
+  -- can move day to day, so it's a single current value on the store itself
+  -- rather than a field on any one period. No history is kept, only what's
+  -- true right now.
+  gem_taste_score REAL,
+  gem_taste_goal REAL,
+  gem_accuracy_score REAL,
+  gem_accuracy_goal REAL,
+  gem_updated_by TEXT REFERENCES users(id),
+  gem_updated_at TEXT,
   created_at TEXT NOT NULL
 );
 

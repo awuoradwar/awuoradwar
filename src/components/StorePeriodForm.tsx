@@ -49,10 +49,6 @@ export interface StorePeriodDefaults {
   controllable_profit_actual: number | null;
   controllable_profit_pct: number | null;
   restaurant_contribution: number | null;
-  gem_taste_score: number | null;
-  gem_taste_goal: number | null;
-  gem_accuracy_score: number | null;
-  gem_accuracy_goal: number | null;
   notes: string | null;
 }
 
@@ -112,24 +108,6 @@ export default function StorePeriodForm({ lang, period, onDone }: { lang: Langua
             <input name={field} type="number" step="any" inputMode="decimal" defaultValue={period?.[NUMERIC_DB_KEY[field]] ?? undefined} className={inputClass} />
           </Field>
         ))}
-      </div>
-
-      <div>
-        <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-accent">{t(lang, "store_profile_gem_score")}</p>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={lang === "es" ? "Sabor de Comida — Puntaje" : "Taste of Food — Score"}>
-            <input name="gemTasteScore" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_taste_score ?? undefined} className={inputClass} />
-          </Field>
-          <Field label={lang === "es" ? "Sabor de Comida — Meta" : "Taste of Food — Goal"}>
-            <input name="gemTasteGoal" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_taste_goal ?? undefined} className={inputClass} />
-          </Field>
-          <Field label={lang === "es" ? "Exactitud del Pedido — Puntaje" : "Accuracy of Order — Score"}>
-            <input name="gemAccuracyScore" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_accuracy_score ?? undefined} className={inputClass} />
-          </Field>
-          <Field label={lang === "es" ? "Exactitud del Pedido — Meta" : "Accuracy of Order — Goal"}>
-            <input name="gemAccuracyGoal" type="number" step="any" inputMode="decimal" defaultValue={period?.gem_accuracy_goal ?? undefined} className={inputClass} />
-          </Field>
-        </div>
       </div>
 
       <Field label={t(lang, "store_profile_pnl_file")}>

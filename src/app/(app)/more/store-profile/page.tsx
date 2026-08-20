@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
-import { getLatestPeriod, getPeriodHistory } from "@/lib/services/storeProfileService";
+import { getLatestPeriod, getPeriodHistory, getGemScore } from "@/lib/services/storeProfileService";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import StorePeriodForm from "@/components/StorePeriodForm";
 import StorePeriodEditToggle from "@/components/StorePeriodEditToggle";
+import GemScoreCard from "@/components/GemScoreCard";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -17,18 +19,16 @@ function fmtPct(n: number | null): string {
   return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
 }
 
-function fmtNum(n: number | null, digits = 2): string {
-  if (n === null) return "—";
-  return n.toFixed(digits);
-}
-
 export default async function StoreProfilePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
   const latest = getLatestPeriod(user.storeId);
   const history = getPeriodHistory(user.storeId, 12);
+  const gem = getGemScore(user.storeId);
   const gm = isGM(user);
+  const es = user.language === "es";
+  const locale = es ? "es-MX" : "en-US";
 
   const kpis = latest
     ? [
@@ -45,18 +45,19 @@ export default async function StoreProfilePage() {
       ]
     : [];
 
-  const es = user.language === "es";
-  const gemMetrics = latest
-    ? [
-        { label: es ? "Sabor de Comida" : "Taste of Food", score: latest.gem_taste_score, goal: latest.gem_taste_goal },
-        { label: es ? "Exactitud del Pedido" : "Accuracy of Order", score: latest.gem_accuracy_score, goal: latest.gem_accuracy_goal },
-      ].filter((m) => m.score !== null)
-    : [];
+  const gemLastUpdated =
+    gem?.gem_updated_at != null
+      ? `${t(user.language, "field_last_updated_by")}: ${gem.gem_updated_by_name || "—"} · ${formatStoreDateTime(user.storeId, gem.gem_updated_at, locale)}`
+      : null;
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/more" lang={user.language} title={t(user.language, "store_profile_title")} />
       <p className="-mt-3 mb-4 text-xs text-muted">{t(user.language, "store_profile_gm_only_note")}</p>
+
+      <section className="mb-6">
+        <GemScoreCard lang={user.language} gem={gem} canEdit={gm} lastUpdatedLabel={gemLastUpdated} />
+      </section>
 
       <section className="mb-6">
         {!latest && (
@@ -85,28 +86,6 @@ export default async function StoreProfilePage() {
                   </div>
                 ))}
               </div>
-              {gemMetrics.length > 0 && (
-                <div className="mt-3">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_gem_score")}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {gemMetrics.map((m) => {
-                      const overGoal = m.score !== null && m.goal !== null ? m.score - m.goal : null;
-                      return (
-                        <div key={m.label} className="card p-3">
-                          <p className="text-lg font-bold">{fmtNum(m.score, 1)}</p>
-                          <p className="text-xs text-muted">{m.label}</p>
-                          {m.goal !== null && (
-                            <p className={`mt-1 text-xs font-semibold ${overGoal !== null && overGoal >= 0 ? "text-ok" : "text-critical"}`}>
-                              {es ? "Meta" : "Goal"} {fmtNum(m.goal, 1)}
-                              {overGoal !== null && ` · ${overGoal >= 0 ? "+" : ""}${overGoal.toFixed(1)}`}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
               {latest.pnl_file_ref && (
                 <a
                   href={`/api/store-pnl/${latest.id}`}

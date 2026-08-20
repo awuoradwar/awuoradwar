@@ -51,8 +51,42 @@ function createConnection(): Database.Database {
   ensureColumn(db, "borrowed_items", "picked_up_at", "picked_up_at TEXT");
   ensureColumn(db, "borrowed_items", "due_at", "due_at TEXT");
   ensureColumn(db, "attendance_events", "event_date", "event_date TEXT");
+  ensureColumn(db, "stores", "gem_taste_score", "gem_taste_score REAL");
+  ensureColumn(db, "stores", "gem_taste_goal", "gem_taste_goal REAL");
+  ensureColumn(db, "stores", "gem_accuracy_score", "gem_accuracy_score REAL");
+  ensureColumn(db, "stores", "gem_accuracy_goal", "gem_accuracy_goal REAL");
+  ensureColumn(db, "stores", "gem_updated_by", "gem_updated_by TEXT REFERENCES users(id)");
+  ensureColumn(db, "stores", "gem_updated_at", "gem_updated_at TEXT");
   migrateLegacyTrainingPositions(db);
+  backfillCurrentGemFromLatestPeriod(db);
   return db;
+}
+
+/** GEM used to live on the most recent P&L period row -- moved to a single
+ * current value on the store itself (see stores.gem_* above) since GEM
+ * updates far more often than a period does. One-time, idempotent: only
+ * fills a store's current GEM if it's still unset, from whichever of that
+ * store's periods most recently had a GEM score on it. Safe to run on every
+ * boot -- a no-op once every store has its own current value. */
+function backfillCurrentGemFromLatestPeriod(db: Database.Database) {
+  const stores = db.prepare(`SELECT id FROM stores WHERE gem_taste_score IS NULL AND gem_accuracy_score IS NULL`).all() as Array<{ id: string }>;
+  for (const store of stores) {
+    const period = db
+      .prepare(
+        `SELECT gem_taste_score, gem_taste_goal, gem_accuracy_score, gem_accuracy_goal FROM store_pnl_periods
+         WHERE store_id = ? AND (gem_taste_score IS NOT NULL OR gem_accuracy_score IS NOT NULL)
+         ORDER BY created_at DESC LIMIT 1`
+      )
+      .get(store.id) as { gem_taste_score: number | null; gem_taste_goal: number | null; gem_accuracy_score: number | null; gem_accuracy_goal: number | null } | undefined;
+    if (!period) continue;
+    db.prepare(`UPDATE stores SET gem_taste_score = ?, gem_taste_goal = ?, gem_accuracy_score = ?, gem_accuracy_goal = ? WHERE id = ?`).run(
+      period.gem_taste_score,
+      period.gem_taste_goal,
+      period.gem_accuracy_score,
+      period.gem_accuracy_goal,
+      store.id
+    );
+  }
 }
 
 /** Training positions started as FOH/BOH, then split into COUNTERHELP/COOK/

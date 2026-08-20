@@ -38,10 +38,6 @@ function periodFields(formData: FormData) {
     controllableProfitActual: num(formData, "controllableProfitActual"),
     controllableProfitPct: num(formData, "controllableProfitPct"),
     restaurantContribution: num(formData, "restaurantContribution"),
-    gemTasteScore: num(formData, "gemTasteScore"),
-    gemTasteGoal: num(formData, "gemTasteGoal"),
-    gemAccuracyScore: num(formData, "gemAccuracyScore"),
-    gemAccuracyGoal: num(formData, "gemAccuracyGoal"),
     notes: String(formData.get("notes") || "").trim() || null,
   };
 }
@@ -95,6 +91,25 @@ export async function updateStorePeriodAction(formData: FormData) {
     ...(pnlFileRef ? { pnlFileRef } : {}),
     actor: user,
   });
+
+  refresh();
+  return { ok: true };
+}
+
+export async function updateGemScoreAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };
+
+  storeProfileService.updateGemScore(
+    user.storeId,
+    {
+      gemTasteScore: num(formData, "gemTasteScore"),
+      gemTasteGoal: num(formData, "gemTasteGoal"),
+      gemAccuracyScore: num(formData, "gemAccuracyScore"),
+      gemAccuracyGoal: num(formData, "gemAccuracyGoal"),
+    },
+    user
+  );
 
   refresh();
   return { ok: true };

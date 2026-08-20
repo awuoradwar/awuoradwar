@@ -18,10 +18,6 @@ export interface WeekSummary {
     period_label: string;
     net_sales_actual: number | null;
     labor_pct: number | null;
-    gem_taste_score: number | null;
-    gem_taste_goal: number | null;
-    gem_accuracy_score: number | null;
-    gem_accuracy_goal: number | null;
     created_at: string;
     releasedThisWeek: boolean;
   } | null;
@@ -85,7 +81,7 @@ export function getWeekSummary(storeId: string, weekStart: string, weekEnd: stri
 
   const periodRow = db
     .prepare(
-      `SELECT id, period_label, net_sales_actual, labor_pct, gem_taste_score, gem_taste_goal, gem_accuracy_score, gem_accuracy_goal, created_at
+      `SELECT id, period_label, net_sales_actual, labor_pct, created_at
        FROM store_pnl_periods WHERE store_id = ? AND created_at < ? ORDER BY created_at DESC LIMIT 1`
     )
     .get(storeId, dayEnd) as (Omit<NonNullable<WeekSummary["period"]>, "releasedThisWeek">) | undefined;
