@@ -14,7 +14,17 @@ function fmtMoney(n: number | null): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+// Plain ratio (% of sales, like the P&L itself shows COGS/Labor/CP/RC) --
+// never signed, since these aren't a comparison against anything. Negative
+// still reads clearly since toFixed already carries its own minus sign.
 function fmtPct(n: number | null): string {
+  if (n === null) return "—";
+  return `${n.toFixed(1)}%`;
+}
+
+// A true period-over-period comparison (SSS, SST) -- signed so "up" vs
+// "down" is unambiguous, unlike a plain ratio.
+function fmtChangePct(n: number | null): string {
   if (n === null) return "—";
   return `${n > 0 ? "+" : ""}${n.toFixed(1)}%`;
 }
@@ -32,17 +42,33 @@ export default async function StoreProfilePage() {
 
   const kpis = latest
     ? [
-        { label: t(user.language, "store_profile_net_sales"), value: fmtMoney(latest.net_sales_actual) },
-        { label: t(user.language, "store_profile_net_sales_prior_year"), value: fmtMoney(latest.net_sales_prior_year) },
-        { label: t(user.language, "store_profile_sss"), value: fmtPct(latest.sss_pct) },
-        { label: t(user.language, "store_profile_sst"), value: fmtPct(latest.sst_pct) },
-        { label: t(user.language, "store_profile_check_average"), value: latest.check_average === null ? "—" : `$${latest.check_average.toFixed(2)}` },
-        { label: t(user.language, "store_profile_cogs_pct"), value: fmtPct(latest.cogs_pct) },
-        { label: t(user.language, "store_profile_labor_pct"), value: fmtPct(latest.labor_pct) },
-        { label: t(user.language, "store_profile_cp_actual"), value: fmtMoney(latest.controllable_profit_actual) },
-        { label: t(user.language, "store_profile_cp_pct"), value: fmtPct(latest.controllable_profit_pct) },
-        { label: t(user.language, "store_profile_restaurant_contribution"), value: fmtMoney(latest.restaurant_contribution) },
-        { label: t(user.language, "store_profile_restaurant_contribution_pct"), value: fmtPct(latest.restaurant_contribution_pct) },
+        { label: t(user.language, "store_profile_net_sales"), value: fmtMoney(latest.net_sales_actual), negative: (latest.net_sales_actual ?? 0) < 0 },
+        {
+          label: t(user.language, "store_profile_net_sales_prior_year"),
+          value: fmtMoney(latest.net_sales_prior_year),
+          negative: (latest.net_sales_prior_year ?? 0) < 0,
+        },
+        { label: t(user.language, "store_profile_sss"), value: fmtChangePct(latest.sss_pct), negative: (latest.sss_pct ?? 0) < 0 },
+        { label: t(user.language, "store_profile_sst"), value: fmtChangePct(latest.sst_pct), negative: (latest.sst_pct ?? 0) < 0 },
+        { label: t(user.language, "store_profile_check_average"), value: latest.check_average === null ? "—" : `$${latest.check_average.toFixed(2)}`, negative: false },
+        { label: t(user.language, "store_profile_cogs_pct"), value: fmtPct(latest.cogs_pct), negative: false },
+        { label: t(user.language, "store_profile_labor_pct"), value: fmtPct(latest.labor_pct), negative: false },
+        {
+          label: t(user.language, "store_profile_cp_actual"),
+          value: fmtMoney(latest.controllable_profit_actual),
+          negative: (latest.controllable_profit_actual ?? 0) < 0,
+        },
+        { label: t(user.language, "store_profile_cp_pct"), value: fmtPct(latest.controllable_profit_pct), negative: (latest.controllable_profit_pct ?? 0) < 0 },
+        {
+          label: t(user.language, "store_profile_restaurant_contribution"),
+          value: fmtMoney(latest.restaurant_contribution),
+          negative: (latest.restaurant_contribution ?? 0) < 0,
+        },
+        {
+          label: t(user.language, "store_profile_restaurant_contribution_pct"),
+          value: fmtPct(latest.restaurant_contribution_pct),
+          negative: (latest.restaurant_contribution_pct ?? 0) < 0,
+        },
       ]
     : [];
 
@@ -82,7 +108,7 @@ export default async function StoreProfilePage() {
               <div className="grid grid-cols-2 gap-3">
                 {kpis.map((k) => (
                   <div key={k.label} className="card p-3">
-                    <p className="text-lg font-bold">{k.value}</p>
+                    <p className={`text-lg font-bold ${k.negative ? "text-critical" : ""}`}>{k.value}</p>
                     <p className="text-xs text-muted">{k.label}</p>
                   </div>
                 ))}
@@ -127,7 +153,7 @@ export default async function StoreProfilePage() {
                     <div className="min-w-0">
                       <p className="truncate font-medium">{p.period_label}</p>
                       <p className="text-xs text-muted">
-                        {fmtMoney(p.net_sales_actual)} · {t(user.language, "store_profile_sss")}: {fmtPct(p.sss_pct)}
+                        {fmtMoney(p.net_sales_actual)} · {t(user.language, "store_profile_sss")}: {fmtChangePct(p.sss_pct)}
                       </p>
                     </div>
                   }
