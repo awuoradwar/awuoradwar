@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { reassignTaskAction, cancelTaskAction } from "@/app/actions/taskActions";
 import { Language } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
+import { ManagerColor } from "@/lib/managerColor";
 
 export interface WeekTaskData {
   id: string;
@@ -24,16 +25,20 @@ export default function WeekTaskRow({
   task,
   managers,
   lang,
+  managerColors,
 }: {
   task: WeekTaskData;
   managers: Array<{ id: string; name: string }>;
   lang: Language;
+  managerColors?: Record<string, ManagerColor>;
 }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyCancelled, setOptimisticallyCancelled] = useState(false);
+  const [ownerId, setOwnerId] = useState(task.owner_id || "");
   const router = useRouter();
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
   const removable = task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyCancelled;
+  const ownerColor = ownerId ? managerColors?.[ownerId] : undefined;
 
   if (optimisticallyCancelled) return null;
 
@@ -55,17 +60,19 @@ export default function WeekTaskRow({
         </div>
         <div className="mt-1 flex items-center gap-2">
           <select
-            defaultValue={task.owner_id || ""}
+            value={ownerId}
             disabled={pending || !removable}
             onChange={(e) => {
               const newOwnerId = e.target.value;
+              setOwnerId(newOwnerId);
               if (!newOwnerId) return;
               startTransition(async () => {
                 await reassignTaskAction(task.id, newOwnerId);
                 router.refresh();
               });
             }}
-            className="rounded-lg border border-border bg-card px-1.5 py-0.5 text-xs text-muted outline-none transition-colors hover:border-muted/50 focus:border-accent disabled:opacity-50"
+            style={ownerColor ? { backgroundColor: ownerColor.bg, color: ownerColor.text, borderColor: "transparent" } : undefined}
+            className={`rounded-lg border px-1.5 py-0.5 text-xs outline-none transition-colors hover:border-muted/50 focus:border-accent disabled:opacity-50 ${ownerColor ? "font-medium" : "border-border bg-card text-muted"}`}
           >
             <option value="">{lang === "es" ? "Sin asignar" : "Unassigned"}</option>
             {managers.map((m) => (

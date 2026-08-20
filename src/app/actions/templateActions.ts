@@ -20,15 +20,17 @@ export async function createTemplateAction(formData: FormData) {
   const weekdaysRaw = formData.getAll("weekdays").map(String);
   const dueTime = String(formData.get("dueTime") || "") || undefined;
   const config = { weekdays: weekdaysRaw.map(Number), dueTime };
+  const titleEs = String(formData.get("titleEs") || "").trim() || null;
   const id = newId();
   db.prepare(
-    `INSERT INTO task_templates (id, store_id, title, description, area, category, recurrence_type, recurrence_config,
+    `INSERT INTO task_templates (id, store_id, title, title_es, description, area, category, recurrence_type, recurrence_config,
       default_owner_position, effort, verification_required, source, active, created_at)
-     VALUES (?, ?, ?, NULL, ?, ?, ?, ?, NULL, ?, 0, 'manual', 1, ?)`
+     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, ?, 0, 'manual', 1, ?)`
   ).run(
     id,
     user.storeId,
     title,
+    titleEs,
     String(formData.get("area") || "") || null,
     String(formData.get("category") || "ROUTINE"),
     recurrenceType,
@@ -37,6 +39,22 @@ export async function createTemplateAction(formData: FormData) {
     nowIso()
   );
   writeAudit({ entityType: "task_template", entityId: id, actor: user, action: "CREATED", newValue: { title } });
+  revalidatePath("/more/templates");
+  return { ok: true };
+}
+
+/** Fill in or fix a template's title after the fact -- title_es has always
+ * been on the schema, but nothing ever let a manager actually set it, so
+ * templates created before this stayed English-only for Spanish viewers. */
+export async function updateTemplateTitleAction(id: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
+  const db = getDb();
+  const title = String(formData.get("title") || "").trim();
+  if (!title) return { error: "Title is required." };
+  const titleEs = String(formData.get("titleEs") || "").trim() || null;
+  db.prepare(`UPDATE task_templates SET title = ?, title_es = ? WHERE id = ?`).run(title, titleEs, id);
+  writeAudit({ entityType: "task_template", entityId: id, actor: user, action: "EDITED", newValue: { title, title_es: titleEs } });
   revalidatePath("/more/templates");
   return { ok: true };
 }

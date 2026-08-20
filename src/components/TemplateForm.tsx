@@ -44,6 +44,9 @@ export default function TemplateForm({ lang }: { lang: Language }) {
       <Field label={lang === "es" ? "Título" : "Title"}>
         <input name="title" required className={inputClass} />
       </Field>
+      <Field label={lang === "es" ? "Título en español (opcional)" : "Spanish title (optional)"}>
+        <input name="titleEs" className={inputClass} />
+      </Field>
       <Field label={lang === "es" ? "Recurrencia" : "Recurrence"}>
         <select name="recurrenceType" defaultValue="WEEKLY" className={selectClass}>
           <option value="DAILY">{t(lang, "recurrence_daily")}</option>

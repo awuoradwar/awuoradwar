@@ -127,7 +127,7 @@ export default async function WeekPage() {
           ) : (
             <div className="divide-y divide-border border-t border-border">
               {dayTasks.map((t) => (
-                <WeekTaskRow key={t.id} task={t} managers={managers} lang={user.language} />
+                <WeekTaskRow key={t.id} task={t} managers={managers} lang={user.language} managerColors={Object.fromEntries(managerColors)} />
               ))}
             </div>
           )}

@@ -8,6 +8,8 @@ import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
 import { storeToday, storeLocalHour, formatStoreDateTime } from "@/lib/storeTime";
+import { getDb } from "@/lib/db";
+import { buildManagerColorMap } from "@/lib/managerColor";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
@@ -90,6 +92,13 @@ export default async function MyShiftPage() {
   const viewerShiftType = getShiftTypeForUserToday(user.storeId, user.id, today);
 
   const tasks = getMyShiftTasks(user.storeId, today);
+  // Same roster + palette as Week page's manager-capacity colors -- a
+  // manager's dot is the same color everywhere they show up as an owner.
+  const managerIds = (
+    getDb().prepare(`SELECT id FROM users WHERE active = 1 AND position != 'ASSOCIATE'`).all() as Array<{ id: string }>
+  ).map((m) => m.id);
+  const managerColors = Object.fromEntries(buildManagerColorMap(managerIds));
+
   const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
     buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today, viewerShiftType)].push(task);
@@ -206,7 +215,7 @@ export default async function MyShiftPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {buckets[bucket].map((task) => (
-                <TaskCard key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} />
+                <TaskCard key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} managerColors={managerColors} />
               ))}
             </div>
           )}
@@ -257,7 +266,7 @@ export default async function MyShiftPage() {
                   </p>
                   <div className="divide-y divide-border">
                     {dayTasks.map((task) => (
-                      <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} />
+                      <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} managerColors={managerColors} />
                     ))}
                   </div>
                 </div>

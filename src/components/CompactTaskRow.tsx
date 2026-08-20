@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { completeTaskAction } from "@/app/actions/taskActions";
 import { Language } from "@/lib/types";
 import { TaskCardData } from "./TaskCard";
+import OwnerBadge from "./OwnerBadge";
+import { ManagerColor } from "@/lib/managerColor";
 
 /** Slim single-line row for lower-priority, usually-collapsed sections
  * (This Week, Recurring) -- keeps those sections scannable without the
  * full TaskCard's padding and badges. */
-export default function CompactTaskRow({ task, lang }: { task: TaskCardData; lang: Language }) {
+export default function CompactTaskRow({ task, lang, managerColors }: { task: TaskCardData; lang: Language; managerColors?: Record<string, ManagerColor> }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
@@ -29,7 +31,11 @@ export default function CompactTaskRow({ task, lang }: { task: TaskCardData; lan
         <p className="truncate text-xs text-muted">
           {dueLabel && <span>⏰ {dueLabel} </span>}
           {task.area && <span>· {task.area} </span>}
-          {task.owner_name && <span>· {task.owner_name}</span>}
+          {task.owner_name && (
+            <span>
+              · <OwnerBadge name={task.owner_name} ownerId={task.owner_id} managerColors={managerColors} />
+            </span>
+          )}
         </p>
       </Link>
       {canComplete && (

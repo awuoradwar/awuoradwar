@@ -5,12 +5,14 @@ import { canDo } from "@/lib/permissions";
 import TemplateToggle from "@/components/TemplateToggle";
 import TemplateForm from "@/components/TemplateForm";
 import TemplateScheduleEditor from "@/components/TemplateScheduleEditor";
+import TemplateTitleEditor from "@/components/TemplateTitleEditor";
 import PageHeader from "@/components/PageHeader";
 import { Language } from "@/lib/types";
 
 interface TemplateRow {
   id: string;
   title: string;
+  title_es: string | null;
   category: string | null;
   recurrence_type: string;
   recurrence_config: string | null;
@@ -48,7 +50,7 @@ export default async function TemplatesPage() {
   if (!user) redirect("/login");
   const db = getDb();
   const templates = db
-    .prepare(`SELECT id, title, category, recurrence_type, recurrence_config, effort, active FROM task_templates WHERE store_id = ? ORDER BY category, title`)
+    .prepare(`SELECT id, title, title_es, category, recurrence_type, recurrence_config, effort, active FROM task_templates WHERE store_id = ? ORDER BY category, title`)
     .all(user.storeId) as TemplateRow[];
   const canManage = canDo(user, "templates.manage");
 
@@ -73,7 +75,7 @@ export default async function TemplatesPage() {
               <div key={tpl.id}>
                 <div className="flex items-center justify-between px-3 py-2 text-sm">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{tpl.title}</p>
+                    <p className="truncate font-medium">{user.language === "es" && tpl.title_es ? tpl.title_es : tpl.title}</p>
                     <p className="text-xs text-muted">
                       {scheduleSummary(tpl, user.language)} · {tpl.effort}
                     </p>
@@ -85,12 +87,15 @@ export default async function TemplatesPage() {
                   )}
                 </div>
                 {canManage && (
-                  <TemplateScheduleEditor
-                    id={tpl.id}
-                    recurrenceType={tpl.recurrence_type}
-                    config={tpl.recurrence_config ? JSON.parse(tpl.recurrence_config) : {}}
-                    lang={user.language}
-                  />
+                  <>
+                    <TemplateTitleEditor id={tpl.id} title={tpl.title} titleEs={tpl.title_es} lang={user.language} />
+                    <TemplateScheduleEditor
+                      id={tpl.id}
+                      recurrenceType={tpl.recurrence_type}
+                      config={tpl.recurrence_config ? JSON.parse(tpl.recurrence_config) : {}}
+                      lang={user.language}
+                    />
+                  </>
                 )}
               </div>
             ))}

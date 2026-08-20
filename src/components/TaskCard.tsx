@@ -7,12 +7,15 @@ import { completeTaskAction } from "@/app/actions/taskActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
+import OwnerBadge from "./OwnerBadge";
+import { ManagerColor } from "@/lib/managerColor";
 
 export interface TaskCardData {
   id: string;
   title: string;
   title_es?: string | null;
   area: string | null;
+  owner_id: string | null;
   owner_name: string | null;
   due_at: string | null;
   effort: string;
@@ -21,7 +24,7 @@ export interface TaskCardData {
   verification_required: number;
 }
 
-export default function TaskCard({ task, lang }: { task: TaskCardData; lang: Language }) {
+export default function TaskCard({ task, lang, managerColors }: { task: TaskCardData; lang: Language; managerColors?: Record<string, ManagerColor> }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
@@ -40,7 +43,11 @@ export default function TaskCard({ task, lang }: { task: TaskCardData; lang: Lan
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
           {dueLabel && <span>⏰ {dueLabel}</span>}
           {task.area && <span>· {task.area}</span>}
-          {task.owner_name && <span>· {task.owner_name}</span>}
+          {task.owner_name && (
+            <span>
+              · <OwnerBadge name={task.owner_name} ownerId={task.owner_id} managerColors={managerColors} />
+            </span>
+          )}
           <span className="rounded bg-muted/10 px-1.5 py-0.5">{t(lang, `effort_${task.effort.toLowerCase()}` as never)}</span>
           {task.blocked && (
             <span className="rounded bg-warning/10 px-1.5 py-0.5 text-warning">
