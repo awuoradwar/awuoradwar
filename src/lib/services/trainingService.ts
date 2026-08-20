@@ -1,6 +1,7 @@
 import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
+import { storeLocalIso } from "../storeTime";
 import { SessionUser } from "../types";
 
 export type TrainingPosition = "COUNTERHELP" | "COOK" | "KITCHENHELP";
@@ -97,6 +98,7 @@ export function getTraineeDetail(traineeId: string, storeId: string): TraineeDet
 export interface TrainingChecklistRow extends TrainingItem {
   trained_by_name: string | null;
   trained_at: string | null;
+  shift_type: TrainingShiftType | null;
   notes: string | null;
 }
 
@@ -104,7 +106,7 @@ export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRo
   const db = getDb();
   return db
     .prepare(
-      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, u.name as trained_by_name, tc.trained_at, tc.notes
+      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, u.name as trained_by_name, tc.trained_at, tc.shift_type, tc.notes
        FROM training_items ti
        LEFT JOIN training_completions tc ON tc.training_item_id = ti.id AND tc.trainee_id = ?
        LEFT JOIN users u ON u.id = tc.trained_by
@@ -137,16 +139,42 @@ export function toggleTrainingItem(traineeId: string, trainingItemId: string, ac
   return true;
 }
 
-/** A note against one trained checklist item -- separate from the trained
- * checkbox itself, so a manager can flag "needs follow-up/retraining" on a
- * skill that's still marked trained rather than having to un-check it (which
- * would misrepresent that the training never happened at all). Only
- * meaningful once the item has actually been marked trained, since that's
- * the completion row the note attaches to. */
-export function setTrainingCompletionNotes(traineeId: string, trainingItemId: string, notes: string | null, actor: SessionUser) {
+/** Everything about a trained checklist item can be corrected afterward --
+ * the trained checkbox just stamps "now" at the moment it's tapped, but a
+ * manager is often logging training that actually happened earlier (a
+ * different day, a different shift), or wants to flag "needs
+ * follow-up/retraining" without un-checking it (which would misrepresent
+ * that the training never happened at all). Only meaningful once the item
+ * has actually been marked trained, since that's the completion row these
+ * fields attach to. `trainedAtDate` is a plain "YYYY-MM-DD" store-local
+ * date -- converted to a real UTC instant (at noon store-local, so it can
+ * never drift onto the adjacent calendar day) rather than stored as a bare
+ * date string, consistent with every other date field in the app. */
+export function updateTrainingCompletion(
+  storeId: string,
+  traineeId: string,
+  trainingItemId: string,
+  fields: { trainedAtDate?: string; shiftType?: TrainingShiftType | null; notes?: string | null },
+  actor: SessionUser
+) {
   const db = getDb();
-  db.prepare(`UPDATE training_completions SET notes = ? WHERE trainee_id = ? AND training_item_id = ?`).run(notes, traineeId, trainingItemId);
-  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, notes } });
+  const sets: string[] = [];
+  const args: unknown[] = [];
+  if (fields.trainedAtDate !== undefined) {
+    sets.push("trained_at = ?");
+    args.push(storeLocalIso(storeId, fields.trainedAtDate, "12:00"));
+  }
+  if (fields.shiftType !== undefined) {
+    sets.push("shift_type = ?");
+    args.push(fields.shiftType);
+  }
+  if (fields.notes !== undefined) {
+    sets.push("notes = ?");
+    args.push(fields.notes);
+  }
+  if (sets.length === 0) return;
+  db.prepare(`UPDATE training_completions SET ${sets.join(", ")} WHERE trainee_id = ? AND training_item_id = ?`).run(...args, traineeId, trainingItemId);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, ...fields } });
 }
 
 export function markTraineeComplete(traineeId: string, actor: SessionUser) {

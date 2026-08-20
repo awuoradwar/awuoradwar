@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS training_completions (
   training_item_id TEXT NOT NULL REFERENCES training_items(id),
   trained_by TEXT REFERENCES users(id),
   trained_at TEXT NOT NULL,
+  shift_type TEXT, -- MORNING | EVENING | DOUBLE -- which shift the training actually happened on
   notes TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_training_completions_unique ON training_completions(trainee_id, training_item_id);

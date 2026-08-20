@@ -65,6 +65,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "attendance_events", "attachment_ref", "attachment_ref TEXT");
   ensureColumn(db, "training_sessions", "notes", "notes TEXT");
   ensureColumn(db, "training_completions", "notes", "notes TEXT");
+  ensureColumn(db, "training_completions", "shift_type", "shift_type TEXT");
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   unassignStaleAutoAssignedTasks(db);
