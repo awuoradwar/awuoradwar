@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { quickAddIssueAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
-import { Field, selectClass, textareaClass, SubmitBar } from "./FormShell";
+import { Field, selectClass, inputClass, textareaClass, SubmitBar } from "./FormShell";
 import { Language } from "@/lib/types";
 
 export default function IssueForm({ lang }: { lang: Language }) {
+  const [when, setWhen] = useState("");
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     "issue",
     quickAddIssueAction,
@@ -32,12 +34,18 @@ export default function IssueForm({ lang }: { lang: Language }) {
         </select>
       </Field>
       <Field label={lang === "es" ? "¿Para cuándo?" : "When does this need attention?"}>
-        <select name="when" defaultValue="" className={selectClass}>
+        <select name="when" value={when} onChange={(e) => setWhen(e.target.value)} className={selectClass}>
           <option value="">{lang === "es" ? "Sin fecha específica" : "No specific date"}</option>
           <option value="TODAY">{lang === "es" ? "Hoy" : "Today"}</option>
           <option value="THIS_WEEK">{lang === "es" ? "Esta semana" : "This week"}</option>
+          <option value="CUSTOM">{lang === "es" ? "Fecha específica..." : "Specific date..."}</option>
         </select>
       </Field>
+      {when === "CUSTOM" && (
+        <Field label={lang === "es" ? "Fecha" : "Date"}>
+          <input name="customDate" type="date" required className={inputClass} />
+        </Field>
+      )}
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Reportar" : "Report"} />
     </form>
   );
