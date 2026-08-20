@@ -155,7 +155,10 @@ export default async function MyShiftPage() {
   });
   const priorShiftOpenItems = summary.openItems.filter((it) => shiftBucketOf(it.created_at) === "prior");
   const fromLastShiftCount = priorShiftStaffing.length + priorShiftOpenItems.length + unresolvedForDisplay.length;
-  const currentShiftCount = currentShiftStaffing.length + currentShiftOpenItems.length;
+  // Catering folds into This Shift rather than getting its own top-level
+  // card -- a store sees maybe 1-3 orders a shift, not enough volume to
+  // earn a standalone section without crowding the home page.
+  const currentShiftCount = currentShiftStaffing.length + currentShiftOpenItems.length + cateringToday.length;
 
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const dateLabel = formatStoreDateTime(user.storeId, now.toISOString(), locale, {
@@ -183,23 +186,16 @@ export default async function MyShiftPage() {
         )}
       </div>
 
-      {cateringToday.length > 0 && (
-        <SectionCard title={t(user.language, "catering_due_today")} sub={t(user.language, "catering_due_today_sub")} count={cateringToday.length}>
+      {currentShiftCount > 0 && (
+        <SectionCard
+          title={user.language === "es" ? "Este Turno" : "This Shift"}
+          sub={user.language === "es" ? "Personal, catering, problemas y artículos abiertos en este turno" : "Staffing, catering, issues, and items opened this shift"}
+          count={currentShiftCount}
+        >
           <div className="flex flex-col gap-2">
             {cateringToday.map((order) => (
               <CateringOrderRow key={order.id} order={order} lang={user.language} />
             ))}
-          </div>
-        </SectionCard>
-      )}
-
-      {currentShiftCount > 0 && (
-        <SectionCard
-          title={user.language === "es" ? "Este Turno" : "This Shift"}
-          sub={user.language === "es" ? "Personal, problemas y artículos abiertos en este turno" : "Staffing, issues, and items opened this shift"}
-          count={currentShiftCount}
-        >
-          <div className="flex flex-col gap-2">
             {currentShiftStaffing.map((s) => (
               <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">
                 🧍 {s.employee_name} — {attendanceTypeLabel(s.type, user.language)}
