@@ -71,26 +71,28 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/more" lang={user.language} title={es ? "Resumen Semanal" : "Weekly Summary"} />
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <Link
           href={`/more/weekly-summary?weekStart=${addDays(weekStart, -7)}`}
           replace
-          className="tap-target rounded-full border border-border px-3 text-sm font-medium text-muted"
+          className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
         >
-          ← {es ? "Anterior" : "Prev"}
+          <span aria-hidden>←</span> {es ? "Anterior" : "Prev"}
         </Link>
-        <span className="text-sm font-semibold">
+        <span className="text-center text-sm font-semibold">
           {fmtDate(weekStart)} – {fmtDate(weekEnd)}
         </span>
         {isCurrentWeek ? (
-          <span className="tap-target px-3 text-sm text-muted/50">{es ? "Siguiente" : "Next"} →</span>
+          <span className="tap-target flex shrink-0 cursor-not-allowed items-center gap-1 rounded-full border border-border px-3 text-sm font-medium text-muted/50">
+            {es ? "Siguiente" : "Next"} <span aria-hidden>→</span>
+          </span>
         ) : (
           <Link
             href={`/more/weekly-summary?weekStart=${addDays(weekStart, 7)}`}
             replace
-            className="tap-target rounded-full border border-border px-3 text-sm font-medium text-muted"
+            className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
           >
-            {es ? "Siguiente" : "Next"} →
+            {es ? "Siguiente" : "Next"} <span aria-hidden>→</span>
           </Link>
         )}
       </div>
