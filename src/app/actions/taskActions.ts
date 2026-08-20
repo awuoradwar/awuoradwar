@@ -5,7 +5,7 @@ import { requireCurrentUser, getCurrentPicForStore } from "@/lib/auth";
 import * as taskService from "@/lib/services/taskService";
 import * as pushService from "@/lib/services/pushService";
 import { canDo } from "@/lib/permissions";
-import { storeToday } from "@/lib/storeTime";
+import { storeToday, storeLocalIso } from "@/lib/storeTime";
 
 function refresh() {
   revalidatePath("/my-shift");
@@ -65,7 +65,7 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
     {
       title,
       description: String(formData.get("description") || "") || null,
-      dueAt: dueDate ? `${dueDate}T${dueTime || "00:00"}:00` : null,
+      dueAt: dueDate ? storeLocalIso(user.storeId, dueDate, dueTime || "00:00") : null,
       effort: String(formData.get("effort") || "STANDARD"),
       severity: String(formData.get("severity") || "NORMAL"),
     },

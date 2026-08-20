@@ -11,7 +11,8 @@ export default function TaskEditForm({
   taskId,
   title,
   description,
-  dueAt,
+  dueDateLocal,
+  dueTimeLocal,
   effort,
   severity,
   lang,
@@ -19,15 +20,14 @@ export default function TaskEditForm({
   taskId: string;
   title: string;
   description: string | null;
-  dueAt: string | null;
+  dueDateLocal: string | null;
+  dueTimeLocal: string | null;
   effort: string;
   severity: string;
   lang: Language;
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
-  const dueDate = dueAt ? dueAt.slice(0, 10) : "";
-  const dueTime = dueAt ? dueAt.slice(11, 16) : "";
 
   return (
     <details className="mt-3">
@@ -53,10 +53,10 @@ export default function TaskEditForm({
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t(lang, "field_date")}>
-            <input name="dueDate" type="date" defaultValue={dueDate} className={inputClass} />
+            <input name="dueDate" type="date" defaultValue={dueDateLocal || ""} className={inputClass} />
           </Field>
           <Field label={t(lang, "field_time")}>
-            <input name="dueTime" type="time" defaultValue={dueTime} className={inputClass} />
+            <input name="dueTime" type="time" defaultValue={dueTimeLocal || ""} className={inputClass} />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-3">

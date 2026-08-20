@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { lastUpdatedBy } from "@/lib/audit";
 import { canDo } from "@/lib/permissions";
-import { formatStoreDateTime } from "@/lib/storeTime";
+import { formatStoreDateTime, utcToStoreLocalInput } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
 import TaskEditForm from "@/components/TaskEditForm";
@@ -36,6 +36,14 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
   const last = lastUpdatedBy("task", id) as { actor_name: string | null; created_at: string } | undefined;
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
+  // Local wall-clock split for the edit form's separate date/time inputs --
+  // slicing task.due_at's raw UTC digits directly (as this used to) shows
+  // the UTC hour as if it were already store-local, which silently drifted
+  // the displayed time by the store's UTC offset from what the badge above
+  // (correctly run through formatStoreDateTime) shows.
+  const dueLocal = task.due_at ? utcToStoreLocalInput(user.storeId, task.due_at) : null;
+  const dueDateLocal = dueLocal ? dueLocal.slice(0, 10) : null;
+  const dueTimeLocal = dueLocal ? dueLocal.slice(11, 16) : null;
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -79,7 +87,8 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
           taskId={task.id}
           title={task.title}
           description={task.description}
-          dueAt={task.due_at}
+          dueDateLocal={dueDateLocal}
+          dueTimeLocal={dueTimeLocal}
           effort={task.effort}
           severity={task.severity}
           lang={user.language}
