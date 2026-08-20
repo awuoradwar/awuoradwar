@@ -79,12 +79,19 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
             </button>
           </div>
         </div>
-        {activity.length > 0 && (
+        {(request.notes || activity.length > 0) && (
           <details className="mt-1.5">
             <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted hover:text-accent">
-              {lang === "es" ? "Ver actividad" : "View activity"} ({activity.length})
+              {lang === "es" ? "Ver detalles" : "View details"}
+              {activity.length > 0 ? ` (${activity.length})` : ""}
             </summary>
-            <div className="mt-1.5 flex flex-col gap-1 border-l-2 border-border pl-2.5">
+            <div className="mt-1.5 flex flex-col gap-1.5 border-l-2 border-border pl-2.5">
+              {request.notes && (
+                <p className="text-xs text-foreground">
+                  <span className="font-semibold">{lang === "es" ? "Notas: " : "Notes: "}</span>
+                  {request.notes}
+                </p>
+              )}
               {activity.map((a) => (
                 <div key={a.id} className="text-xs text-muted">
                   <p>
