@@ -74,7 +74,7 @@ const en = {
   add_late: "Late",
   add_cleaning: "Cleaning",
   add_meal_replacement: "Meal Replacement",
-  add_borrowed_item: "Borrowed Item",
+  add_borrowed_item: "Borrowed / Lent",
   add_issue: "Work Order",
   add_acknowledgement: "Acknowledgement",
   add_note: "Note",
@@ -164,6 +164,7 @@ const en = {
   more_training: "New Associate Training",
   more_inventory: "Inventory & Maintenance",
   more_catering: "Catering",
+  more_borrowed_items: "Borrowed / Lent",
 
   catering_title: "Catering",
   catering_due_today: "Catering Due Today",

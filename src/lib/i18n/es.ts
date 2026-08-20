@@ -76,7 +76,7 @@ const es: Record<DictKeys, string> = {
   add_late: "Tardanza",
   add_cleaning: "Limpieza",
   add_meal_replacement: "Reemplazo de Comida",
-  add_borrowed_item: "Artículo Prestado",
+  add_borrowed_item: "Préstamos",
   add_issue: "Orden de Trabajo",
   add_acknowledgement: "Confirmación",
   add_note: "Nota",
@@ -166,6 +166,7 @@ const es: Record<DictKeys, string> = {
   more_training: "Capacitación de Nuevos Asociados",
   more_inventory: "Inventario y Mantenimiento",
   more_catering: "Catering",
+  more_borrowed_items: "Préstamos",
 
   catering_title: "Catering",
   catering_due_today: "Catering Que Vence Hoy",

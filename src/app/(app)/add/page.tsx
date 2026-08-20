@@ -4,10 +4,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { t } from "@/lib/i18n";
 import NavIcon, { ICON_PATHS } from "@/components/NavIcon";
 
-// Cleaning, Meal Replacement, Issue (Work Order), and Acknowledgement each
-// have their own dedicated management page under More, so their "add new"
-// entry point lives there instead of being duplicated here -- one home per
-// feature. Only things with no dedicated list page stay on this quick grid.
+// Cleaning, Meal Replacement, Issue (Work Order), Acknowledgement, Catering,
+// and Borrowed/Lent each have their own dedicated management page under
+// More, so their "add new" entry point lives there instead of being
+// duplicated here -- one home per feature. Only things with no dedicated
+// list page stay on this quick grid.
 // Grouped and styled the same as the More menu (accent group label, card of
 // icon rows) rather than a standalone tile grid, so every "list of things
 // you can go do" screen in the app reads as one consistent system.
@@ -23,7 +24,6 @@ const GROUPS = [
     labelKey: "quick_log_group_shift",
     items: [
       { slug: "task", key: "add_task", icon: "checkCircle" },
-      { slug: "borrowed-item", key: "add_borrowed_item", icon: "box" },
       { slug: "note", key: "add_note", icon: "fileText" },
     ],
   },

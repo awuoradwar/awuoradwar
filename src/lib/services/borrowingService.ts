@@ -113,7 +113,28 @@ export function settleBorrowedItem(id: string, actor: SessionUser, notes?: strin
   writeAudit({ entityType: "borrowed_item", entityId: id, actor, action: "SETTLED" });
 }
 
-export function getOpenBorrowedItems(storeId: string) {
+export interface BorrowedItemRow {
+  id: string;
+  direction: BorrowDirection;
+  borrowed_from: string;
+  item: string;
+  quantity: number | null;
+  unit: string | null;
+  due_at: string | null;
+  status: string;
+  created_at: string;
+}
+
+/** Every open item regardless of age -- this is the one place a
+ * borrowed/lent item can always be found once it's aged off My Shift's
+ * time-windowed sections, so nothing that's still outstanding is ever
+ * only reachable through Search. */
+export function getOpenBorrowedItems(storeId: string): BorrowedItemRow[] {
   const db = getDb();
-  return db.prepare(`SELECT * FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED' ORDER BY created_at DESC`).all(storeId);
+  return db.prepare(`SELECT * FROM borrowed_items WHERE store_id = ? AND status != 'SETTLED' ORDER BY due_at IS NULL, due_at, created_at DESC`).all(storeId) as BorrowedItemRow[];
+}
+
+export function getSettledBorrowedItems(storeId: string, limit = 30): BorrowedItemRow[] {
+  const db = getDb();
+  return db.prepare(`SELECT * FROM borrowed_items WHERE store_id = ? AND status = 'SETTLED' ORDER BY completed_at DESC LIMIT ?`).all(storeId, limit) as BorrowedItemRow[];
 }
