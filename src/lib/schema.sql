@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS training_sessions (
   date TEXT NOT NULL,
   shift_type TEXT NOT NULL, -- MORNING | EVENING | DOUBLE
   manager_id TEXT REFERENCES users(id),
+  notes TEXT,
   created_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL
 );

@@ -51,12 +51,29 @@ export async function markTraineeCompleteAction(traineeId: string) {
   refresh(traineeId);
 }
 
-export async function scheduleTrainingSessionAction(traineeId: string, date: string, shiftType: TrainingShiftType, managerId: string) {
+export async function scheduleTrainingSessionAction(traineeId: string, date: string, shiftType: TrainingShiftType, managerId: string, notes: string = "") {
   const user = await requireCurrentUser();
   const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
   if (!trainee) throw new Error("NOT_FOUND");
   if (!date) return { error: "Date is required." };
-  trainingService.scheduleTrainingSession(traineeId, date, shiftType, managerId || null, user);
+  trainingService.scheduleTrainingSession(traineeId, date, shiftType, managerId || null, user, notes.trim() || null);
+  refresh(traineeId);
+  return { ok: true };
+}
+
+export async function updateTrainingSessionAction(
+  sessionId: string,
+  traineeId: string,
+  date: string,
+  shiftType: TrainingShiftType,
+  managerId: string,
+  notes: string
+) {
+  const user = await requireCurrentUser();
+  const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
+  if (!trainee) throw new Error("NOT_FOUND");
+  if (!date) return { error: "Date is required." };
+  trainingService.updateTrainingSession(sessionId, traineeId, date, shiftType, managerId || null, notes.trim() || null, user);
   refresh(traineeId);
   return { ok: true };
 }

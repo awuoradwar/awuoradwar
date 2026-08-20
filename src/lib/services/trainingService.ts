@@ -150,6 +150,7 @@ export interface TrainingSessionRow {
   shift_type: TrainingShiftType;
   manager_id: string | null;
   manager_name: string | null;
+  notes: string | null;
 }
 
 /** Planned training sessions for this trainee, soonest first -- lets a
@@ -159,7 +160,7 @@ export function getTrainingSessions(traineeId: string): TrainingSessionRow[] {
   const db = getDb();
   return db
     .prepare(
-      `SELECT ts.id, ts.date, ts.shift_type, ts.manager_id, u.name as manager_name
+      `SELECT ts.id, ts.date, ts.shift_type, ts.manager_id, u.name as manager_name, ts.notes
        FROM training_sessions ts LEFT JOIN users u ON u.id = ts.manager_id
        WHERE ts.trainee_id = ? ORDER BY ts.date ASC`
     )
@@ -171,15 +172,34 @@ export function scheduleTrainingSession(
   date: string,
   shiftType: TrainingShiftType,
   managerId: string | null,
-  actor: SessionUser
+  actor: SessionUser,
+  notes: string | null = null
 ): string {
   const db = getDb();
   const id = newId();
   db.prepare(
-    `INSERT INTO training_sessions (id, trainee_id, date, shift_type, manager_id, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, traineeId, date, shiftType, managerId, actor.id, nowIso());
-  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { scheduled_session: { date, shiftType, managerId } } });
+    `INSERT INTO training_sessions (id, trainee_id, date, shift_type, manager_id, notes, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, traineeId, date, shiftType, managerId, notes, actor.id, nowIso());
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { scheduled_session: { date, shiftType, managerId, notes } } });
   return id;
+}
+
+/** Every field a session was created with can be revised afterward -- the
+ * date/shift/manager originally picked is often provisional (swapped once
+ * the actual schedule firms up), and notes are frequently only known once
+ * the session's already on the calendar. */
+export function updateTrainingSession(
+  id: string,
+  traineeId: string,
+  date: string,
+  shiftType: TrainingShiftType,
+  managerId: string | null,
+  notes: string | null,
+  actor: SessionUser
+) {
+  const db = getDb();
+  db.prepare(`UPDATE training_sessions SET date = ?, shift_type = ?, manager_id = ?, notes = ? WHERE id = ?`).run(date, shiftType, managerId, notes, id);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { updated_session: { id, date, shiftType, managerId, notes } } });
 }
 
 export function removeTrainingSession(id: string, traineeId: string, actor: SessionUser) {
