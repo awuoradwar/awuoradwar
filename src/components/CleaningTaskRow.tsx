@@ -339,7 +339,7 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
 
   return (
     <div className="card flex flex-col gap-2 p-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{title}</p>
           <div className="flex flex-wrap items-center gap-x-1 text-sm text-muted">
