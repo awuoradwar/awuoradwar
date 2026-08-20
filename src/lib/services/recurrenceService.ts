@@ -86,16 +86,25 @@ export function ensureInstancesForDate(storeId: string, dateStr: string) {
     }
 
     const dueAt = config.dueTime ? storeLocalIso(storeId, dateStr, config.dueTime) : null;
+    // Recurring instances default to unassigned -- a manager assigns on the
+    // day of if needed (the owner dropdown on the Week page), rather than
+    // the system guessing from who happens to be scheduled. Only a
+    // template that explicitly specifies a default owner position opts
+    // back into auto-resolving from the schedule.
     // windowForHour wants the store-local hour -- config.dueTime is already store-local
     // wall-clock ("11:00" means 11am at the store), so parse it directly rather than
     // re-deriving from dueAt (which is now a real UTC instant in the server's own zone).
-    const ownerId = config.dueTime ? resolveShiftOwnerForWindow(storeId, dateStr, windowForHour(Number(config.dueTime.split(":")[0]))) : null;
+    const ownerId =
+      tpl.default_owner_position && config.dueTime
+        ? resolveShiftOwnerForWindow(storeId, dateStr, windowForHour(Number(config.dueTime.split(":")[0])))
+        : null;
+    const ownerAutoAssigned = ownerId ? 1 : 0;
     const id = newId();
     db.prepare(
       `INSERT INTO tasks (id, store_id, template_id, title, description, area, category, owner_id, owner_auto_assigned, support_ids,
         due_at, scheduled_for, scheduled_date, effort, priority, severity, status, verification_required,
         depends_on_task_id, source, checklist_role, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, NULL, ?, 'DATE', ?, ?, 'NORMAL', 'NORMAL', 'OPEN', ?, ?, 'recurring', ?, NULL, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'DATE', ?, ?, 'NORMAL', 'NORMAL', 'OPEN', ?, ?, 'recurring', ?, NULL, ?)`
     ).run(
       id,
       storeId,
@@ -105,6 +114,7 @@ export function ensureInstancesForDate(storeId: string, dateStr: string) {
       tpl.area,
       tpl.category,
       ownerId,
+      ownerAutoAssigned,
       dueAt,
       dateStr,
       tpl.effort,
