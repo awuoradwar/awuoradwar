@@ -17,9 +17,6 @@ export default function CompactTaskRow({ task, lang, managerColors }: { task: Ta
   const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
 
-  const dueLabel = task.due_at
-    ? new Date(task.due_at).toLocaleTimeString(lang === "es" ? "es-MX" : "en-US", { hour: "numeric", minute: "2-digit" })
-    : null;
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
 
   const canComplete = task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyDone;
@@ -29,7 +26,7 @@ export default function CompactTaskRow({ task, lang, managerColors }: { task: Ta
       <Link href={`/task/${task.id}`} className="min-w-0 flex-1">
         <p className="truncate text-sm">{title}</p>
         <p className="truncate text-xs text-muted">
-          {dueLabel && <span>⏰ {dueLabel} </span>}
+          {task.dueLabel && <span>⏰ {task.dueLabel} </span>}
           {task.area && <span>· {task.area} </span>}
           {task.owner_name && (
             <span>

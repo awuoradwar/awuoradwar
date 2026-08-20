@@ -153,13 +153,20 @@ export default async function MyShiftPage() {
   const fromLastShiftCount = priorShiftStaffing.length + priorShiftOpenItems.length + unresolvedForDisplay.length;
   const currentShiftCount = currentShiftStaffing.length + currentShiftOpenItems.length;
 
-  const dateLabel = formatStoreDateTime(user.storeId, now.toISOString(), user.language === "es" ? "es-MX" : "en-US", {
+  const locale = user.language === "es" ? "es-MX" : "en-US";
+  const dateLabel = formatStoreDateTime(user.storeId, now.toISOString(), locale, {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
   const completedThisShift = getCompletedThisShiftCount(user.storeId, user.id, today);
   const completedToday = getCompletedTasksToday(user.storeId, today);
+  // TaskCard/CompactTaskRow are client components and can't call
+  // formatStoreDateTime themselves (server-only) -- computed here instead
+  // of letting them fall back to `new Date(...).toLocaleTimeString()`,
+  // which renders in the server process's own timezone (UTC in
+  // production), not the store's, silently showing the wrong due time.
+  const dueLabelFor = (dueAt: string | null) => (dueAt ? formatStoreDateTime(user.storeId, dueAt, locale, { hour: "numeric", minute: "2-digit" }) : null);
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
@@ -215,7 +222,7 @@ export default async function MyShiftPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {buckets[bucket].map((task) => (
-                <TaskCard key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} managerColors={managerColors} />
+                <TaskCard key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at) }} managerColors={managerColors} />
               ))}
             </div>
           )}
@@ -266,7 +273,7 @@ export default async function MyShiftPage() {
                   </p>
                   <div className="divide-y divide-border">
                     {dayTasks.map((task) => (
-                      <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task) }} managerColors={managerColors} />
+                      <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at) }} managerColors={managerColors} />
                     ))}
                   </div>
                 </div>

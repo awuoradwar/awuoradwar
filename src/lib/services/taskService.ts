@@ -167,9 +167,12 @@ function isDueThisShiftWindow(task: TaskRow, nowDate: Date, viewerShiftType: Vie
  * other task:
  *  - NOW: this viewer's responsibility (owner, or unassigned while they're
  *    PIC), due today, and (when it has a specific time) scheduled within the
- *    current shift window -- or urgent/overdue for anyone.
+ *    current shift window -- or urgent/overdue for anyone who's actually
+ *    working today (CRITICAL severity escalates for absolutely everyone
+ *    regardless, same as an issue or borrowed item would).
  *  - TODAY: due today store-wide, but not this viewer's right now (not
- *    theirs, or theirs but scheduled for the other shift window).
+ *    theirs, or theirs but scheduled for the other shift window, or urgent
+ *    but this viewer isn't on shift today to act on it).
  *  - THIS_WEEK: everything else due later this week.
  */
 export function computeSection(
@@ -181,9 +184,16 @@ export function computeSection(
   viewerShiftType: ViewerShiftType = null
 ): Section {
   const dueToday = isDueToday(task, todayStr);
-  if (isUrgentNow(task, nowDate, dueToday)) return "NOW";
-
   const mine = task.owner_id ? task.owner_id === viewerId : picUserId === viewerId;
+  // "Anything urgent, whoever it belongs to" only earns a spot in this
+  // viewer's personal NOW section when they're actually working today
+  // (scheduled shift, PIC, or it's genuinely their own task) -- otherwise
+  // someone else's overdue task shows up under "My Shift" on a day this
+  // viewer is off, looking like it's theirs to handle when it isn't. It's
+  // never hidden either way: off that condition, it still lands in TODAY
+  // (store-wide) below if due today.
+  const viewerWorkingToday = viewerShiftType !== null || mine;
+  if (isUrgentNow(task, nowDate, dueToday) && (viewerWorkingToday || task.severity === "CRITICAL")) return "NOW";
 
   if (mine && dueToday) {
     if (!task.due_at || isDueThisShiftWindow(task, nowDate, viewerShiftType)) return "NOW";

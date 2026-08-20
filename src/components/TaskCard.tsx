@@ -18,6 +18,9 @@ export interface TaskCardData {
   owner_id: string | null;
   owner_name: string | null;
   due_at: string | null;
+  /** Store-local due time, pre-formatted server-side (formatStoreDateTime
+   * is server-only, so this client component can't compute it itself). */
+  dueLabel?: string | null;
   effort: string;
   status: string;
   blocked: boolean;
@@ -29,9 +32,6 @@ export default function TaskCard({ task, lang, managerColors }: { task: TaskCard
   const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
 
-  const dueLabel = task.due_at
-    ? new Date(task.due_at).toLocaleTimeString(lang === "es" ? "es-MX" : "en-US", { hour: "numeric", minute: "2-digit" })
-    : null;
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
 
   return (
@@ -41,7 +41,7 @@ export default function TaskCard({ task, lang, managerColors }: { task: TaskCard
           <p className="truncate text-sm font-semibold">{title}</p>
         </Link>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-          {dueLabel && <span>⏰ {dueLabel}</span>}
+          {task.dueLabel && <span>⏰ {task.dueLabel}</span>}
           {task.area && <span>· {task.area}</span>}
           {task.owner_name && (
             <span>
