@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateAttendanceEventAction } from "@/app/actions/attendanceActions";
-import { Field, inputClass, selectClass, FileField } from "./forms/FormShell";
+import { Field, inputClass, selectClass, FileField, btnOutline } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import { attendanceTypeLabel, notificationMethodLabel, NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
@@ -57,11 +57,7 @@ export default function AttendanceEditableFields({
         <dt className="text-muted">{lang === "es" ? "Empleado" : "Employee"}</dt>
         <dd className="flex items-center justify-between gap-2">
           <span>{employeeName}</span>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="tap-target flex shrink-0 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
+          <button type="button" onClick={() => setEditing(true)} className={`shrink-0 gap-1.5 ${btnOutline}`}>
             ✎ {lang === "es" ? "Editar" : "Edit"}
           </button>
         </dd>

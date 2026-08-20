@@ -12,6 +12,7 @@ import {
 } from "@/app/actions/taskActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
+import { btnPrimary, btnOk, btnNeutral, btnDanger } from "./forms/FormShell";
 
 export default function TaskDetailActions({
   taskId,
@@ -67,7 +68,7 @@ export default function TaskDetailActions({
           <button
             disabled={pending}
             onClick={() => runStatus("COMPLETE", () => completeTaskAction(taskId))}
-            className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
+            className={btnPrimary}
           >
             {t(lang, "action_complete")}
           </button>
@@ -86,7 +87,7 @@ export default function TaskDetailActions({
                 router.refresh();
               });
             }}
-            className="tap-target rounded-full border-2 border-ok px-4 text-sm font-semibold text-ok disabled:opacity-50"
+            className={btnOk}
           >
             {t(lang, "action_verify")}
           </button>
@@ -95,7 +96,7 @@ export default function TaskDetailActions({
           <button
             disabled={pending}
             onClick={() => run(() => carryForwardTaskAction(taskId))}
-            className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
+            className={btnNeutral}
           >
             {t(lang, "action_carry_forward")}
           </button>
@@ -104,7 +105,7 @@ export default function TaskDetailActions({
           <button
             disabled={pending}
             onClick={() => runStatus("CANCELLED", () => cancelTaskAction(taskId, lang === "es" ? "Cancelado por gerente" : "Cancelled by manager"))}
-            className="tap-target rounded-full border border-critical px-4 text-sm font-semibold text-critical disabled:opacity-50"
+            className={btnDanger}
           >
             {isRecurring ? (lang === "es" ? "Cancelar solo hoy" : "Cancel this day") : t(lang, "action_cancel")}
           </button>
@@ -113,7 +114,7 @@ export default function TaskDetailActions({
           <button
             disabled={pending}
             onClick={() => setConfirmingSeries(true)}
-            className="tap-target rounded-full border border-critical px-4 text-sm font-semibold text-critical disabled:opacity-50"
+            className={btnDanger}
           >
             {lang === "es" ? "Cancelar toda la serie" : "Cancel entire series"}
           </button>

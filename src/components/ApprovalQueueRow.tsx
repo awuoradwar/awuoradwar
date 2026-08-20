@@ -49,10 +49,10 @@ export default function ApprovalQueueRow({ request, lang }: { request: RequestRo
         ) : null}
       </p>
       <div className="mt-2 flex gap-2">
-        <button disabled={pending} onClick={() => decide("APPROVED")} className="tap-target flex-1 rounded-full bg-ok/10 px-3 text-xs font-semibold text-ok disabled:opacity-50">
+        <button disabled={pending} onClick={() => decide("APPROVED")} className="h-9 min-h-0 inline-flex flex-1 items-center justify-center rounded-full bg-ok/10 px-3 text-xs font-semibold text-ok disabled:opacity-50">
           {lang === "es" ? "Aprobar" : "Approve"}
         </button>
-        <button disabled={pending} onClick={() => decide("DENIED")} className="tap-target flex-1 rounded-full bg-critical/10 px-3 text-xs font-semibold text-critical disabled:opacity-50">
+        <button disabled={pending} onClick={() => decide("DENIED")} className="h-9 min-h-0 inline-flex flex-1 items-center justify-center rounded-full bg-critical/10 px-3 text-xs font-semibold text-critical disabled:opacity-50">
           {lang === "es" ? "Denegar" : "Deny"}
         </button>
       </div>

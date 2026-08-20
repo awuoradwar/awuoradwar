@@ -146,7 +146,7 @@ export default function ProposalRow({
               router.refresh();
             });
           }}
-          className="tap-target flex-1 rounded-full bg-ok/10 px-3 text-xs font-semibold text-ok disabled:opacity-50"
+          className="h-9 min-h-0 inline-flex flex-1 items-center justify-center rounded-full bg-ok/10 px-3 text-xs font-semibold text-ok disabled:opacity-50"
         >
           {lang === "es" ? "Aprobar y agregar" : "Approve & Add"}
         </button>
@@ -163,7 +163,7 @@ export default function ProposalRow({
               router.refresh();
             });
           }}
-          className="tap-target flex-1 rounded-full bg-critical/10 px-3 text-xs font-semibold text-critical disabled:opacity-50"
+          className="h-9 min-h-0 inline-flex flex-1 items-center justify-center rounded-full bg-critical/10 px-3 text-xs font-semibold text-critical disabled:opacity-50"
         >
           {lang === "es" ? "Rechazar" : "Reject"}
         </button>

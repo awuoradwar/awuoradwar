@@ -3,6 +3,7 @@
 import { useState, ReactNode } from "react";
 import StorePeriodForm, { StorePeriodDefaults } from "./StorePeriodForm";
 import { Language } from "@/lib/types";
+import { btnOutline } from "./forms/FormShell";
 
 /** Swaps a period's read-only view for the (pre-filled) edit form -- shared
  * by the latest-period card and each history row, so a period created as a
@@ -42,12 +43,7 @@ export default function StorePeriodEditToggle({
           {header}
         </div>
         {canEdit && (
-          <button
-            key="edit-button"
-            type="button"
-            onClick={() => setEditing(true)}
-            className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
+          <button key="edit-button" type="button" onClick={() => setEditing(true)} className={`shrink-0 gap-1 ${btnOutline}`}>
             ✎ {lang === "es" ? "Editar" : "Edit"}
           </button>
         )}

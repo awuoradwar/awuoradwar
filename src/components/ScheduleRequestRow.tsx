@@ -73,7 +73,7 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
+              className="h-9 min-h-0 inline-flex shrink-0 items-center gap-1 rounded-full border border-accent px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               ✎ {lang === "es" ? "Editar" : "Edit"}
             </button>

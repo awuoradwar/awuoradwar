@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { selectSettlementAction, settleBorrowedItemAction } from "@/app/actions/operationsActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
+import { btnPrimary, btnNeutral } from "./forms/FormShell";
 
 const METHODS: Array<{ value: "RETURN_PRODUCT" | "CRUNCHTIME_TRANSFER" | "PENDING_CONFIRMATION"; key: string }> = [
   { value: "RETURN_PRODUCT", key: "action_settlement_return" },
@@ -53,7 +54,7 @@ export default function BorrowedItemDetailActions({
                     router.refresh();
                   });
                 }}
-                className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
+                className={btnNeutral}
               >
                 {t(lang, m.key as never)}
               </button>
@@ -78,7 +79,7 @@ export default function BorrowedItemDetailActions({
                 router.refresh();
               });
             }}
-            className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
+            className={`self-start ${btnPrimary}`}
           >
             {t(lang, "action_settle")}
           </button>

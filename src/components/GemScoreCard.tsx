@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateGemScoreAction } from "@/app/actions/storeProfileActions";
-import { Field, inputClass } from "./forms/FormShell";
+import { Field, inputClass, btnOutline } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -92,11 +92,7 @@ export default function GemScoreCard({ lang, gem, canEdit, lastUpdatedLabel }: {
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xs font-bold uppercase tracking-wide text-accent">{t(lang, "store_profile_gem_score")}</h2>
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="tap-target flex shrink-0 items-center gap-1 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
+          <button type="button" onClick={() => setEditing(true)} className={`shrink-0 gap-1 ${btnOutline}`}>
             ✎ {es ? "Editar" : "Edit"}
           </button>
         )}

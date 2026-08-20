@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateBorrowedItemAction } from "@/app/actions/operationsActions";
-import { Field, inputClass, selectClass } from "./forms/FormShell";
+import { Field, inputClass, selectClass, btnOutline } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -83,11 +83,7 @@ export default function BorrowedItemEditableFields({
         <dt className="text-muted">{storeFieldLabel}</dt>
         <dd className="flex items-center justify-between gap-2">
           <span>{borrowedFrom}</span>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="tap-target flex shrink-0 items-center gap-1.5 rounded-full border border-accent px-3 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
-          >
+          <button type="button" onClick={() => setEditing(true)} className={`shrink-0 gap-1.5 ${btnOutline}`}>
             ✎ {lang === "es" ? "Editar" : "Edit"}
           </button>
         </dd>

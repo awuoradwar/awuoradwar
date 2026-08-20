@@ -51,7 +51,7 @@ export default function AcknowledgementRow({ completion, lang }: { completion: C
                 router.refresh();
               });
             }}
-            className="tap-target rounded-full border-2 border-accent px-3 text-xs font-semibold text-accent disabled:opacity-40"
+            className="h-9 min-h-0 inline-flex items-center justify-center rounded-full border-2 border-accent px-3 text-xs font-semibold text-accent disabled:opacity-40"
           >
             {t(lang, "action_acknowledge")}
           </button>
@@ -70,7 +70,7 @@ export default function AcknowledgementRow({ completion, lang }: { completion: C
                 router.refresh();
               });
             }}
-            className="tap-target rounded-full border-2 border-ok px-3 text-xs font-semibold text-ok disabled:opacity-40"
+            className="h-9 min-h-0 inline-flex items-center justify-center rounded-full border-2 border-ok px-3 text-xs font-semibold text-ok disabled:opacity-40"
           >
             {t(lang, "action_verify")}
           </button>

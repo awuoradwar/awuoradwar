@@ -78,7 +78,7 @@ export default function TaskCard({ task, lang, managerColors }: { task: TaskCard
               router.refresh();
             });
           }}
-          className="tap-target shrink-0 rounded-full border-2 border-accent px-4 text-xs font-semibold text-accent disabled:opacity-40"
+          className="h-9 min-h-0 inline-flex shrink-0 items-center justify-center rounded-full border-2 border-accent px-4 text-xs font-semibold text-accent disabled:opacity-40"
         >
           {pending ? "…" : `✓ ${t(lang, "action_complete")}`}
         </button>

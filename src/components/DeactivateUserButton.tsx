@@ -23,7 +23,7 @@ export default function DeactivateUserButton({ id, active, lang }: { id: string;
       <button
         disabled={pending}
         onClick={() => run(reactivateUserAction, true)}
-        className="tap-target rounded-full border border-ok px-3 text-xs font-semibold text-ok disabled:opacity-50"
+        className="h-9 min-h-0 inline-flex items-center justify-center rounded-full border border-ok px-3 text-xs font-semibold text-ok disabled:opacity-50"
       >
         {lang === "es" ? "Reactivar" : "Reactivate"}
       </button>
@@ -34,7 +34,7 @@ export default function DeactivateUserButton({ id, active, lang }: { id: string;
     <button
       disabled={pending}
       onClick={() => run(deactivateUserAction, false)}
-      className="tap-target rounded-full border border-critical px-3 text-xs font-semibold text-critical disabled:opacity-50"
+      className="h-9 min-h-0 inline-flex items-center justify-center rounded-full border border-critical px-3 text-xs font-semibold text-critical disabled:opacity-50"
     >
       {lang === "es" ? "Desactivar" : "Deactivate"}
     </button>

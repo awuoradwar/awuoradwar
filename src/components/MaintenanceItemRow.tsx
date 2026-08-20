@@ -71,7 +71,7 @@ export default function MaintenanceItemRow({
               router.refresh();
             });
           }}
-          className="tap-target rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+          className="h-9 min-h-0 inline-flex items-center justify-center rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground disabled:opacity-50"
         >
           {optimisticallyDone ? "✓" : lang === "es" ? "Marcar Hecho Hoy" : "Mark Done Today"}
         </button>

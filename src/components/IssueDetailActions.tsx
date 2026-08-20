@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { addIssueUpdateAction, resolveIssueAction, reopenIssueAction, updateIssueAction } from "@/app/actions/operationsActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
-import { Field, inputClass, selectClass, textareaClass } from "./forms/FormShell";
+import { Field, inputClass, selectClass, textareaClass, btnPrimary, btnOutline, btnNeutral, btnDanger } from "./forms/FormShell";
 
 export default function IssueDetailActions({
   id,
@@ -110,11 +110,7 @@ export default function IssueDetailActions({
 
   return (
     <div className="flex flex-col gap-3">
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="tap-target self-start rounded-full border border-border px-4 text-sm font-semibold text-muted transition-colors hover:border-accent hover:text-accent"
-      >
+      <button type="button" onClick={() => setEditing(true)} className={`gap-1 self-start ${btnOutline}`}>
         ✎ {lang === "es" ? "Editar" : "Edit"}
       </button>
       {!isResolved && (
@@ -135,7 +131,7 @@ export default function IssueDetailActions({
                   setNote("");
                 })
               }
-              className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
+              className={btnNeutral}
             >
               {t(lang, "action_add_update")}
             </button>
@@ -148,7 +144,7 @@ export default function IssueDetailActions({
                     setNote("");
                   })
                 }
-                className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
+                className={btnNeutral}
               >
                 {t(lang, "action_mark_in_progress")}
               </button>
@@ -162,7 +158,7 @@ export default function IssueDetailActions({
                     setNote("");
                   })
                 }
-                className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
+                className={btnNeutral}
               >
                 {t(lang, "action_mark_waiting")}
               </button>
@@ -170,11 +166,7 @@ export default function IssueDetailActions({
           </div>
 
           {!resolving ? (
-            <button
-              type="button"
-              onClick={() => setResolving(true)}
-              className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover"
-            >
+            <button type="button" onClick={() => setResolving(true)} className={`self-start ${btnPrimary}`}>
               {t(lang, "action_resolve")}
             </button>
           ) : (
@@ -195,7 +187,7 @@ export default function IssueDetailActions({
                     setResolving(false);
                   })
                 }
-                className="tap-target self-start rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
+                className={`self-start ${btnPrimary}`}
               >
                 {t(lang, "action_resolve")}
               </button>
@@ -205,11 +197,7 @@ export default function IssueDetailActions({
       )}
 
       {isResolved && (
-        <button
-          disabled={pending}
-          onClick={() => runStatus("REOPENED", () => reopenIssueAction(id))}
-          className="tap-target self-start rounded-full border border-critical px-4 text-sm font-semibold text-critical disabled:opacity-50"
-        >
+        <button disabled={pending} onClick={() => runStatus("REOPENED", () => reopenIssueAction(id))} className={`self-start ${btnDanger}`}>
           {t(lang, "action_reopen")}
         </button>
       )}

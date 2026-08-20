@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/operationsActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
+import { btnPrimary, btnNeutral } from "./forms/FormShell";
 
 export default function GuestRecoveryDetailActions({
   id,
@@ -51,7 +52,7 @@ export default function GuestRecoveryDetailActions({
                 router.refresh();
               });
             }}
-            className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-50"
+            className={btnPrimary}
           >
             {lang === "es" ? "Marcar Cumplido" : "Mark Fulfilled"}
           </button>
@@ -70,7 +71,7 @@ export default function GuestRecoveryDetailActions({
                 router.refresh();
               });
             }}
-            className="tap-target rounded-full border border-border px-4 text-sm font-semibold text-muted disabled:opacity-50"
+            className={btnNeutral}
           >
             {t(lang, "action_not_required")}
           </button>
