@@ -18,6 +18,16 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Moshe",
   },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    // iOS's "Add to Home Screen" specifically looks for apple-touch-icon --
+    // it doesn't read manifest.json icons -- so without this it falls back
+    // to a generated icon instead of the real one.
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
