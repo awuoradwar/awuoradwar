@@ -88,7 +88,8 @@ export async function updateTemplateScheduleAction(id: string, formData: FormDat
     | { recurrence_config: string | null }
     | undefined;
   const prevConfig = existing?.recurrence_config ? JSON.parse(existing.recurrence_config) : {};
-  const config = { ...prevConfig, weekdays: weekdaysRaw.map(Number), dueTime };
+  const linkScheduleRequests = formData.get("linkScheduleRequests") === "on";
+  const config = { ...prevConfig, weekdays: weekdaysRaw.map(Number), dueTime, linkScheduleRequests };
   db.prepare(`UPDATE task_templates SET recurrence_type = ?, recurrence_config = ? WHERE id = ?`).run(
     recurrenceType,
     JSON.stringify(config),

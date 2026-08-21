@@ -9,6 +9,7 @@ import ScheduleRequestForm from "@/components/ScheduleRequestForm";
 import ApprovalQueueRow from "@/components/ApprovalQueueRow";
 import ConflictCheckTool from "@/components/ConflictCheckTool";
 import ScheduleRequestRow, { ActivityEntry } from "@/components/ScheduleRequestRow";
+import RequestsByMonth from "@/components/RequestsByMonth";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -98,10 +99,18 @@ export default async function SchedulingPage() {
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
           {user.language === "es" ? "Todas las solicitudes" : "All requests"}
         </h2>
-        <div className="card divide-y divide-border">
-          {all.map((r) => (
-            <ScheduleRequestRow key={r.id} request={r} lang={user.language} activity={activityByRequest.get(r.id) || []} />
-          ))}
+        <p className="mb-2 text-xs text-muted">
+          {user.language === "es" ? "Agrupado por mes, luego por día de la fecha solicitada." : "Grouped by month, then by day of the requested date."}
+        </p>
+        <div className="card overflow-hidden">
+          <RequestsByMonth
+            items={all}
+            getDate={(r) => r.requested_start_date}
+            keyOf={(r) => r.id}
+            lang={user.language}
+            emptyLabel={user.language === "es" ? "Sin solicitudes todavía." : "No requests yet."}
+            renderItem={(r) => <ScheduleRequestRow request={r} lang={user.language} activity={activityByRequest.get(r.id) || []} />}
+          />
         </div>
       </section>
     </div>

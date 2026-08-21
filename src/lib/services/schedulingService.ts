@@ -139,6 +139,32 @@ export function getLatestAttachmentForRequest(requestId: string, storeId: string
     .get(requestId, storeId) as { file_ref: string; attachment_type: string | null } | undefined;
 }
 
+/** Every request whose window overlaps [weekStart, weekEnd] (both YYYY-MM-DD,
+ * inclusive) and hasn't been denied -- approved time off is confirmed to
+ * build the schedule around, and a still-pending request is exactly the kind
+ * of thing a manager needs surfaced while they're building that week's
+ * schedule, not just decided on later from the queue. */
+export function getScheduleRequestsForWeek(storeId: string, weekStart: string, weekEnd: string) {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT sr.* FROM schedule_requests sr
+       WHERE sr.store_id = ? AND sr.status IN ('APPROVED', 'PENDING_GM_APPROVAL')
+       AND sr.requested_start_date <= ? AND COALESCE(sr.requested_end_date, sr.requested_start_date) >= ?
+       ORDER BY sr.requested_start_date ASC`
+    )
+    .all(storeId, weekEnd, weekStart) as Array<{
+    id: string;
+    associate_name: string;
+    request_type: string;
+    requested_start_date: string;
+    requested_end_date: string | null;
+    requested_start_time: string | null;
+    requested_end_time: string | null;
+    status: string;
+  }>;
+}
+
 /** Check a proposed shift date/time for an associate against approved requests & availability. */
 export function checkConflict(storeId: string, associateName: string, shiftDate: string, startTime?: string, endTime?: string) {
   const db = getDb();

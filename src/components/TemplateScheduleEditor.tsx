@@ -20,6 +20,7 @@ const WEEKDAYS = [
 export interface RecurrenceConfig {
   weekdays?: number[];
   dueTime?: string;
+  linkScheduleRequests?: boolean;
 }
 
 export default function TemplateScheduleEditor({
@@ -72,6 +73,19 @@ export default function TemplateScheduleEditor({
         <Field label={lang === "es" ? "Hora límite" : "Due time"}>
           <input name="dueTime" type="time" defaultValue={config.dueTime || ""} className={inputClass} />
         </Field>
+        <label className="flex items-start gap-2 text-xs">
+          <input type="checkbox" name="linkScheduleRequests" defaultChecked={!!config.linkScheduleRequests} className="mt-0.5 h-4 w-4" />
+          <span>
+            {lang === "es"
+              ? "Mostrar las solicitudes de tiempo libre de la próxima semana en esta tarea"
+              : "Show next week's time-off requests on this task"}
+            <span className="block text-muted">
+              {lang === "es"
+                ? "Para una tarea como 'Crear y publicar el horario' -- muestra quién pidió libre para la semana que está programando."
+                : "For a task like \"Create and post schedule\" -- shows who requested off for the week you're building."}
+            </span>
+          </span>
+        </label>
         <button
           type="submit"
           disabled={pending}
