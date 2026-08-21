@@ -13,18 +13,27 @@ const SHIFT_LABEL: Record<TrainingShiftType, Record<Language, string>> = {
   DOUBLE: { en: "Double", es: "Doble" },
 };
 
-/** Date/shift/notes on a trained checklist item are all correctable
- * afterward -- the trained checkbox just stamps "now" the moment it's
- * tapped, but a manager is often logging training that happened earlier
- * (a different day, a different shift than when they're checking the box),
- * and may want to flag "needs follow-up/retraining" without un-checking it
- * (which would misrepresent that the training never happened at all). */
+interface ManagerOption {
+  id: string;
+  name: string;
+}
+
+/** Date/shift/trained-by/notes on a trained checklist item are all
+ * correctable afterward -- the trained checkbox just stamps "now" and the
+ * person tapping it as trained_by, but a manager filling in the record
+ * later is very often not who actually did the training, and is often
+ * logging training that happened earlier (a different day, a different
+ * shift). Notes let a manager flag "needs follow-up/retraining" without
+ * un-checking the item (which would misrepresent that training never
+ * happened at all). */
 function CompletionEditor({
   traineeId,
   itemId,
   trainedAt,
   shiftType,
+  trainedBy,
   notes,
+  managers,
   lang,
   onDone,
 }: {
@@ -32,7 +41,9 @@ function CompletionEditor({
   itemId: string;
   trainedAt: string;
   shiftType: TrainingShiftType | null;
+  trainedBy: string | null;
   notes: string;
+  managers: ManagerOption[];
   lang: Language;
   onDone: () => void;
 }) {
@@ -42,6 +53,7 @@ function CompletionEditor({
   const d = new Date(trainedAt);
   const [date, setDate] = useState(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
   const [shift, setShift] = useState<TrainingShiftType | "">(shiftType || "");
+  const [trainer, setTrainer] = useState(trainedBy || "");
   const [draftNotes, setDraftNotes] = useState(notes);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +76,16 @@ function CompletionEditor({
           </select>
         </Field>
       </div>
+      <Field label={lang === "es" ? "Capacitado por" : "Trained by"}>
+        <select value={trainer} onChange={(e) => setTrainer(e.target.value)} className={`${selectClass} h-8 text-xs`}>
+          <option value="">{lang === "es" ? "Sin especificar" : "Unspecified"}</option>
+          {managers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </Field>
       <input
         value={draftNotes}
         onChange={(e) => setDraftNotes(e.target.value)}
@@ -78,7 +100,7 @@ function CompletionEditor({
           onClick={() => {
             setError(null);
             startTransition(async () => {
-              const result = await updateTrainingCompletionAction(traineeId, itemId, date, shift, draftNotes);
+              const result = await updateTrainingCompletionAction(traineeId, itemId, date, shift, trainer, draftNotes);
               if (result && "error" in result && result.error) {
                 setError(result.error);
                 return;
@@ -102,10 +124,12 @@ function CompletionEditor({
 export default function TrainingChecklist({
   traineeId,
   items,
+  managers,
   lang,
 }: {
   traineeId: string;
   items: TrainingChecklistRow[];
+  managers: ManagerOption[];
   lang: Language;
 }) {
   const [pending, startTransition] = useTransition();
@@ -166,7 +190,9 @@ export default function TrainingChecklist({
                     itemId={it.id}
                     trainedAt={it.trained_at || new Date().toISOString()}
                     shiftType={it.shift_type}
+                    trainedBy={it.trained_by}
                     notes={it.notes || ""}
+                    managers={managers}
                     lang={lang}
                     onDone={() => setEditingFor(null)}
                   />

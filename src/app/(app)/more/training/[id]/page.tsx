@@ -50,7 +50,7 @@ export default async function TraineeDetailPage({ params }: PageProps<"/more/tra
             : "No training steps for this position yet. A GM can add them from the Training menu."}
         </div>
       ) : (
-        <TrainingChecklist traineeId={trainee.id} items={items} lang={user.language} />
+        <TrainingChecklist traineeId={trainee.id} items={items} managers={managers} lang={user.language} />
       )}
 
       {trainee.status === "IN_PROGRESS" && (

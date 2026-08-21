@@ -48,6 +48,7 @@ export async function updateTrainingCompletionAction(
   trainingItemId: string,
   trainedAtDate: string,
   shiftType: string,
+  trainedBy: string,
   notes: string
 ) {
   const user = await requireCurrentUser();
@@ -58,7 +59,7 @@ export async function updateTrainingCompletionAction(
     user.storeId,
     traineeId,
     trainingItemId,
-    { trainedAtDate, shiftType: (shiftType as TrainingShiftType) || null, notes: notes.trim() || null },
+    { trainedAtDate, shiftType: (shiftType as TrainingShiftType) || null, trainedBy: trainedBy || null, notes: notes.trim() || null },
     user
   );
   refresh(traineeId);

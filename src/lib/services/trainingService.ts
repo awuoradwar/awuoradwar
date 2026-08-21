@@ -96,6 +96,7 @@ export function getTraineeDetail(traineeId: string, storeId: string): TraineeDet
 }
 
 export interface TrainingChecklistRow extends TrainingItem {
+  trained_by: string | null;
   trained_by_name: string | null;
   trained_at: string | null;
   shift_type: TrainingShiftType | null;
@@ -106,7 +107,7 @@ export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRo
   const db = getDb();
   return db
     .prepare(
-      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, u.name as trained_by_name, tc.trained_at, tc.shift_type, tc.notes
+      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, tc.trained_by, u.name as trained_by_name, tc.trained_at, tc.shift_type, tc.notes
        FROM training_items ti
        LEFT JOIN training_completions tc ON tc.training_item_id = ti.id AND tc.trainee_id = ?
        LEFT JOIN users u ON u.id = tc.trained_by
@@ -149,12 +150,15 @@ export function toggleTrainingItem(traineeId: string, trainingItemId: string, ac
  * fields attach to. `trainedAtDate` is a plain "YYYY-MM-DD" store-local
  * date -- converted to a real UTC instant (at noon store-local, so it can
  * never drift onto the adjacent calendar day) rather than stored as a bare
- * date string, consistent with every other date field in the app. */
+ * date string, consistent with every other date field in the app.
+ * `trainedBy` is who actually DID the training -- distinct from `actor`
+ * (whoever is making this edit), since a manager filling in the record
+ * afterward is very often not the one who trained the associate. */
 export function updateTrainingCompletion(
   storeId: string,
   traineeId: string,
   trainingItemId: string,
-  fields: { trainedAtDate?: string; shiftType?: TrainingShiftType | null; notes?: string | null },
+  fields: { trainedAtDate?: string; shiftType?: TrainingShiftType | null; trainedBy?: string | null; notes?: string | null },
   actor: SessionUser
 ) {
   const db = getDb();
@@ -167,6 +171,10 @@ export function updateTrainingCompletion(
   if (fields.shiftType !== undefined) {
     sets.push("shift_type = ?");
     args.push(fields.shiftType);
+  }
+  if (fields.trainedBy !== undefined) {
+    sets.push("trained_by = ?");
+    args.push(fields.trainedBy);
   }
   if (fields.notes !== undefined) {
     sets.push("notes = ?");
