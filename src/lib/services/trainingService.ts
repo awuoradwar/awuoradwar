@@ -4,7 +4,7 @@ import { newId, nowIso, writeAudit } from "../audit";
 import { storeLocalIso } from "../storeTime";
 import { SessionUser } from "../types";
 
-export type TrainingPosition = "COUNTERHELP" | "COOK" | "KITCHENHELP";
+export type TrainingPosition = "COUNTERHELP" | "COOK" | "KITCHENHELP" | "SHIFT_LEAD";
 
 export interface TrainingItem {
   id: string;
