@@ -35,6 +35,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: "#0f1f52",
+  // Without this, iOS treats the viewport as NOT extending into the safe
+  // areas, so env(safe-area-inset-bottom) resolves to 0px regardless of the
+  // device's actual home-indicator height -- the bottom nav's safe-area
+  // padding (BottomNav.tsx) silently does nothing and the nav sits flush
+  // against the very edge instead of clear of it.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
