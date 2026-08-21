@@ -12,6 +12,7 @@ import { POSITION_LABEL, canDo } from "@/lib/permissions";
 import { Position } from "@/lib/types";
 import { buildManagerColorMap } from "@/lib/managerColor";
 import { storeToday } from "@/lib/storeTime";
+import { getHolidaysInRange } from "@/lib/usHolidays";
 
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -60,6 +61,13 @@ export default async function WeekPage() {
   const lastWeekStart = new Date(startDate.getTime() - 7 * 86400000).toISOString().slice(0, 10);
   const managerColors = buildManagerColorMap(managers.map((m) => m.id));
 
+  // This week + next week -- posting/adjusting next week's schedule is
+  // exactly what happens on this page, so a holiday landing just past the
+  // currently-displayed week still needs to inform staffing decisions made
+  // here today.
+  const lookaheadEnd = new Date(startDate.getTime() + 13 * 86400000).toISOString().slice(0, 10);
+  const upcomingHolidays = getHolidaysInRange(start, lookaheadEnd);
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-5">
       <Link
@@ -69,6 +77,29 @@ export default async function WeekPage() {
         <span>📊 {user.language === "es" ? "Ver Resumen de la Semana Pasada" : "View Last Week's Summary"}</span>
         <span>→</span>
       </Link>
+
+      {upcomingHolidays.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+            {user.language === "es" ? "Próximos Días Festivos" : "Upcoming Holidays"}
+          </h2>
+          <div className="card divide-y divide-border">
+            {upcomingHolidays.map((h) => (
+              <div key={h.date} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                <span className="font-medium">{user.language === "es" ? h.name_es : h.name}</span>
+                <span className="shrink-0 text-xs text-muted">
+                  {dayNames[new Date(h.date + "T00:00:00Z").getDay()]} · {h.date.slice(5)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted">
+            {user.language === "es"
+              ? "Revisa las ventas de días festivos anteriores para planificar el personal según la demanda esperada."
+              : "Check prior years' sales for these dates to plan staffing around expected demand."}
+          </p>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
