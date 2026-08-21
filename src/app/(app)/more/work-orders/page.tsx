@@ -4,9 +4,15 @@ import { getCurrentUser } from "@/lib/auth";
 import { getWorkOrdersGrouped, WorkOrderRow as WorkOrderRowData } from "@/lib/services/issueService";
 import WorkOrderRow from "@/components/WorkOrderRow";
 import PageHeader from "@/components/PageHeader";
+import HistoryByWeek from "@/components/HistoryByWeek";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
 import { storeToday } from "@/lib/storeTime";
+
+function weekSubtitle(items: WorkOrderRowData[], lang: Language) {
+  const critical = items.filter((i) => i.severity === "CRITICAL").length;
+  return critical ? (lang === "es" ? `${critical} crítico${critical === 1 ? "" : "s"}` : `${critical} critical`) : "";
+}
 
 function Section({
   title,
@@ -91,7 +97,22 @@ export default async function WorkOrdersPage() {
       <Section title={t(lang, "work_orders_due_today")} sub={t(lang, "work_orders_due_today_sub")} rows={groups.dueToday} lang={lang} />
       <Section title={t(lang, "work_orders_due_this_week")} rows={groups.dueThisWeek} lang={lang} collapsible />
       <Section title={t(lang, "work_orders_no_date")} rows={groups.noDate} lang={lang} collapsible />
-      <Section title={t(lang, "work_orders_done")} rows={groups.done} lang={lang} collapsible />
+
+      <details className="card overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+          <span className="text-xs font-bold uppercase tracking-wide text-accent">{t(lang, "work_orders_done")}</span>
+          <span className="shrink-0 text-xs font-semibold text-muted">{groups.done.length}</span>
+        </summary>
+        <HistoryByWeek
+          items={groups.done}
+          getDate={(item) => item.resolved_at || item.created_at}
+          keyOf={(item) => item.id}
+          renderItem={(item) => <WorkOrderRow order={item} lang={lang} />}
+          renderSubtitle={(items) => weekSubtitle(items, lang)}
+          lang={lang}
+          emptyLabel={t(lang, "all_clear")}
+        />
+      </details>
     </div>
   );
 }

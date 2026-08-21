@@ -123,6 +123,7 @@ export interface BorrowedItemRow {
   unit: string | null;
   due_at: string | null;
   status: string;
+  completed_at: string | null;
   created_at: string;
 }
 

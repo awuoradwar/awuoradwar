@@ -1,9 +1,19 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { getOpenBorrowedItems, getSettledBorrowedItems } from "@/lib/services/borrowingService";
+import { getOpenBorrowedItems, getSettledBorrowedItems, BorrowedItemRow as BorrowedItemRowData } from "@/lib/services/borrowingService";
 import BorrowedItemRow from "@/components/BorrowedItemRow";
 import PageHeader from "@/components/PageHeader";
+import HistoryByWeek from "@/components/HistoryByWeek";
+
+function weekSubtitle(items: BorrowedItemRowData[], lang: "en" | "es") {
+  const borrowed = items.filter((i) => i.direction === "BORROWED").length;
+  const lent = items.filter((i) => i.direction === "LENT").length;
+  const parts: string[] = [];
+  if (borrowed) parts.push(lang === "es" ? `${borrowed} prestados` : `${borrowed} borrowed`);
+  if (lent) parts.push(lang === "es" ? `${lent} prestados a otros` : `${lent} lent`);
+  return parts.join(" · ");
+}
 
 export default async function BorrowedItemsPage() {
   const user = await getCurrentUser();
@@ -47,15 +57,15 @@ export default async function BorrowedItemsPage() {
           <span className="text-xs font-bold uppercase tracking-wide text-accent">{lang === "es" ? "Liquidados" : "Settled"}</span>
           <span className="shrink-0 text-xs font-semibold text-muted">{settled.length}</span>
         </summary>
-        {settled.length === 0 ? (
-          <p className="border-t border-border p-4 text-center text-xs text-muted">{lang === "es" ? "Ninguno todavía." : "None yet."}</p>
-        ) : (
-          <div className="divide-y divide-border border-t border-border">
-            {settled.map((item) => (
-              <BorrowedItemRow key={item.id} item={item} lang={lang} storeId={user.storeId} />
-            ))}
-          </div>
-        )}
+        <HistoryByWeek
+          items={settled}
+          getDate={(item) => item.completed_at || item.created_at}
+          keyOf={(item) => item.id}
+          renderItem={(item) => <BorrowedItemRow item={item} lang={lang} storeId={user.storeId} />}
+          renderSubtitle={(items) => weekSubtitle(items, lang)}
+          lang={lang}
+          emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}
+        />
       </details>
     </div>
   );

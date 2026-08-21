@@ -1,9 +1,19 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getUpcomingCallInsAndLates, getPastCallInsAndLates } from "@/lib/services/attendanceService";
+import { getUpcomingCallInsAndLates, getPastCallInsAndLates, AttendanceEventRow } from "@/lib/services/attendanceService";
 import { storeToday } from "@/lib/storeTime";
 import AttendanceRow from "@/components/AttendanceRow";
 import PageHeader from "@/components/PageHeader";
+import HistoryByWeek from "@/components/HistoryByWeek";
+
+function weekSubtitle(items: AttendanceEventRow[], lang: "en" | "es") {
+  const callIns = items.filter((i) => i.type === "CALL_IN").length;
+  const lates = items.filter((i) => i.type === "LATE").length;
+  const parts: string[] = [];
+  if (callIns) parts.push(lang === "es" ? `${callIns} avisos` : `${callIns} call-in${callIns === 1 ? "" : "s"}`);
+  if (lates) parts.push(lang === "es" ? `${lates} tardanzas` : `${lates} late${lates === 1 ? "" : "s"}`);
+  return parts.join(" · ");
+}
 
 export default async function AttendancePage() {
   const user = await getCurrentUser();
@@ -44,15 +54,15 @@ export default async function AttendancePage() {
           <span className="text-xs font-bold uppercase tracking-wide text-accent">{lang === "es" ? "Historial" : "History"}</span>
           <span className="shrink-0 text-xs font-semibold text-muted">{past.length}</span>
         </summary>
-        {past.length === 0 ? (
-          <p className="border-t border-border p-4 text-center text-xs text-muted">{lang === "es" ? "Ninguno todavía." : "None yet."}</p>
-        ) : (
-          <div className="divide-y divide-border border-t border-border">
-            {past.map((item) => (
-              <AttendanceRow key={item.id} item={item} lang={lang} />
-            ))}
-          </div>
-        )}
+        <HistoryByWeek
+          items={past}
+          getDate={(item) => item.event_date || item.created_at}
+          keyOf={(item) => item.id}
+          renderItem={(item) => <AttendanceRow item={item} lang={lang} />}
+          renderSubtitle={(items) => weekSubtitle(items, lang)}
+          lang={lang}
+          emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}
+        />
       </details>
     </div>
   );

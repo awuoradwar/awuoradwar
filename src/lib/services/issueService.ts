@@ -151,5 +151,10 @@ export function getWorkOrdersGrouped(storeId: string, todayStr: string, weekEndS
       groups.noDate.push(row);
     }
   }
+  // Everything else groups by severity/due_date (still relevant while open),
+  // but "done" only makes sense ordered by when it was actually resolved --
+  // it inherited that ordering by accident otherwise, burying recently
+  // resolved work orders under old high-severity ones.
+  groups.done.sort((a, b) => (b.resolved_at || "").localeCompare(a.resolved_at || ""));
   return groups;
 }

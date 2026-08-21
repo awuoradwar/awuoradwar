@@ -12,6 +12,13 @@ import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
 import CateringOrderRow, { CateringOrderData } from "@/components/CateringOrderRow";
 import PageHeader from "@/components/PageHeader";
+import HistoryByWeek from "@/components/HistoryByWeek";
+
+function weekSubtitle(items: CateringOrderData[], lang: Language) {
+  const guests = items.reduce((sum, o) => sum + (o.number_of_people || 0), 0);
+  if (!guests) return "";
+  return lang === "es" ? `${guests} invitados` : `${guests} guests`;
+}
 
 function Section({ title, sub, rows, lang, collapsible }: { title: string; sub?: string; rows: CateringOrderData[]; lang: Language; collapsible?: boolean }) {
   const body =
@@ -78,7 +85,22 @@ export default async function CateringPage() {
         <Section title={lang === "es" ? "Atrasados" : "Overdue"} sub={lang === "es" ? "Todavía abiertos, con fecha pasada" : "Still open, past their due date"} rows={pastDue} lang={lang} />
       )}
       <Section title={t(lang, "catering_upcoming")} rows={upcoming} lang={lang} collapsible />
-      <Section title={lang === "es" ? "Historial" : "History"} rows={history} lang={lang} collapsible />
+
+      <details className="card overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+          <span className="text-xs font-bold uppercase tracking-wide text-accent">{lang === "es" ? "Historial" : "History"}</span>
+          <span className="shrink-0 text-xs font-semibold text-muted">{history.length}</span>
+        </summary>
+        <HistoryByWeek
+          items={history}
+          getDate={(item) => item.due_date}
+          keyOf={(item) => item.id}
+          renderItem={(item) => <CateringOrderRow order={item} lang={lang} />}
+          renderSubtitle={(items) => weekSubtitle(items, lang)}
+          lang={lang}
+          emptyLabel={t(lang, "all_clear")}
+        />
+      </details>
     </div>
   );
 }
