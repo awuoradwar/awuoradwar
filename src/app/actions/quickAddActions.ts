@@ -55,8 +55,9 @@ function fd(formData: FormData, key: string): string {
 /** Maps the quick-add "When" bucket to an actual scheduled_date -- without
  * this, every task landed on today's date regardless of what was picked,
  * so a task marked "Tomorrow" would wrongly show up under today on Week. */
-function scheduledDateForWhen(when: string, storeId: string): string {
+function scheduledDateForWhen(when: string, storeId: string, customDate?: string | null): string {
   const todayStr = storeToday(storeId);
+  if (when === "CUSTOM" && customDate) return customDate;
   if (when === "TOMORROW") return new Date(new Date(todayStr + "T00:00:00Z").getTime() + 86400000).toISOString().slice(0, 10);
   if (when === "LATER_THIS_WEEK") {
     const weekStart = weekStartOf(todayStr);
@@ -93,7 +94,8 @@ export async function quickAddTaskAction(formData: FormData) {
   }
 
   const scheduledFor = fd(formData, "scheduledFor") || "TODAY";
-  const scheduledDate = scheduledDateForWhen(scheduledFor, user.storeId);
+  if (scheduledFor === "CUSTOM" && !fd(formData, "customDate")) return { error: "Date is required." };
+  const scheduledDate = scheduledDateForWhen(scheduledFor, user.storeId, fd(formData, "customDate"));
   taskService.createTask({
     storeId: user.storeId,
     title,

@@ -28,6 +28,7 @@ export default function TaskForm({
   currentUserId: string;
 }) {
   const [recurring, setRecurring] = useState(false);
+  const [scheduledFor, setScheduledFor] = useState("TODAY");
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const allDaysSelected = selectedDays.length === WEEKDAYS.length;
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
@@ -78,12 +79,19 @@ export default function TaskForm({
         </Field>
       ) : (
         <Field label={lang === "es" ? "Cuándo" : "When"}>
-          <select name="scheduledFor" defaultValue="TODAY" className={selectClass}>
+          <select name="scheduledFor" value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} className={selectClass}>
             <option value="TODAY">{lang === "es" ? "Hoy" : "Today"}</option>
             <option value="NEXT_SHIFT">{lang === "es" ? "Próximo turno" : "Next shift"}</option>
             <option value="TOMORROW">{lang === "es" ? "Mañana" : "Tomorrow"}</option>
             <option value="LATER_THIS_WEEK">{lang === "es" ? "Más tarde esta semana" : "Later this week"}</option>
+            <option value="CUSTOM">{lang === "es" ? "Fecha específica..." : "Specific date..."}</option>
           </select>
+        </Field>
+      )}
+
+      {!recurring && scheduledFor === "CUSTOM" && (
+        <Field label={lang === "es" ? "Fecha" : "Date"}>
+          <input name="customDate" type="date" required className={inputClass} />
         </Field>
       )}
 
