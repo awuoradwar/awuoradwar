@@ -97,6 +97,31 @@ export async function updateStorePeriodAction(formData: FormData) {
   return { ok: true };
 }
 
+export async function saveWeeklyOpsSummaryAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };
+
+  const weekStart = String(formData.get("weekStart") || "").trim();
+  if (!weekStart) return { error: "Week is required." };
+
+  storeProfileService.upsertWeeklyOpsSummary(
+    user.storeId,
+    weekStart,
+    {
+      otFohHours: num(formData, "otFohHours"),
+      otBohHours: num(formData, "otBohHours"),
+      cogsActualPct: num(formData, "cogsActualPct"),
+      cogsGoalPct: num(formData, "cogsGoalPct"),
+      otNotes: String(formData.get("otNotes") || "").trim() || null,
+      cogsNotes: String(formData.get("cogsNotes") || "").trim() || null,
+    },
+    user
+  );
+
+  refresh();
+  return { ok: true };
+}
+
 export async function updateGemScoreAction(formData: FormData) {
   const user = await requireCurrentUser();
   if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };

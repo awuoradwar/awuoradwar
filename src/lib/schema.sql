@@ -500,6 +500,26 @@ CREATE TABLE IF NOT EXISTS store_pnl_periods (
   created_at TEXT NOT NULL
 );
 
+-- Weekly overtime + COGS/inventory-variance tracking, separate from the
+-- P&L period above (which is a corporate 4-week period, not a calendar
+-- week) -- lets a GM log what actually happened week to week, with notes
+-- explaining an OT spike or a COGS goal miss, for trend-spotting between
+-- P&L releases.
+CREATE TABLE IF NOT EXISTS weekly_ops_summaries (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  week_start TEXT NOT NULL, -- YYYY-MM-DD, Sunday -- same week boundary as the Week page
+  ot_foh_hours REAL,
+  ot_boh_hours REAL,
+  cogs_actual_pct REAL,
+  cogs_goal_pct REAL,
+  ot_notes TEXT,
+  cogs_notes TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_ops_summaries_unique ON weekly_ops_summaries(store_id, week_start);
+
 CREATE TABLE IF NOT EXISTS handoffs (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),

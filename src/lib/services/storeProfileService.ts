@@ -1,6 +1,7 @@
 import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
+import { weekStartOf } from "./recurrenceService";
 import { SessionUser } from "../types";
 
 export interface StorePnlPeriod {
@@ -221,4 +222,80 @@ export function updateGemScore(
       gem_accuracy_goal: params.gemAccuracyGoal,
     },
   });
+}
+
+export interface WeeklyOpsSummary {
+  id: string;
+  store_id: string;
+  week_start: string;
+  ot_foh_hours: number | null;
+  ot_boh_hours: number | null;
+  cogs_actual_pct: number | null;
+  cogs_goal_pct: number | null;
+  ot_notes: string | null;
+  cogs_notes: string | null;
+  created_by: string | null;
+  created_by_name: string | null;
+  created_at: string;
+}
+
+export function getLatestWeeklyOpsSummary(storeId: string): WeeklyOpsSummary | undefined {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT w.*, u.name as created_by_name FROM weekly_ops_summaries w
+       LEFT JOIN users u ON u.id = w.created_by
+       WHERE w.store_id = ? ORDER BY w.week_start DESC LIMIT 1`
+    )
+    .get(storeId) as WeeklyOpsSummary | undefined;
+}
+
+export function getWeeklyOpsSummaryHistory(storeId: string, limit = 12): WeeklyOpsSummary[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT w.*, u.name as created_by_name FROM weekly_ops_summaries w
+       LEFT JOIN users u ON u.id = w.created_by
+       WHERE w.store_id = ? ORDER BY w.week_start DESC LIMIT ?`
+    )
+    .all(storeId, limit) as WeeklyOpsSummary[];
+}
+
+/** One row per calendar week (Sun-Sat) -- entering a week that already has
+ * a row corrects it in place rather than creating a duplicate, since
+ * there's only ever one real answer for "what was OT/COGS that week." */
+export function upsertWeeklyOpsSummary(
+  storeId: string,
+  weekStartInput: string,
+  fields: {
+    otFohHours: number | null;
+    otBohHours: number | null;
+    cogsActualPct: number | null;
+    cogsGoalPct: number | null;
+    otNotes: string | null;
+    cogsNotes: string | null;
+  },
+  actor: SessionUser
+): string {
+  const db = getDb();
+  const weekStart = weekStartOf(weekStartInput);
+  const existing = db.prepare(`SELECT id FROM weekly_ops_summaries WHERE store_id = ? AND week_start = ?`).get(storeId, weekStart) as
+    | { id: string }
+    | undefined;
+
+  if (existing) {
+    db.prepare(
+      `UPDATE weekly_ops_summaries SET ot_foh_hours = ?, ot_boh_hours = ?, cogs_actual_pct = ?, cogs_goal_pct = ?, ot_notes = ?, cogs_notes = ? WHERE id = ?`
+    ).run(fields.otFohHours, fields.otBohHours, fields.cogsActualPct, fields.cogsGoalPct, fields.otNotes, fields.cogsNotes, existing.id);
+    writeAudit({ entityType: "weekly_ops_summary", entityId: existing.id, actor, action: "EDITED", newValue: { week_start: weekStart, ...fields } });
+    return existing.id;
+  }
+
+  const id = newId();
+  db.prepare(
+    `INSERT INTO weekly_ops_summaries (id, store_id, week_start, ot_foh_hours, ot_boh_hours, cogs_actual_pct, cogs_goal_pct, ot_notes, cogs_notes, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, storeId, weekStart, fields.otFohHours, fields.otBohHours, fields.cogsActualPct, fields.cogsGoalPct, fields.otNotes, fields.cogsNotes, actor.id, nowIso());
+  writeAudit({ entityType: "weekly_ops_summary", entityId: id, actor, action: "CREATED", newValue: { week_start: weekStart, ...fields } });
+  return id;
 }

@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
-import { getLatestPeriod, getPeriodHistory, getGemScore } from "@/lib/services/storeProfileService";
-import { formatStoreDateTime } from "@/lib/storeTime";
+import { getLatestPeriod, getPeriodHistory, getGemScore, getWeeklyOpsSummaryHistory } from "@/lib/services/storeProfileService";
+import { formatStoreDateTime, storeToday } from "@/lib/storeTime";
+import { weekStartOf } from "@/lib/services/recurrenceService";
 import StorePeriodForm from "@/components/StorePeriodForm";
 import StorePeriodEditToggle from "@/components/StorePeriodEditToggle";
 import GemScoreCard from "@/components/GemScoreCard";
+import WeeklyOpsSummaryCard from "@/components/WeeklyOpsSummaryCard";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -39,6 +41,11 @@ export default async function StoreProfilePage() {
   const gm = isGM(user);
   const es = user.language === "es";
   const locale = es ? "es-MX" : "en-US";
+
+  const currentWeekStart = weekStartOf(storeToday(user.storeId));
+  const weeklyHistory = getWeeklyOpsSummaryHistory(user.storeId, 12);
+  const currentWeekSummary = weeklyHistory.find((w) => w.week_start === currentWeekStart);
+  const pastWeeklySummaries = weeklyHistory.filter((w) => w.week_start !== currentWeekStart);
 
   const kpis = latest
     ? [
@@ -164,6 +171,30 @@ export default async function StoreProfilePage() {
             ))}
           </div>
         </section>
+      )}
+
+      <section className="mb-6 mt-6">
+        <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-accent">{es ? "Horas Extra y COGS Semanal" : "Weekly OT & COGS"}</h2>
+        <p className="mb-2 text-xs text-muted">
+          {es
+            ? "Un renglón por semana, separado del período de P&L -- registra qué pasó realmente cada semana."
+            : "One row per week, separate from the P&L period -- logs what actually happened each week."}
+        </p>
+        <WeeklyOpsSummaryCard summary={currentWeekSummary} weekStart={currentWeekStart} canEdit={gm} lang={user.language} />
+      </section>
+
+      {pastWeeklySummaries.length > 0 && (
+        <details className="card mb-6 overflow-hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Historial Semanal" : "Weekly History"}</span>
+            <span className="shrink-0 text-xs font-semibold text-muted">{pastWeeklySummaries.length}</span>
+          </summary>
+          <div className="flex flex-col gap-2 border-t border-border p-3">
+            {pastWeeklySummaries.map((w) => (
+              <WeeklyOpsSummaryCard key={w.id} summary={w} weekStart={w.week_start} canEdit={gm} lang={user.language} />
+            ))}
+          </div>
+        </details>
       )}
     </div>
   );
