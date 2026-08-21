@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toggleTrainingItemAction, updateTrainingCompletionAction } from "@/app/actions/trainingActions";
+import { toggleTrainingItemAction, updateTrainingCompletionAction, retrainTrainingItemAction } from "@/app/actions/trainingActions";
 import { TrainingChecklistRow, TrainingShiftType } from "@/lib/services/trainingService";
 import { Field, inputClass, selectClass, btnPrimary } from "./forms/FormShell";
 import { Language } from "@/lib/types";
@@ -137,6 +137,7 @@ export default function TrainingChecklist({
   // load; every other item still reflects the server prop.
   const [optimisticTrained, setOptimisticTrained] = useState<Record<string, boolean>>({});
   const [editingFor, setEditingFor] = useState<string | null>(null);
+  const [retrainingFor, setRetrainingFor] = useState<string | null>(null);
   const router = useRouter();
 
   function toggle(itemId: string, currentlyTrained: boolean) {
@@ -151,6 +152,15 @@ export default function TrainingChecklist({
     });
   }
 
+  function retrain(itemId: string) {
+    setRetrainingFor(itemId);
+    startTransition(async () => {
+      await retrainTrainingItemAction(traineeId, itemId);
+      setRetrainingFor(null);
+      router.refresh();
+    });
+  }
+
   return (
     <div className="card divide-y divide-border">
       {items.map((it) => {
@@ -158,20 +168,23 @@ export default function TrainingChecklist({
         const label = lang === "es" && it.title_es ? it.title_es : it.title;
         return (
           <div key={it.id} className="flex flex-col gap-1.5 px-3 py-3">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => toggle(it.id, trained)}
-              className="tap-target flex w-full items-start gap-3 text-left disabled:opacity-60"
-            >
-              <span
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold ${
-                  trained ? "border-ok bg-ok text-background" : "border-border text-transparent"
+            {/* Only the checkbox itself toggles trained/untrained -- the
+                title used to be part of the same giant tap target, so
+                tapping it to read more (there's nothing more to read, but
+                that wasn't obvious) silently flipped the checkbox instead. */}
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => toggle(it.id, trained)}
+                title={trained ? (lang === "es" ? "Marcar como no capacitado" : "Mark as not trained") : lang === "es" ? "Marcar como capacitado" : "Mark as trained"}
+                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors disabled:opacity-60 ${
+                  trained ? "border-ok bg-ok text-background" : "border-border text-transparent hover:border-accent"
                 }`}
               >
                 ✓
-              </span>
-              <span className="min-w-0 flex-1">
+              </button>
+              <div className="min-w-0 flex-1">
                 <p className="text-sm">{label}</p>
                 {trained && it.trained_at && (
                   <p className="text-xs text-muted">
@@ -180,11 +193,11 @@ export default function TrainingChecklist({
                     {it.shift_type ? ` · ${SHIFT_LABEL[it.shift_type][lang]}` : ""}
                   </p>
                 )}
-              </span>
-            </button>
+              </div>
+            </div>
             {trained &&
               (editingFor === it.id ? (
-                <div className="pl-8">
+                <div className="pl-10">
                   <CompletionEditor
                     traineeId={traineeId}
                     itemId={it.id}
@@ -198,12 +211,20 @@ export default function TrainingChecklist({
                   />
                 </div>
               ) : (
-                <div className="flex items-center gap-2 pl-8">
+                <div className="flex items-center gap-2 pl-10">
                   {it.notes ? (
                     <p className="min-w-0 flex-1 truncate text-xs italic text-muted">{it.notes}</p>
                   ) : (
                     <span className="flex-1" />
                   )}
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => retrain(it.id)}
+                    className="shrink-0 text-xs font-semibold text-accent disabled:opacity-60"
+                  >
+                    {retrainingFor === it.id ? "…" : `↻ ${lang === "es" ? "Recapacitado" : "Retrained"}`}
+                  </button>
                   <button type="button" onClick={() => setEditingFor(it.id)} className="shrink-0 text-xs font-semibold text-accent">
                     ✎ {lang === "es" ? "Editar" : "Edit"}
                   </button>

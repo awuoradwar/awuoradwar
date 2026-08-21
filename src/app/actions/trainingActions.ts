@@ -66,6 +66,15 @@ export async function updateTrainingCompletionAction(
   return { ok: true };
 }
 
+export async function retrainTrainingItemAction(traineeId: string, trainingItemId: string) {
+  const user = await requireCurrentUser();
+  const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
+  if (!trainee) throw new Error("NOT_FOUND");
+  trainingService.retrainCompletion(traineeId, trainingItemId, user);
+  refresh(traineeId);
+  return { ok: true };
+}
+
 export async function markTraineeCompleteAction(traineeId: string) {
   const user = await requireCurrentUser();
   const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);

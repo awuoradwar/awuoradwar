@@ -185,6 +185,22 @@ export function updateTrainingCompletion(
   writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, ...fields } });
 }
 
+/** One-tap "did this again, just now" -- re-stamps trained_by/trained_at to
+ * the current actor and moment, distinct from the full edit form (which is
+ * for correcting a record to reflect training that already happened, not
+ * for logging a fresh retrain). Leaves shift_type/notes alone; a manager can
+ * still adjust those separately if the retrain also warrants a new note. */
+export function retrainCompletion(traineeId: string, trainingItemId: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE training_completions SET trained_by = ?, trained_at = ? WHERE trainee_id = ? AND training_item_id = ?`).run(
+    actor.id,
+    nowIso(),
+    traineeId,
+    trainingItemId
+  );
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, retrained: true } });
+}
+
 export function markTraineeComplete(traineeId: string, actor: SessionUser) {
   const db = getDb();
   db.prepare(`UPDATE trainees SET status = 'COMPLETE' WHERE id = ?`).run(traineeId);
