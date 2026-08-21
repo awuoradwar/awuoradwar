@@ -476,7 +476,8 @@ CREATE TABLE IF NOT EXISTS store_pnl_periods (
   sss_pct REAL, -- Same Store Sales %
   sst_pct REAL, -- Same Store Transactions %
   check_average REAL, -- CK
-  cogs_pct REAL, -- food cost %
+  cogs_pct REAL, -- food cost % actual
+  cogs_theoretical_pct REAL, -- food cost % theoretical (ideal usage)
   labor_pct REAL,
   controllable_profit_actual REAL, -- CP $
   controllable_profit_pct REAL, -- CP %

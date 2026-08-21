@@ -14,6 +14,7 @@ export interface StorePnlPeriod {
   sst_pct: number | null;
   check_average: number | null;
   cogs_pct: number | null;
+  cogs_theoretical_pct: number | null;
   labor_pct: number | null;
   controllable_profit_actual: number | null;
   controllable_profit_pct: number | null;
@@ -66,6 +67,7 @@ export function createPeriod(params: {
   sstPct: number | null;
   checkAverage: number | null;
   cogsPct: number | null;
+  cogsTheoreticalPct: number | null;
   laborPct: number | null;
   controllableProfitActual: number | null;
   controllableProfitPct: number | null;
@@ -81,10 +83,10 @@ export function createPeriod(params: {
   db.prepare(
     `INSERT INTO store_pnl_periods (
       id, store_id, period_label, net_sales_actual, net_sales_prior_year,
-      sss_pct, sst_pct, check_average, cogs_pct, labor_pct,
+      sss_pct, sst_pct, check_average, cogs_pct, cogs_theoretical_pct, labor_pct,
       controllable_profit_actual, controllable_profit_pct, restaurant_contribution, restaurant_contribution_pct,
       pnl_file_ref, released_at, notes, created_by, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -95,6 +97,7 @@ export function createPeriod(params: {
     params.sstPct,
     params.checkAverage,
     params.cogsPct,
+    params.cogsTheoreticalPct,
     params.laborPct,
     params.controllableProfitActual,
     params.controllableProfitPct,
@@ -128,6 +131,7 @@ export function updatePeriod(params: {
   sstPct: number | null;
   checkAverage: number | null;
   cogsPct: number | null;
+  cogsTheoreticalPct: number | null;
   laborPct: number | null;
   controllableProfitActual: number | null;
   controllableProfitPct: number | null;
@@ -143,7 +147,7 @@ export function updatePeriod(params: {
   db.prepare(
     `UPDATE store_pnl_periods SET
       period_label = ?, net_sales_actual = ?, net_sales_prior_year = ?,
-      sss_pct = ?, sst_pct = ?, check_average = ?, cogs_pct = ?, labor_pct = ?,
+      sss_pct = ?, sst_pct = ?, check_average = ?, cogs_pct = ?, cogs_theoretical_pct = ?, labor_pct = ?,
       controllable_profit_actual = ?, controllable_profit_pct = ?, restaurant_contribution = ?, restaurant_contribution_pct = ?,
       released_at = ?, notes = ?${setPnlFile ? ", pnl_file_ref = ?" : ""}
      WHERE id = ?`
@@ -156,6 +160,7 @@ export function updatePeriod(params: {
       params.sstPct,
       params.checkAverage,
       params.cogsPct,
+      params.cogsTheoreticalPct,
       params.laborPct,
       params.controllableProfitActual,
       params.controllableProfitPct,

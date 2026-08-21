@@ -33,6 +33,7 @@ function periodFields(formData: FormData) {
     sstPct: num(formData, "sstPct"),
     checkAverage: num(formData, "checkAverage"),
     cogsPct: num(formData, "cogsPct"),
+    cogsTheoreticalPct: num(formData, "cogsTheoreticalPct"),
     laborPct: num(formData, "laborPct"),
     controllableProfitActual: num(formData, "controllableProfitActual"),
     controllableProfitPct: num(formData, "controllableProfitPct"),

@@ -58,7 +58,12 @@ export default async function StoreProfilePage() {
         { label: t(user.language, "store_profile_sss"), value: fmtChangePct(latest.sss_pct), negative: (latest.sss_pct ?? 0) < 0 },
         { label: t(user.language, "store_profile_sst"), value: fmtChangePct(latest.sst_pct), negative: (latest.sst_pct ?? 0) < 0 },
         { label: t(user.language, "store_profile_check_average"), value: latest.check_average === null ? "—" : `$${latest.check_average.toFixed(2)}`, negative: false },
-        { label: t(user.language, "store_profile_cogs_pct"), value: fmtPct(latest.cogs_pct), negative: false },
+        {
+          label: t(user.language, "store_profile_cogs_pct"),
+          value: fmtPct(latest.cogs_pct),
+          negative: latest.cogs_pct !== null && latest.cogs_theoretical_pct !== null && latest.cogs_pct > latest.cogs_theoretical_pct,
+        },
+        { label: t(user.language, "store_profile_cogs_theoretical_pct"), value: fmtPct(latest.cogs_theoretical_pct), negative: false },
         { label: t(user.language, "store_profile_labor_pct"), value: fmtPct(latest.labor_pct), negative: false },
         {
           label: t(user.language, "store_profile_cp_actual"),
@@ -163,15 +168,8 @@ export default async function StoreProfilePage() {
         )}
       </section>
 
-      {gm && (
-        <section className="mb-6">
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_add_period")}</h2>
-          <StorePeriodForm lang={user.language} />
-        </section>
-      )}
-
       {history.length > 1 && (
-        <section>
+        <section className="mb-6">
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_history")}</h2>
           <div className="card divide-y divide-border text-sm">
             {history.slice(1).map((p) => (
@@ -195,6 +193,18 @@ export default async function StoreProfilePage() {
             ))}
           </div>
         </section>
+      )}
+
+      {gm && (
+        <details className="card overflow-hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "store_profile_add_period")}</span>
+            <span className="shrink-0 text-xs text-muted">▾</span>
+          </summary>
+          <div className="border-t border-border p-3">
+            <StorePeriodForm lang={user.language} />
+          </div>
+        </details>
       )}
     </div>
   );

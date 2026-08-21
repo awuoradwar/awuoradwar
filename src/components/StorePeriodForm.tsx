@@ -14,6 +14,7 @@ const NUMERIC_FIELDS = [
   "sstPct",
   "checkAverage",
   "cogsPct",
+  "cogsTheoreticalPct",
   "laborPct",
   "controllableProfitActual",
   "controllableProfitPct",
@@ -28,6 +29,7 @@ const NUMERIC_LABEL_KEY: Record<(typeof NUMERIC_FIELDS)[number], Parameters<type
   sstPct: "store_profile_sst",
   checkAverage: "store_profile_check_average",
   cogsPct: "store_profile_cogs_pct",
+  cogsTheoreticalPct: "store_profile_cogs_theoretical_pct",
   laborPct: "store_profile_labor_pct",
   controllableProfitActual: "store_profile_cp_actual",
   controllableProfitPct: "store_profile_cp_pct",
@@ -44,6 +46,7 @@ export interface StorePeriodDefaults {
   sst_pct: number | null;
   check_average: number | null;
   cogs_pct: number | null;
+  cogs_theoretical_pct: number | null;
   labor_pct: number | null;
   controllable_profit_actual: number | null;
   controllable_profit_pct: number | null;
@@ -60,6 +63,7 @@ const NUMERIC_DB_KEY: Record<(typeof NUMERIC_FIELDS)[number], keyof StorePeriodD
   sstPct: "sst_pct",
   checkAverage: "check_average",
   cogsPct: "cogs_pct",
+  cogsTheoreticalPct: "cogs_theoretical_pct",
   laborPct: "labor_pct",
   controllableProfitActual: "controllable_profit_actual",
   controllableProfitPct: "controllable_profit_pct",
