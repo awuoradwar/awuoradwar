@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n";
 import { storeToday } from "@/lib/storeTime";
 import PageHeader from "@/components/PageHeader";
 import TaskForm from "@/components/forms/TaskForm";
+import TemplatesManager from "@/components/TemplatesManager";
 import CallInForm from "@/components/forms/CallInForm";
 import LateForm from "@/components/forms/LateForm";
 import CleaningForm from "@/components/forms/CleaningForm";
@@ -60,7 +61,19 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref={BACK_HREF[type] || "/add"} lang={user.language} title={t(user.language, TITLE_KEYS[type] as never)} />
-      {type === "task" && <TaskForm lang={user.language} isGM={isGM(user)} managers={managers} currentUserId={user.id} />}
+      {type === "task" && (
+        <>
+          <TaskForm lang={user.language} isGM={isGM(user)} managers={managers} currentUserId={user.id} />
+          <details className="mt-6">
+            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-accent">
+              {user.language === "es" ? "Administrar tareas recurrentes" : "Manage recurring tasks"}
+            </summary>
+            <div className="mt-3">
+              <TemplatesManager user={user} />
+            </div>
+          </details>
+        </>
+      )}
       {type === "call-in" && <CallInForm lang={user.language} />}
       {type === "late" && <LateForm lang={user.language} />}
       {type === "cleaning" && <CleaningForm lang={user.language} areas={areas} />}

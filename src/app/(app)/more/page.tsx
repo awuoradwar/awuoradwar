@@ -31,7 +31,6 @@ export default async function MorePage() {
         { href: "/more/weekly-summary", key: "more_weekly_summary", icon: "trendingUp" },
         { href: "/more/reports", key: "more_reports", icon: "chart" },
         { href: "/more/inbox", key: "more_inbox", icon: "inbox" },
-        { href: "/more/templates", key: "more_templates", icon: "layers" },
       ],
     },
     {
