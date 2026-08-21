@@ -239,7 +239,7 @@ export function getMyShiftTasks(storeId: string, todayStr: string): TaskRow[] {
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
        WHERE t.store_id = ? AND (t.status IN ('OPEN','IN_PROGRESS') OR (t.status = 'COMPLETE' AND t.completed_at >= ? AND t.completed_at < ?))
-       ORDER BY t.due_at IS NULL, t.due_at ASC`
+       ORDER BY t.status = 'COMPLETE', t.due_at IS NULL, t.due_at ASC`
     )
     .all(storeId, start, end) as TaskRow[];
 }
