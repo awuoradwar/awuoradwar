@@ -66,12 +66,14 @@ export default async function TemplatesManager({ user }: { user: SessionUser }) 
   return (
     <div className="flex flex-col gap-5">
       {canManage && (
-        <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+        <details className="card overflow-hidden">
+          <summary className="cursor-pointer list-none px-3 py-3 text-xs font-bold uppercase tracking-wide text-accent">
             {user.language === "es" ? "Nueva plantilla" : "New template"}
-          </h2>
-          <TemplateForm lang={user.language} />
-        </section>
+          </summary>
+          <div className="border-t border-border p-3">
+            <TemplateForm lang={user.language} />
+          </div>
+        </details>
       )}
 
       {Object.entries(groupByCategory(templates)).map(([category, group]) => (

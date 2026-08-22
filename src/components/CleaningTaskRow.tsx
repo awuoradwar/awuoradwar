@@ -16,6 +16,7 @@ import {
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
+import AttachmentViewerLink from "./AttachmentViewerLink";
 import { Field, inputClass, selectClass, btnPrimary, btnOutline, btnNeutral, btnOk } from "./forms/FormShell";
 
 interface ChecklistItemData {
@@ -62,9 +63,12 @@ function PhotoSlot({ taskId, kind, url, lang }: { taskId: string; kind: "before"
     return (
       <span className="inline-flex items-center gap-1.5 text-sm">
         <span className="font-medium text-muted">{label}:</span>
-        <a href={`/api/cleaning-photos/${taskId}?kind=${kind}`} target="_blank" rel="noreferrer" className="text-accent underline">
-          {t(lang, "cleaning_view")}
-        </a>
+        <AttachmentViewerLink
+          href={`/api/cleaning-photos/${taskId}?kind=${kind}`}
+          label={t(lang, "cleaning_view")}
+          lang={lang}
+          className="text-accent underline"
+        />
         <a href={`/api/cleaning-photos/${taskId}?kind=${kind}&download=1`} className="text-accent underline">
           {t(lang, "cleaning_download")}
         </a>

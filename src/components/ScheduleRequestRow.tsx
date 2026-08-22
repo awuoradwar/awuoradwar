@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateScheduleRequestAction, deleteScheduleRequestAction } from "@/app/actions/schedulingActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
 import StatusBadge from "./StatusBadge";
+import AttachmentViewerLink from "./AttachmentViewerLink";
 import { Language } from "@/lib/types";
 
 interface RequestData {
@@ -53,9 +54,10 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
   if (optimisticallyDeleted) return null;
 
   if (!editing) {
+    const requestTypeLabel = REQUEST_TYPES.find((t) => t.value === request.request_type);
     return (
-      <div className="px-3 py-2">
-        <div className="flex items-center justify-between gap-2 text-sm">
+      <details className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm">
           <div className="min-w-0">
             <p className="truncate font-medium">
               {request.associate_name} · {request.request_type.replace(/_/g, " ")}
@@ -64,40 +66,65 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
             <p className="text-xs text-muted">
               {request.requested_start_date}
               {request.swap_with_date ? ` ↔ ${request.swap_with_date}` : ""} · {request.received_via} · {request.received_by_name}
-              {request.attachment_count ? (
-                <>
-                  {" · "}
-                  <a href={`/api/schedule-attachments/${request.id}`} target="_blank" rel="noreferrer" className="text-accent underline">
-                    📎
-                  </a>
-                </>
-              ) : null}
+              {request.attachment_count ? " · 📎" : ""}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <StatusBadge status={request.status} lang={lang} />
             <button
               type="button"
-              onClick={() => setEditing(true)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setEditing(true);
+              }}
               className="h-9 min-h-0 inline-flex shrink-0 items-center gap-1 rounded-full border border-accent px-2.5 text-xs font-semibold text-accent transition-colors hover:bg-accent hover:text-accent-foreground"
             >
               ✎ {lang === "es" ? "Editar" : "Edit"}
             </button>
           </div>
-        </div>
-        {(request.notes || activity.length > 0) && (
-          <details className="mt-1.5">
-            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted hover:text-accent">
-              {lang === "es" ? "Ver detalles" : "View details"}
-              {activity.length > 0 ? ` (${activity.length})` : ""}
-            </summary>
-            <div className="mt-1.5 flex flex-col gap-1.5 border-l-2 border-border pl-2.5">
-              {request.notes && (
-                <p className="text-xs text-foreground">
-                  <span className="font-semibold">{lang === "es" ? "Notas: " : "Notes: "}</span>
-                  {request.notes}
-                </p>
-              )}
+        </summary>
+        <div className="flex flex-col gap-1.5 border-t border-border px-3 py-2 text-xs">
+          <p>
+            <span className="font-semibold text-foreground">{lang === "es" ? "Tipo: " : "Type: "}</span>
+            <span className="text-muted">{requestTypeLabel ? (lang === "es" ? requestTypeLabel.es : requestTypeLabel.en) : request.request_type}</span>
+          </p>
+          {request.requested_end_date && (
+            <p>
+              <span className="font-semibold text-foreground">{lang === "es" ? "Fecha de fin: " : "End date: "}</span>
+              <span className="text-muted">{request.requested_end_date}</span>
+            </p>
+          )}
+          {(request.requested_start_time || request.requested_end_time) && (
+            <p>
+              <span className="font-semibold text-foreground">{lang === "es" ? "Horario: " : "Time: "}</span>
+              <span className="text-muted">
+                {request.requested_start_time || "?"}
+                {request.requested_end_time ? ` – ${request.requested_end_time}` : ""}
+              </span>
+            </p>
+          )}
+          {request.notes && (
+            <p className="text-foreground">
+              <span className="font-semibold">{lang === "es" ? "Notas: " : "Notes: "}</span>
+              {request.notes}
+            </p>
+          )}
+          {!!request.attachment_count && (
+            <p>
+              <AttachmentViewerLink
+                href={`/api/schedule-attachments/${request.id}`}
+                label={`📎 ${lang === "es" ? "Ver evidencia" : "View evidence"}`}
+                lang={lang}
+                className="font-semibold text-accent underline"
+              />
+            </p>
+          )}
+          {activity.length > 0 && (
+            <div className="mt-1 flex flex-col gap-1.5 border-l-2 border-border pl-2.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                {lang === "es" ? "Actividad" : "Activity"} ({activity.length})
+              </p>
               {activity.map((a) => (
                 <div key={a.id} className="text-xs text-muted">
                   <p>
@@ -107,9 +134,9 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
                 </div>
               ))}
             </div>
-          </details>
-        )}
-      </div>
+          )}
+        </div>
+      </details>
     );
   }
 

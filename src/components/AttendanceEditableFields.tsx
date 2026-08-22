@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateAttendanceEventAction } from "@/app/actions/attendanceActions";
 import { Field, inputClass, selectClass, FileField, btnOutline } from "./forms/FormShell";
+import AttachmentViewerLink from "./AttachmentViewerLink";
 import { Language } from "@/lib/types";
 import { attendanceTypeLabel, notificationMethodLabel, coverageStatusLabel, NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
@@ -102,9 +103,12 @@ export default function AttendanceEditableFields({
           <>
             <dt className="text-muted">{lang === "es" ? "Captura de pantalla" : "Screenshot"}</dt>
             <dd>
-              <a href={`/api/attendance-attachments/${id}`} target="_blank" rel="noreferrer" className="text-accent underline">
-                {lang === "es" ? "Ver" : "View"}
-              </a>
+              <AttachmentViewerLink
+                href={`/api/attendance-attachments/${id}`}
+                label={lang === "es" ? "Ver" : "View"}
+                lang={lang}
+                className="text-accent underline"
+              />
             </dd>
           </>
         )}

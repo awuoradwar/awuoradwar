@@ -70,6 +70,14 @@ export default function ProposalRow({
   return (
     <div className="card p-3">
       <p className="text-xs text-muted">{typeLabel[proposal.extracted_type] || proposal.extracted_type} · {proposal.filename}</p>
+      {proposal.extracted_text && (
+        <details className="mt-1">
+          <summary className="cursor-pointer text-xs text-accent">
+            {lang === "es" ? "Ver texto extraído" : "View extracted text"}
+          </summary>
+          <p className="mt-1 whitespace-pre-wrap text-xs text-muted">{proposal.extracted_text}</p>
+        </details>
+      )}
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}

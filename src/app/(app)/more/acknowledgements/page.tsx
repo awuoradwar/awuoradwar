@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getAcknowledgementsWithStatus } from "@/lib/services/acknowledgementService";
+import { formatStoreDateTime } from "@/lib/storeTime";
 import { t } from "@/lib/i18n";
 import AcknowledgementRow, { CompletionRow } from "@/components/AcknowledgementRow";
 import PageHeader from "@/components/PageHeader";
@@ -20,7 +21,15 @@ export default async function AcknowledgementsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const acks = getAcknowledgementsWithStatus(user.storeId) as unknown as AckWithStatus[];
+  const locale = user.language === "es" ? "es-MX" : "en-US";
+  const acks = (getAcknowledgementsWithStatus(user.storeId) as unknown as AckWithStatus[]).map((a) => ({
+    ...a,
+    completions: a.completions.map((c) => ({
+      ...c,
+      completed_at_formatted: c.completed_at ? formatStoreDateTime(user.storeId, c.completed_at, locale) : null,
+      verified_at_formatted: c.verified_at ? formatStoreDateTime(user.storeId, c.verified_at, locale) : null,
+    })),
+  }));
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">

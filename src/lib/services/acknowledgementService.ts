@@ -43,7 +43,11 @@ export function getAcknowledgementsWithStatus(storeId: string) {
   const db = getDb();
   const acks = db.prepare(`SELECT a.*, u.name as manager_name FROM acknowledgements a LEFT JOIN users u ON u.id = a.responsible_manager_id WHERE a.store_id = ? ORDER BY a.created_at DESC`).all(storeId) as Array<{ id: string; title: string }>;
   return acks.map((a) => {
-    const completions = db.prepare(`SELECT * FROM acknowledgement_completions WHERE acknowledgement_id = ?`).all(a.id) as Array<{ completed: number }>;
+    const completions = db
+      .prepare(
+        `SELECT c.*, u.name as verified_by_name FROM acknowledgement_completions c LEFT JOIN users u ON u.id = c.verified_by WHERE c.acknowledgement_id = ?`
+      )
+      .all(a.id) as Array<{ completed: number }>;
     const outstanding = completions.filter((c) => !c.completed).length;
     return { ...a, completions, outstanding, total: completions.length };
   });

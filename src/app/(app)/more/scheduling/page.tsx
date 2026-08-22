@@ -64,12 +64,14 @@ export default async function SchedulingPage() {
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader backHref="/more" lang={user.language} title={user.language === "es" ? "Solicitudes de Horario" : "Scheduling Requests"} />
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+      <details className="card mb-6 overflow-hidden">
+        <summary className="cursor-pointer list-none px-3 py-3 text-xs font-bold uppercase tracking-wide text-accent">
           {user.language === "es" ? "Registrar solicitud" : "Record a request"}
-        </h2>
-        <ScheduleRequestForm lang={user.language} isGM={isGM(user)} />
-      </section>
+        </summary>
+        <div className="border-t border-border p-3">
+          <ScheduleRequestForm lang={user.language} isGM={isGM(user)} />
+        </div>
+      </details>
 
       {isGM(user) && (
         <section className="mb-6">
@@ -90,12 +92,14 @@ export default async function SchedulingPage() {
         </section>
       )}
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+      <details className="card mb-6 overflow-hidden">
+        <summary className="cursor-pointer list-none px-3 py-3 text-xs font-bold uppercase tracking-wide text-accent">
           {t(user.language, "scheduling_conflict_check_title")}
-        </h2>
-        <ConflictCheckTool lang={user.language} />
-      </section>
+        </summary>
+        <div className="border-t border-border p-3">
+          <ConflictCheckTool lang={user.language} />
+        </div>
+      </details>
 
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">

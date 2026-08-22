@@ -11,8 +11,11 @@ export interface CompletionRow {
   associate_name: string;
   completed: number;
   completed_at: string | null;
+  completed_at_formatted?: string | null;
   verified_by: string | null;
+  verified_by_name?: string | null;
   verified_at: string | null;
+  verified_at_formatted?: string | null;
 }
 
 export default function AcknowledgementRow({ completion, lang }: { completion: CompletionRow; lang: Language }) {
@@ -23,20 +26,22 @@ export default function AcknowledgementRow({ completion, lang }: { completion: C
 
   const completed = !!completion.completed || optimisticallyAcknowledged;
   const verified = !!completion.verified_at || optimisticallyVerified;
+  const hasDetails = !!completion.completed_at || !!completion.verified_at;
 
   return (
-    <div className="flex items-center justify-between px-3 py-2 text-sm">
-      <div className="min-w-0">
-        <p className="truncate font-medium">{completion.associate_name}</p>
-        {verified ? (
-          <p className="text-xs text-ok">{t(lang, "status_verified")}</p>
-        ) : completed ? (
-          <p className="text-xs text-warning">{t(lang, "status_completed")}</p>
-        ) : (
-          <p className="text-xs text-muted">{t(lang, "status_open")}</p>
-        )}
-      </div>
-      <div className="flex shrink-0 gap-2">
+    <details className="px-3 py-2 text-sm">
+      <summary className="flex cursor-pointer list-none items-center justify-between">
+        <div className="min-w-0">
+          <p className="truncate font-medium">{completion.associate_name}</p>
+          {verified ? (
+            <p className="text-xs text-ok">{t(lang, "status_verified")}</p>
+          ) : completed ? (
+            <p className="text-xs text-warning">{t(lang, "status_completed")}</p>
+          ) : (
+            <p className="text-xs text-muted">{t(lang, "status_open")}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-2" onClick={(e) => e.stopPropagation()}>
         {!completed && (
           <button
             disabled={pending}
@@ -75,7 +80,23 @@ export default function AcknowledgementRow({ completion, lang }: { completion: C
             {t(lang, "action_verify")}
           </button>
         )}
-      </div>
-    </div>
+        </div>
+      </summary>
+      {hasDetails && (
+        <div className="mt-1.5 flex flex-col gap-1 border-t border-border pt-1.5 text-xs text-muted">
+          {completion.completed_at && (
+            <p>
+              {t(lang, "status_completed")}: {completion.completed_at_formatted || completion.completed_at}
+            </p>
+          )}
+          {completion.verified_at && (
+            <p>
+              {t(lang, "status_verified")}: {completion.verified_at_formatted || completion.verified_at}
+              {completion.verified_by_name ? ` · ${completion.verified_by_name}` : ""}
+            </p>
+          )}
+        </div>
+      )}
+    </details>
   );
 }

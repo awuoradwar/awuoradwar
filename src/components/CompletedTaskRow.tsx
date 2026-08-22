@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Language } from "@/lib/types";
 import { formatStoreDateTime } from "@/lib/storeTime";
 
@@ -20,7 +21,7 @@ export default function CompletedTaskRow({ task, lang, storeId }: { task: Comple
     : null;
 
   return (
-    <div className="flex items-center gap-2.5 px-3 py-2">
+    <Link href={`/task/${task.id}`} className="flex items-center gap-2.5 px-3 py-2">
       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-ok/15 text-xs font-bold text-ok">✓</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm text-foreground/80">{title}</p>
@@ -30,6 +31,6 @@ export default function CompletedTaskRow({ task, lang, storeId }: { task: Comple
         </p>
       </div>
       {timeLabel && <span className="shrink-0 text-xs tabular-nums text-muted">{timeLabel}</span>}
-    </div>
+    </Link>
   );
 }

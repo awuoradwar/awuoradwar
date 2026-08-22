@@ -37,12 +37,14 @@ export default async function InboxPage() {
           : "Nothing extracted by AI becomes active until a manager reviews and approves it."}
       </p>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+      <details className="card mb-6 overflow-hidden">
+        <summary className="cursor-pointer list-none px-3 py-3 text-xs font-bold uppercase tracking-wide text-accent">
           {user.language === "es" ? "Pegar plan de la empresa" : "Paste company plan"}
-        </h2>
-        <IngestForm lang={user.language} />
-      </section>
+        </summary>
+        <div className="border-t border-border p-3">
+          <IngestForm lang={user.language} />
+        </div>
+      </details>
 
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">

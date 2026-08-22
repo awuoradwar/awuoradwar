@@ -44,12 +44,14 @@ export default async function AdminPage() {
           : "Reminder: Assistant Manager and Chef always have exactly the same permissions."}
       </p>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+      <details className="card mb-6 overflow-hidden">
+        <summary className="cursor-pointer list-none px-3 py-3 text-xs font-bold uppercase tracking-wide text-accent">
           {user.language === "es" ? "Agregar usuario" : "Add user"}
-        </h2>
-        <UserAdminForm lang={user.language} />
-      </section>
+        </summary>
+        <div className="border-t border-border p-3">
+          <UserAdminForm lang={user.language} />
+        </div>
+      </details>
 
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
