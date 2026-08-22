@@ -2,10 +2,12 @@ import Link from "next/link";
 import { Language } from "@/lib/types";
 import { BorrowedItemRow as BorrowedItemRowData } from "@/lib/services/borrowingService";
 import { formatStoreDateTime } from "@/lib/storeTime";
+import { translateUnit } from "@/lib/borrowedItemUnits";
 
 export default function BorrowedItemRow({ item, lang, storeId }: { item: BorrowedItemRowData; lang: Language; storeId: string }) {
   const overdue = !!item.due_at && item.status !== "SETTLED" && new Date(item.due_at).getTime() < Date.now();
   const dueLabel = item.due_at ? formatStoreDateTime(storeId, item.due_at, lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" }) : null;
+  const unit = translateUnit(item.unit, lang);
 
   return (
     <Link href={`/borrowed-item/${item.id}`} className={`flex items-center gap-2 px-3 py-2 ${overdue ? "bg-critical/[0.04]" : ""}`}>
@@ -16,7 +18,7 @@ export default function BorrowedItemRow({ item, lang, storeId }: { item: Borrowe
         </p>
         <p className="truncate text-xs text-muted">
           {item.item}
-          {item.quantity ? ` · ${item.quantity}${item.unit ? ` ${item.unit}` : ""}` : ""}
+          {item.quantity ? ` · ${item.quantity}${unit ? ` ${unit}` : ""}` : ""}
           {dueLabel && <span> · {lang === "es" ? "Vence" : "Due"} {dueLabel}</span>}
         </p>
       </div>

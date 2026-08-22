@@ -5,9 +5,7 @@ import { quickAddBorrowedItemAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
 import { Language } from "@/lib/types";
-
-const UNITS_EN = ["case", "sleeve", "bag", "box", "bottle", "bucket", "each"];
-const UNITS_ES = ["caja", "manga", "bolsa", "caja chica", "botella", "cubeta", "unidad"];
+import { UNITS_EN, UNITS_ES } from "@/lib/borrowedItemUnits";
 
 export default function BorrowedItemForm({ lang }: { lang: Language }) {
   const [direction, setDirection] = useState<"BORROWED" | "LENT">("BORROWED");

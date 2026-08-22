@@ -6,9 +6,7 @@ import { updateBorrowedItemAction } from "@/app/actions/operationsActions";
 import { Field, inputClass, selectClass, btnOutline } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
-
-const UNITS_EN = ["case", "sleeve", "bag", "box", "bottle", "bucket", "each"];
-const UNITS_ES = ["caja", "manga", "bolsa", "caja chica", "botella", "cubeta", "unidad"];
+import { UNITS_EN, UNITS_ES, translateUnit } from "@/lib/borrowedItemUnits";
 
 /** pickedUpAtLocal is already the store's own wall-clock time ("YYYY-MM-
  * DDTHH:MM") -- handing it to `new Date(...)` would have the *viewer's*
@@ -67,11 +65,16 @@ export default function BorrowedItemEditableFields({
 }) {
   const [editing, setEditing] = useState(false);
   const [editDirection, setEditDirection] = useState<"BORROWED" | "LENT">(direction);
-  const [unitChoice, setUnitChoice] = useState(unit && !UNITS_EN.includes(unit) && !UNITS_ES.includes(unit) ? "__other" : unit || "");
+  const units = lang === "es" ? UNITS_ES : UNITS_EN;
+  // The stored unit might have been picked in the other language (e.g.
+  // "caja" saved by a Spanish-language manager) -- translate it into this
+  // viewer's language first so the dropdown below actually finds it among
+  // `units` instead of falling through to "__other".
+  const displayUnit = translateUnit(unit, lang);
+  const [unitChoice, setUnitChoice] = useState(displayUnit && !units.includes(displayUnit) ? "__other" : displayUnit || "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const units = lang === "es" ? UNITS_ES : UNITS_EN;
 
   if (!editing) {
     const storeFieldLabel =
@@ -93,7 +96,7 @@ export default function BorrowedItemEditableFields({
           <>
             <dt className="text-muted">{t(lang, "field_quantity")}</dt>
             <dd>
-              {quantity} {unit || ""}
+              {quantity} {displayUnit || ""}
             </dd>
           </>
         )}
@@ -193,7 +196,7 @@ export default function BorrowedItemEditableFields({
               <option value="__other">{lang === "es" ? "Otra..." : "Other..."}</option>
             </select>
             {unitChoice === "__other" ? (
-              <input key="other" name="unit" defaultValue={unit || ""} autoFocus className={`${inputClass} mt-2`} placeholder={lang === "es" ? "Escribe la unidad" : "Type a unit"} />
+              <input key="other" name="unit" defaultValue={displayUnit || ""} autoFocus className={`${inputClass} mt-2`} placeholder={lang === "es" ? "Escribe la unidad" : "Type a unit"} />
             ) : (
               <input key="picked" type="hidden" name="unit" value={unitChoice} />
             )}
