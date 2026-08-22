@@ -4,20 +4,36 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentUser } from "@/lib/auth";
 import { canDo } from "@/lib/permissions";
 import * as trainingService from "@/lib/services/trainingService";
-import { TrainingPosition, TrainingShiftType } from "@/lib/services/trainingService";
+import { TrainingPosition, TrainingShiftType, TrainingItemPhase } from "@/lib/services/trainingService";
 
 function refresh(traineeId?: string) {
   revalidatePath("/more/training");
   if (traineeId) revalidatePath(`/more/training/${traineeId}`);
 }
 
-export async function addTrainingItemAction(position: TrainingPosition, title: string, titleEs: string) {
+export async function addTrainingItemAction(position: TrainingPosition, title: string, titleEs: string, phase: TrainingItemPhase) {
   const user = await requireCurrentUser();
   if (!canDo(user, "training_items.manage")) throw new Error("FORBIDDEN");
   if (!title.trim()) return { error: "Title is required." };
-  trainingService.addTrainingItem(user.storeId, position, title.trim(), titleEs.trim() || null, user);
+  trainingService.addTrainingItem(user.storeId, position, title.trim(), titleEs.trim() || null, phase, user);
   refresh();
   return { ok: true };
+}
+
+export async function updateTrainingItemAction(id: string, title: string, titleEs: string, phase: TrainingItemPhase) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "training_items.manage")) throw new Error("FORBIDDEN");
+  if (!title.trim()) return { error: "Title is required." };
+  trainingService.updateTrainingItem(id, title.trim(), titleEs.trim() || null, phase, user);
+  refresh();
+  return { ok: true };
+}
+
+export async function moveTrainingItemAction(id: string, direction: "up" | "down") {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "training_items.manage")) throw new Error("FORBIDDEN");
+  trainingService.moveTrainingItem(id, direction, user);
+  refresh();
 }
 
 export async function removeTrainingItemAction(id: string) {

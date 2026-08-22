@@ -8,7 +8,8 @@ import {
   retrainTrainingItemAction,
   updateTrainingLogNoteAction,
 } from "@/app/actions/trainingActions";
-import { TrainingChecklistRow, TrainingCompletionLogEntry, TrainingShiftType } from "@/lib/services/trainingService";
+import { TrainingChecklistRow, TrainingCompletionLogEntry, TrainingItemPhase, TrainingShiftType } from "@/lib/services/trainingService";
+import { TRAINING_PHASE_LABEL } from "@/lib/trainingLabels";
 import { Field, inputClass, selectClass, textareaClass, btnPrimary } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 
@@ -296,14 +297,29 @@ export default function TrainingChecklist({
     });
   }
 
+  const byPhase = new Map<TrainingItemPhase, TrainingChecklistRow[]>();
+  for (const it of items) {
+    if (!byPhase.has(it.phase)) byPhase.set(it.phase, []);
+    byPhase.get(it.phase)!.push(it);
+  }
+  // Items already arrive pre-ordered (OPENING, SHIFT, CLOSING) from
+  // getTraineeChecklist -- iterate the groups in that same encounter order
+  // rather than a fixed phase list, so a position with only SHIFT steps
+  // doesn't render two empty phase headers.
+  const phaseGroups = [...byPhase.entries()];
+
   return (
-    <div className="card divide-y divide-border">
-      {items.map((it) => {
-        const trained = optimisticTrained[it.id] ?? !!it.trained_at;
-        const label = lang === "es" && it.title_es ? it.title_es : it.title;
-        const expanded = expandedFor === it.id;
-        return (
-          <div key={it.id} className="flex flex-col gap-1.5 px-3 py-3">
+    <div className="flex flex-col gap-4">
+      {phaseGroups.map(([phase, phaseItems]) => (
+        <div key={phase}>
+          {phaseGroups.length > 1 && <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-accent">{TRAINING_PHASE_LABEL[phase][lang]}</p>}
+          <div className="card divide-y divide-border">
+            {phaseItems.map((it) => {
+              const trained = optimisticTrained[it.id] ?? !!it.trained_at;
+              const label = lang === "es" && it.title_es ? it.title_es : it.title;
+              const expanded = expandedFor === it.id;
+              return (
+                <div key={it.id} className="flex flex-col gap-1.5 px-3 py-3">
             {/* Only the checkbox itself toggles trained/untrained -- the
                 title used to be part of the same giant tap target, so
                 tapping it to read more silently flipped the checkbox
@@ -377,9 +393,12 @@ export default function TrainingChecklist({
                   </button>
                 </div>
               ))}
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

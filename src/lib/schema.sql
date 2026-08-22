@@ -77,9 +77,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_manager_shifts_unique ON manager_shifts(st
 CREATE TABLE IF NOT EXISTS training_items (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
-  position TEXT NOT NULL, -- COUNTERHELP | COOK | KITCHENHELP
+  position TEXT NOT NULL, -- COUNTERHELP | COOK | KITCHENHELP | SHIFT_LEAD
   title TEXT NOT NULL,
   title_es TEXT,
+  phase TEXT NOT NULL DEFAULT 'SHIFT', -- OPENING | SHIFT | CLOSING -- where this step falls in the shift, for grouping/ordering
   sort_order INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
   created_by TEXT REFERENCES users(id),

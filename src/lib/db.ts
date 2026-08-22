@@ -69,6 +69,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "store_pnl_periods", "cogs_theoretical_pct", "cogs_theoretical_pct REAL");
   ensureColumn(db, "schedule_requests", "swap_with_name", "swap_with_name TEXT");
   ensureColumn(db, "schedule_requests", "swap_with_date", "swap_with_date TEXT");
+  ensureColumn(db, "training_items", "phase", "phase TEXT NOT NULL DEFAULT 'SHIFT'");
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   unassignStaleAutoAssignedTasks(db);

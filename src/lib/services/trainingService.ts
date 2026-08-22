@@ -6,13 +6,18 @@ import { SessionUser } from "../types";
 
 export type TrainingPosition = "COUNTERHELP" | "COOK" | "KITCHENHELP" | "SHIFT_LEAD";
 
+export type TrainingItemPhase = "OPENING" | "SHIFT" | "CLOSING";
+
 export interface TrainingItem {
   id: string;
   position: TrainingPosition;
   title: string;
   title_es: string | null;
+  phase: TrainingItemPhase;
   sort_order: number;
 }
+
+const PHASE_ORDER_SQL = `CASE ti.phase WHEN 'OPENING' THEN 0 WHEN 'SHIFT' THEN 1 WHEN 'CLOSING' THEN 2 ELSE 3 END`;
 
 export interface TraineeRow {
   id: string;
@@ -28,23 +33,85 @@ export function getTrainingItems(storeId: string, position?: TrainingPosition): 
   const db = getDb();
   if (position) {
     return db
-      .prepare(`SELECT id, position, title, title_es, sort_order FROM training_items WHERE store_id = ? AND position = ? AND active = 1 ORDER BY sort_order, title`)
+      .prepare(
+        `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.phase, ti.sort_order FROM training_items ti
+         WHERE ti.store_id = ? AND ti.position = ? AND ti.active = 1 ORDER BY ${PHASE_ORDER_SQL}, ti.sort_order, ti.title`
+      )
       .all(storeId, position) as TrainingItem[];
   }
   return db
-    .prepare(`SELECT id, position, title, title_es, sort_order FROM training_items WHERE store_id = ? AND active = 1 ORDER BY position, sort_order, title`)
+    .prepare(
+      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.phase, ti.sort_order FROM training_items ti
+       WHERE ti.store_id = ? AND ti.active = 1 ORDER BY ti.position, ${PHASE_ORDER_SQL}, ti.sort_order, ti.title`
+    )
     .all(storeId) as TrainingItem[];
 }
 
-export function addTrainingItem(storeId: string, position: TrainingPosition, title: string, titleEs: string | null, actor: SessionUser): string {
+export function addTrainingItem(
+  storeId: string,
+  position: TrainingPosition,
+  title: string,
+  titleEs: string | null,
+  phase: TrainingItemPhase,
+  actor: SessionUser
+): string {
   const db = getDb();
   const id = newId();
-  const maxOrder = db.prepare(`SELECT MAX(sort_order) as m FROM training_items WHERE store_id = ? AND position = ?`).get(storeId, position) as { m: number | null };
+  // New items go to the end of their own phase group, not the position's
+  // overall max -- otherwise a step added to Opening would land after every
+  // Closing step instead of with the rest of Opening.
+  const maxOrder = db
+    .prepare(`SELECT MAX(sort_order) as m FROM training_items WHERE store_id = ? AND position = ? AND phase = ?`)
+    .get(storeId, position, phase) as { m: number | null };
   db.prepare(
-    `INSERT INTO training_items (id, store_id, position, title, title_es, sort_order, active, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
-  ).run(id, storeId, position, title, titleEs, (maxOrder.m ?? -1) + 1, actor.id, nowIso());
-  writeAudit({ entityType: "training_item", entityId: id, actor, action: "CREATED", newValue: { position, title } });
+    `INSERT INTO training_items (id, store_id, position, title, title_es, phase, sort_order, active, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+  ).run(id, storeId, position, title, titleEs, phase, (maxOrder.m ?? -1) + 1, actor.id, nowIso());
+  writeAudit({ entityType: "training_item", entityId: id, actor, action: "CREATED", newValue: { position, title, phase } });
   return id;
+}
+
+/** Rename/re-categorize an existing step -- moving it to a different phase
+ * sends it to the end of that phase's own order, same as a brand new item,
+ * since its old position's sort_order has no meaning in a different group. */
+export function updateTrainingItem(id: string, title: string, titleEs: string | null, phase: TrainingItemPhase, actor: SessionUser) {
+  const db = getDb();
+  const existing = db.prepare(`SELECT store_id, position, phase, sort_order FROM training_items WHERE id = ?`).get(id) as
+    | { store_id: string; position: TrainingPosition; phase: TrainingItemPhase; sort_order: number }
+    | undefined;
+  if (!existing) return;
+  let sortOrder = existing.sort_order;
+  if (existing.phase !== phase) {
+    const maxOrder = db
+      .prepare(`SELECT MAX(sort_order) as m FROM training_items WHERE store_id = ? AND position = ? AND phase = ?`)
+      .get(existing.store_id, existing.position, phase) as { m: number | null };
+    sortOrder = (maxOrder.m ?? -1) + 1;
+  }
+  db.prepare(`UPDATE training_items SET title = ?, title_es = ?, phase = ?, sort_order = ? WHERE id = ?`).run(title, titleEs, phase, sortOrder, id);
+  writeAudit({ entityType: "training_item", entityId: id, actor, action: "EDITED", newValue: { title, phase } });
+}
+
+/** Swaps sort_order with the immediately adjacent item in the same
+ * position+phase group -- reordering never crosses phase groups, since
+ * "move up" out of Closing into the end of Shift wouldn't have an obvious
+ * meaning; changing phase is its own explicit edit instead. */
+export function moveTrainingItem(id: string, direction: "up" | "down", actor: SessionUser) {
+  const db = getDb();
+  const item = db.prepare(`SELECT id, store_id, position, phase, sort_order FROM training_items WHERE id = ? AND active = 1`).get(id) as
+    | { id: string; store_id: string; position: TrainingPosition; phase: TrainingItemPhase; sort_order: number }
+    | undefined;
+  if (!item) return;
+  const neighbor = db
+    .prepare(
+      `SELECT id, sort_order FROM training_items
+       WHERE store_id = ? AND position = ? AND phase = ? AND active = 1 AND id != ?
+       AND sort_order ${direction === "up" ? "<" : ">"} ?
+       ORDER BY sort_order ${direction === "up" ? "DESC" : "ASC"} LIMIT 1`
+    )
+    .get(item.store_id, item.position, item.phase, item.id, item.sort_order) as { id: string; sort_order: number } | undefined;
+  if (!neighbor) return;
+  db.prepare(`UPDATE training_items SET sort_order = ? WHERE id = ?`).run(neighbor.sort_order, item.id);
+  db.prepare(`UPDATE training_items SET sort_order = ? WHERE id = ?`).run(item.sort_order, neighbor.id);
+  writeAudit({ entityType: "training_item", entityId: id, actor, action: "EDITED", newValue: { reordered: direction } });
 }
 
 export function removeTrainingItem(id: string, actor: SessionUser) {
@@ -149,12 +216,12 @@ export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRo
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, tc.trained_by, u.name as trained_by_name, tc.trained_at, tc.shift_type, tc.notes
+      `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.phase, ti.sort_order, tc.trained_by, u.name as trained_by_name, tc.trained_at, tc.shift_type, tc.notes
        FROM training_items ti
        LEFT JOIN training_completions tc ON tc.training_item_id = ti.id AND tc.trainee_id = ?
        LEFT JOIN users u ON u.id = tc.trained_by
        WHERE ti.store_id = ? AND ti.position = ? AND ti.active = 1
-       ORDER BY ti.sort_order, ti.title`
+       ORDER BY ${PHASE_ORDER_SQL}, ti.sort_order, ti.title`
     )
     .all(trainee.id, trainee.store_id, trainee.position) as Array<Omit<TrainingChecklistRow, "log">>;
 
