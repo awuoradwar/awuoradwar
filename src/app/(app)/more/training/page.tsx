@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getTrainees, getTrainingItems } from "@/lib/services/trainingService";
 import { TRAINING_POSITIONS } from "@/lib/trainingLabels";
@@ -29,6 +30,14 @@ export default async function TrainingPage() {
           ? "Cualquier gerente puede marcar los pasos completados durante su turno -- el próximo gerente ve exactamente dónde quedó."
           : "Any manager can check off steps during their shift -- the next manager sees exactly where training left off."}
       </p>
+
+      <Link
+        href="/more/training-history"
+        className="tap-target mb-6 flex items-center justify-between rounded-xl border border-accent/30 bg-accent/5 px-4 text-sm font-semibold text-accent"
+      >
+        <span>📋 {es ? "Ver Historial de Capacitación" : "View Training History"}</span>
+        <span>→</span>
+      </Link>
 
       <section className="mb-6">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">

@@ -212,6 +212,87 @@ export function updateTrainingCompletionLogNote(traineeId: string, logId: string
   writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_completion_log_id: logId, notes: note } });
 }
 
+export interface TrainingHistoryEntry {
+  id: string;
+  trainee_id: string;
+  trainee_name: string;
+  position: TrainingPosition;
+  training_item_id: string;
+  item_title: string;
+  item_title_es: string | null;
+  trained_at: string;
+  shift_type: TrainingShiftType | null;
+  trained_by_name: string | null;
+  notes: string | null;
+  isRetrain: boolean;
+  daysSincePrevious: number | null;
+}
+
+/** Every completion/retrain event across the whole store, in one place --
+ * distinct from getTrainingCompletionLog (one trainee, one item). The first
+ * time any given trainee+item pair appears is the original training; every
+ * later one is flagged as a retrain, with the gap since the previous event
+ * for that same pair -- this is what actually answers "is this step hard
+ * for new associates" (how often it gets retrained) and "how long did it
+ * take" (the gap itself), neither of which a single current-state row could
+ * ever show. */
+export function getTrainingHistory(storeId: string): TrainingHistoryEntry[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT l.id, l.trainee_id, tr.name as trainee_name, tr.position,
+              l.training_item_id, ti.title as item_title, ti.title_es as item_title_es,
+              l.trained_at, l.shift_type, u.name as trained_by_name, l.notes
+       FROM training_completion_log l
+       JOIN trainees tr ON tr.id = l.trainee_id
+       JOIN training_items ti ON ti.id = l.training_item_id
+       LEFT JOIN users u ON u.id = l.trained_by
+       WHERE tr.store_id = ?
+       ORDER BY l.trained_at ASC`
+    )
+    .all(storeId) as Array<Omit<TrainingHistoryEntry, "isRetrain" | "daysSincePrevious">>;
+
+  const lastSeenAt = new Map<string, string>(); // "traineeId|itemId" -> previous trained_at
+  const withFlags = rows.map((r) => {
+    const key = `${r.trainee_id}|${r.training_item_id}`;
+    const previous = lastSeenAt.get(key);
+    lastSeenAt.set(key, r.trained_at);
+    const daysSincePrevious = previous ? Math.round((new Date(r.trained_at).getTime() - new Date(previous).getTime()) / 86400000) : null;
+    return { ...r, isRetrain: previous !== undefined, daysSincePrevious };
+  });
+
+  return withFlags.sort((a, b) => (a.trained_at < b.trained_at ? 1 : -1));
+}
+
+export interface RetrainFrequencyRow {
+  position: TrainingPosition;
+  item_title: string;
+  item_title_es: string | null;
+  retrainCount: number;
+  traineeCount: number;
+}
+
+/** Which steps get retrained the most, across every trainee who's ever
+ * touched them -- the direct answer to "is this area a hard thing for new
+ * associates," ranked so the hardest steps surface first. */
+export function getTrainingRetrainFrequency(storeId: string): RetrainFrequencyRow[] {
+  const history = getTrainingHistory(storeId);
+  const byItem = new Map<string, RetrainFrequencyRow & { traineeIds: Set<string> }>();
+  for (const h of history) {
+    if (!h.isRetrain) continue;
+    const key = `${h.position}|${h.item_title}`;
+    if (!byItem.has(key)) {
+      byItem.set(key, { position: h.position, item_title: h.item_title, item_title_es: h.item_title_es, retrainCount: 0, traineeCount: 0, traineeIds: new Set() });
+    }
+    const entry = byItem.get(key)!;
+    entry.retrainCount++;
+    entry.traineeIds.add(h.trainee_id);
+  }
+  return [...byItem.values()]
+    .map(({ traineeIds, ...rest }) => ({ ...rest, traineeCount: traineeIds.size }))
+    .sort((a, b) => b.retrainCount - a.retrainCount);
+}
+
 export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRow[] {
   const db = getDb();
   const rows = db
