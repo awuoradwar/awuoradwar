@@ -54,3 +54,12 @@ export async function updateAttendanceEventAction(formData: FormData) {
   refresh();
   return { ok: true };
 }
+
+export async function addAttendanceFollowupAction(eventId: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const note = String(formData.get("note") || "").trim();
+  if (!note) return { error: "Note is required." };
+  attendanceService.addAttendanceFollowup(eventId, note, user);
+  refresh();
+  return { ok: true };
+}

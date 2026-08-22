@@ -210,3 +210,39 @@ export function updateAttendanceEvent(
   );
   writeAudit({ entityType: "attendance_event", entityId: id, actor, action: "EDITED", newValue: params });
 }
+
+export interface AttendanceFollowup {
+  id: string;
+  note: string;
+  created_by_name: string | null;
+  created_at: string;
+}
+
+/** A later update about an already-logged event (e.g. "called back, will be
+ * in by noon") -- appended alongside the original entry rather than
+ * overwriting its `note`, so the initial record of what was known at the
+ * time never gets lost under whatever's learned afterward. */
+export function addAttendanceFollowup(eventId: string, note: string, actor: SessionUser) {
+  const db = getDb();
+  const id = newId();
+  db.prepare(`INSERT INTO attendance_followups (id, attendance_event_id, note, created_by, created_at) VALUES (?, ?, ?, ?, ?)`).run(
+    id,
+    eventId,
+    note,
+    actor.id,
+    nowIso()
+  );
+  writeAudit({ entityType: "attendance_event", entityId: eventId, actor, action: "EDITED", newValue: { followup: note } });
+  return id;
+}
+
+export function getAttendanceFollowups(eventId: string): AttendanceFollowup[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT f.id, f.note, u.name as created_by_name, f.created_at
+       FROM attendance_followups f LEFT JOIN users u ON u.id = f.created_by
+       WHERE f.attendance_event_id = ? ORDER BY f.created_at ASC`
+    )
+    .all(eventId) as AttendanceFollowup[];
+}

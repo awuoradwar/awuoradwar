@@ -1,11 +1,12 @@
 import { redirect, notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getAttendanceEvent } from "@/lib/services/attendanceService";
+import { getAttendanceEvent, getAttendanceFollowups } from "@/lib/services/attendanceService";
 import { lastUpdatedBy } from "@/lib/audit";
 import { formatStoreDateTime } from "@/lib/storeTime";
 import { t } from "@/lib/i18n";
 import { attendanceTypeLabel } from "@/lib/attendanceLabels";
 import AttendanceEditableFields from "@/components/AttendanceEditableFields";
+import AttendanceFollowups from "@/components/AttendanceFollowups";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
 
@@ -21,6 +22,7 @@ export default async function AttendanceDetailPage({ params }: PageProps<"/atten
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
   const title = attendanceTypeLabel(event.type, user.language);
+  const followups = getAttendanceFollowups(id).map((f) => ({ ...f, formattedAt: fmt(f.created_at) }));
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -52,6 +54,8 @@ export default async function AttendanceDetailPage({ params }: PageProps<"/atten
           </>
         )}
       </dl>
+
+      <AttendanceFollowups eventId={id} followups={followups} lang={user.language} />
 
       <ActivityLog entityType="attendance_event" entityId={id} storeId={user.storeId} lang={user.language} />
     </div>

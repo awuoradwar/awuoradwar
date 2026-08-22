@@ -298,6 +298,18 @@ CREATE TABLE IF NOT EXISTS attendance_events (
   created_at TEXT NOT NULL
 );
 
+-- Follow-up notes logged against an attendance event after the fact (e.g.
+-- "called back, will be in by noon") -- append-only, separate from the
+-- event's own `note` field, so a later update never overwrites/loses the
+-- original entry.
+CREATE TABLE IF NOT EXISTS attendance_followups (
+  id TEXT PRIMARY KEY,
+  attendance_event_id TEXT NOT NULL REFERENCES attendance_events(id),
+  note TEXT NOT NULL,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS guest_recoveries (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
