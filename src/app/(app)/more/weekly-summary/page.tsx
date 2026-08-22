@@ -103,6 +103,13 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
         <h2 className="mb-0 text-xs font-bold uppercase tracking-wide text-accent">
           {es ? "Actividad operativa" : "Operational activity"}
         </h2>
+        <div className="card p-4 text-center">
+          <p className="text-3xl font-bold text-accent">{fmtPct(summary.taskCompletionRate)}</p>
+          <p className="text-xs text-muted">
+            {es ? "Tasa de finalización de tareas" : "Task completion rate"} · {summary.tasksCompleted} {es ? "de" : "of"} {summary.tasksScheduled}{" "}
+            {es ? "tareas completadas esta semana" : "tasks completed this week"}
+          </p>
+        </div>
         {tiles.map((tile) => (
           <details key={tile.label} className="card overflow-hidden">
             <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">

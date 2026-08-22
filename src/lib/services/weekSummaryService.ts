@@ -9,6 +9,7 @@ export interface WeekSummary {
   tasksScheduled: number;
   tasksCompleted: number;
   tasksStillOpen: number;
+  taskCompletionRate: number | null; // tasksCompleted / tasksScheduled as a %, null when nothing was scheduled
   cleaningCompletions: number;
   mealReplacementsHandled: number;
   issuesOpened: number;
@@ -101,12 +102,22 @@ export function getWeekSummary(storeId: string, weekStart: string, weekEnd: stri
       }
     : null;
 
+  // Completed-this-week and scheduled-this-week aren't quite the same
+  // population (a task scheduled last week but finished late this week
+  // counts toward completions here, same as one scheduled this week but
+  // still open counts toward tasksStillOpen, not completions) -- this is a
+  // rough week-over-week throughput read, not a precise "% of this week's
+  // own tasks that got done." Can land above 100% when a week clears more
+  // backlog than it adds.
+  const taskCompletionRate = tasksScheduled.n > 0 ? (tasksCompleted.n / tasksScheduled.n) * 100 : null;
+
   return {
     weekStart,
     weekEnd,
     tasksScheduled: tasksScheduled.n,
     tasksCompleted: tasksCompleted.n,
     tasksStillOpen: tasksStillOpen.n,
+    taskCompletionRate,
     cleaningCompletions: cleaningCompletions.n,
     mealReplacementsHandled: mealReplacementsHandled.n,
     issuesOpened: issuesOpened.n,
