@@ -7,6 +7,7 @@ import { canDo } from "@/lib/permissions";
 import { formatStoreDateTime, utcToStoreLocalInput } from "@/lib/storeTime";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { getScheduleRequestsForWeek } from "@/lib/services/schedulingService";
+import { scheduleRequestTypeLabel } from "@/lib/scheduleRequestLabels";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
 import TaskEditForm from "@/components/TaskEditForm";
@@ -94,7 +95,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{r.associate_name}</p>
                     <p className="text-xs text-muted">
-                      {r.request_type.replace(/_/g, " ")}
+                      {scheduleRequestTypeLabel(r.request_type, user.language)}
                       {r.swap_with_name ? ` ↔ ${r.swap_with_name}` : ""} · {r.requested_start_date}
                       {r.swap_with_date ? ` ↔ ${r.swap_with_date}` : ""}
                       {r.requested_end_date && r.requested_end_date !== r.requested_start_date ? ` – ${r.requested_end_date}` : ""}

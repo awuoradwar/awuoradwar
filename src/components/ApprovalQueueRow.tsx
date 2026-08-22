@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { decideRequestAction } from "@/app/actions/schedulingActions";
 import AttachmentViewerLink from "./AttachmentViewerLink";
 import { Language } from "@/lib/types";
+import { scheduleRequestTypeLabel } from "@/lib/scheduleRequestLabels";
 
 interface RequestRow {
   id: string;
@@ -43,14 +44,20 @@ export default function ApprovalQueueRow({ request, lang }: { request: RequestRo
 
   return (
     <div className="card p-3">
-      <p className="text-sm font-semibold">
-        {request.associate_name} · {request.request_type.replace(/_/g, " ")}
-        {request.swap_with_name ? ` ↔ ${request.swap_with_name}` : ""}
-      </p>
-      <p className="text-xs text-muted">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <p className="font-semibold text-foreground">{request.associate_name}</p>
+        <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
+          {scheduleRequestTypeLabel(request.request_type, lang)}
+        </span>
+      </div>
+      <p className="mt-0.5 text-sm font-medium text-foreground">
         {request.requested_start_date}
-        {request.requested_end_date ? ` – ${request.requested_end_date}` : ""}
-        {request.swap_with_date ? ` ↔ ${request.swap_with_date}` : ""} · {request.received_via} · {lang === "es" ? "recibido por" : "received by"} {request.received_by_name}
+        {request.requested_end_date && request.requested_end_date !== request.requested_start_date ? ` – ${request.requested_end_date}` : ""}
+        {request.swap_with_name ? ` ↔ ${request.swap_with_name}` : ""}
+        {request.swap_with_date ? ` (${request.swap_with_date})` : ""}
+      </p>
+      <p className="mt-0.5 text-xs text-muted">
+        {request.received_via} · {lang === "es" ? "recibido por" : "received by"} {request.received_by_name}
       </p>
       {(request.requested_start_time || request.requested_end_time) && (
         <p className="text-xs text-muted">

@@ -80,9 +80,9 @@ export default function RequestsByMonth<T>({
     <div className="divide-y divide-border">
       {months.map((m) => (
         <details key={m.monthKey} open={m.monthKey >= currentMonthKey}>
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-card-subtle px-3 py-2">
-            <span className="text-xs font-bold text-foreground">{monthLabel(m.monthKey, locale)}</span>
-            <span className="text-xs font-semibold text-muted">{m.count}</span>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-accent/10 px-3 py-2.5">
+            <span className="text-sm font-bold uppercase tracking-wide text-accent">{monthLabel(m.monthKey, locale)}</span>
+            <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-foreground">{m.count}</span>
           </summary>
           <div className="divide-y divide-border">
             {m.days.map((d) => (

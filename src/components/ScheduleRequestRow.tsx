@@ -7,6 +7,7 @@ import { Field, inputClass, selectClass } from "./forms/FormShell";
 import StatusBadge from "./StatusBadge";
 import AttachmentViewerLink from "./AttachmentViewerLink";
 import { Language } from "@/lib/types";
+import { SCHEDULE_REQUEST_TYPE_LABEL, scheduleRequestTypeLabel } from "@/lib/scheduleRequestLabels";
 
 interface RequestData {
   id: string;
@@ -33,16 +34,6 @@ export interface ActivityEntry {
   formattedAt: string;
 }
 
-const REQUEST_TYPES = [
-  { value: "FULL_DAY_OFF", en: "Full day off", es: "Día completo libre" },
-  { value: "LEAVE_EARLY", en: "Leave early", es: "Salir temprano" },
-  { value: "LATE_START", en: "Late start", es: "Inicio tardío" },
-  { value: "PARTIAL_DAY", en: "Partial day", es: "Día parcial" },
-  { value: "TEMP_AVAILABILITY_CHANGE", en: "Temporary availability change", es: "Cambio temporal de disponibilidad" },
-  { value: "SHIFT_SWAP", en: "Shift swap", es: "Cambio de turno" },
-  { value: "OTHER", en: "Other", es: "Otro" },
-];
-
 export default function ScheduleRequestRow({ request, lang, activity }: { request: RequestData; lang: Language; activity: ActivityEntry[] }) {
   const [editing, setEditing] = useState(false);
   const [editRequestType, setEditRequestType] = useState(request.request_type);
@@ -54,18 +45,24 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
   if (optimisticallyDeleted) return null;
 
   if (!editing) {
-    const requestTypeLabel = REQUEST_TYPES.find((t) => t.value === request.request_type);
     return (
       <details className="group">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm">
-          <div className="min-w-0">
-            <p className="truncate font-medium">
-              {request.associate_name} · {request.request_type.replace(/_/g, " ")}
-              {request.swap_with_name ? ` ↔ ${request.swap_with_name}` : ""}
-            </p>
-            <p className="text-xs text-muted">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-2 px-3 py-2.5 text-sm">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <p className="truncate font-semibold text-foreground">{request.associate_name}</p>
+              <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
+                {scheduleRequestTypeLabel(request.request_type, lang)}
+              </span>
+            </div>
+            <p className="mt-0.5 text-sm font-medium text-foreground">
               {request.requested_start_date}
-              {request.swap_with_date ? ` ↔ ${request.swap_with_date}` : ""} · {request.received_via} · {request.received_by_name}
+              {request.requested_end_date && request.requested_end_date !== request.requested_start_date ? ` – ${request.requested_end_date}` : ""}
+              {request.swap_with_name ? ` ↔ ${request.swap_with_name}` : ""}
+              {request.swap_with_date ? ` (${request.swap_with_date})` : ""}
+            </p>
+            <p className="mt-0.5 text-xs text-muted">
+              {request.received_via} · {request.received_by_name}
               {request.attachment_count ? " · 📎" : ""}
             </p>
           </div>
@@ -85,16 +82,6 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
           </div>
         </summary>
         <div className="flex flex-col gap-1.5 border-t border-border px-3 py-2 text-xs">
-          <p>
-            <span className="font-semibold text-foreground">{lang === "es" ? "Tipo: " : "Type: "}</span>
-            <span className="text-muted">{requestTypeLabel ? (lang === "es" ? requestTypeLabel.es : requestTypeLabel.en) : request.request_type}</span>
-          </p>
-          {request.requested_end_date && (
-            <p>
-              <span className="font-semibold text-foreground">{lang === "es" ? "Fecha de fin: " : "End date: "}</span>
-              <span className="text-muted">{request.requested_end_date}</span>
-            </p>
-          )}
           {(request.requested_start_time || request.requested_end_time) && (
             <p>
               <span className="font-semibold text-foreground">{lang === "es" ? "Horario: " : "Time: "}</span>
@@ -164,9 +151,9 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
       </Field>
       <Field label={lang === "es" ? "Tipo de solicitud" : "Request type"}>
         <select name="requestType" value={editRequestType} onChange={(e) => setEditRequestType(e.target.value)} className={selectClass}>
-          {REQUEST_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {lang === "es" ? t.es : t.en}
+          {Object.entries(SCHEDULE_REQUEST_TYPE_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {lang === "es" ? label.es : label.en}
             </option>
           ))}
         </select>

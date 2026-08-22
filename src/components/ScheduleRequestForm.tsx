@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createScheduleRequestAction } from "@/app/actions/schedulingActions";
 import { Field, inputClass, selectClass, FileField } from "./forms/FormShell";
 import { Language } from "@/lib/types";
+import { SCHEDULE_REQUEST_TYPE_LABEL } from "@/lib/scheduleRequestLabels";
 
 export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; isGM: boolean }) {
   const [pending, startTransition] = useTransition();
@@ -39,13 +40,11 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
       </Field>
       <Field label={lang === "es" ? "Tipo de solicitud" : "Request type"}>
         <select name="requestType" value={requestType} onChange={(e) => setRequestType(e.target.value)} className={selectClass}>
-          <option value="FULL_DAY_OFF">{lang === "es" ? "Día completo libre" : "Full day off"}</option>
-          <option value="LEAVE_EARLY">{lang === "es" ? "Salir temprano" : "Leave early"}</option>
-          <option value="LATE_START">{lang === "es" ? "Inicio tardío" : "Late start"}</option>
-          <option value="PARTIAL_DAY">{lang === "es" ? "Día parcial" : "Partial day"}</option>
-          <option value="TEMP_AVAILABILITY_CHANGE">{lang === "es" ? "Cambio temporal de disponibilidad" : "Temporary availability change"}</option>
-          <option value="SHIFT_SWAP">{lang === "es" ? "Cambio de turno" : "Shift swap"}</option>
-          <option value="OTHER">{lang === "es" ? "Otro" : "Other"}</option>
+          {Object.entries(SCHEDULE_REQUEST_TYPE_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {lang === "es" ? label.es : label.en}
+            </option>
+          ))}
         </select>
       </Field>
       {requestType === "SHIFT_SWAP" && (
