@@ -61,7 +61,6 @@ export default function HistoryByWeek<T>({
   renderSubtitle,
   lang,
   emptyLabel,
-  defaultOpenCount = 1,
 }: {
   items: T[];
   getDate: (item: T) => string | null;
@@ -70,7 +69,6 @@ export default function HistoryByWeek<T>({
   renderSubtitle?: (items: T[]) => React.ReactNode;
   lang: Language;
   emptyLabel: string;
-  defaultOpenCount?: number;
 }) {
   if (items.length === 0) {
     return <p className="border-t border-border p-4 text-center text-xs text-muted">{emptyLabel}</p>;
@@ -81,8 +79,8 @@ export default function HistoryByWeek<T>({
 
   return (
     <div className="divide-y divide-border border-t border-border">
-      {weeks.map((w, i) => (
-        <details key={w.weekStart} open={i < defaultOpenCount}>
+      {weeks.map((w) => (
+        <details key={w.weekStart}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-accent/10 px-3 py-2.5">
             <span className="text-sm font-bold uppercase tracking-wide text-accent">{fmtWeekRange(w.weekStart, w.weekEnd, locale)}</span>
             <span className="flex shrink-0 items-center gap-2">

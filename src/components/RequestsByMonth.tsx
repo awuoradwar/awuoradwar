@@ -74,12 +74,11 @@ export default function RequestsByMonth<T>({
 
   const locale = lang === "es" ? "es-MX" : "en-US";
   const months = groupByMonthThenDay(items, getDate);
-  const currentMonthKey = new Date().toISOString().slice(0, 7);
 
   return (
     <div className="divide-y divide-border">
       {months.map((m) => (
-        <details key={m.monthKey} open={m.monthKey >= currentMonthKey}>
+        <details key={m.monthKey}>
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-accent/10 px-3 py-2.5">
             <span className="text-sm font-bold uppercase tracking-wide text-accent">{monthLabel(m.monthKey, locale)}</span>
             <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-foreground">{m.count}</span>
