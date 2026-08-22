@@ -185,20 +185,38 @@ export function updateTrainingCompletion(
   writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, ...fields } });
 }
 
-/** One-tap "did this again, just now" -- re-stamps trained_by/trained_at to
- * the current actor and moment, distinct from the full edit form (which is
- * for correcting a record to reflect training that already happened, not
- * for logging a fresh retrain). Leaves shift_type/notes alone; a manager can
- * still adjust those separately if the retrain also warrants a new note. */
-export function retrainCompletion(traineeId: string, trainingItemId: string, actor: SessionUser) {
+/** "This happened again" -- re-stamps trained_by/trained_at (and shift) to
+ * reflect when the retrain actually happened, distinct from the full edit
+ * form (which is for correcting a record to reflect training that already
+ * happened at some point in the past, not specifically logging a fresh
+ * retrain). Takes an explicit date/shift rather than always stamping the
+ * exact moment tapped -- a manager is very often logging a retrain from
+ * earlier in the day, or even a prior shift, after the fact. Leaves notes
+ * alone; a manager can still adjust those separately if the retrain also
+ * warrants a new note. */
+export function retrainCompletion(
+  storeId: string,
+  traineeId: string,
+  trainingItemId: string,
+  trainedAtDate: string,
+  shiftType: TrainingShiftType,
+  actor: SessionUser
+) {
   const db = getDb();
-  db.prepare(`UPDATE training_completions SET trained_by = ?, trained_at = ? WHERE trainee_id = ? AND training_item_id = ?`).run(
+  db.prepare(`UPDATE training_completions SET trained_by = ?, trained_at = ?, shift_type = ? WHERE trainee_id = ? AND training_item_id = ?`).run(
     actor.id,
-    nowIso(),
+    storeLocalIso(storeId, trainedAtDate, "12:00"),
+    shiftType,
     traineeId,
     trainingItemId
   );
-  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, retrained: true } });
+  writeAudit({
+    entityType: "trainee",
+    entityId: traineeId,
+    actor,
+    action: "EDITED",
+    newValue: { training_item_id: trainingItemId, retrained: true, trained_at_date: trainedAtDate, shift_type: shiftType },
+  });
 }
 
 export function markTraineeComplete(traineeId: string, actor: SessionUser) {
