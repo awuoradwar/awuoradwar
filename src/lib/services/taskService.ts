@@ -351,18 +351,22 @@ function insertTask(params: {
  * manager may correct a mistake or update details after creation. */
 export function updateTask(
   taskId: string,
-  params: { title: string; description?: string | null; dueAt?: string | null; effort: string; severity: string },
+  params: { title: string; description?: string | null; dueAt?: string | null; scheduledDate?: string | null; effort: string; severity: string },
   actor: SessionUser
 ) {
   const db = getDb();
-  const task = db.prepare(`SELECT title, description, due_at, effort, severity FROM tasks WHERE id = ?`).get(taskId) as
-    | { title: string; description: string | null; due_at: string | null; effort: string; severity: string }
+  const task = db.prepare(`SELECT title, description, due_at, scheduled_date, effort, severity FROM tasks WHERE id = ?`).get(taskId) as
+    | { title: string; description: string | null; due_at: string | null; scheduled_date: string | null; effort: string; severity: string }
     | undefined;
   if (!task) throw new Error("Task not found");
   const ts = nowIso();
+  // scheduled_date decides which day's list a task shows under, independently
+  // of due_at -- keep it in lockstep with the due date whenever one is set so
+  // editing "the date" on the task actually moves it, matching what a manager
+  // sees in the edit form (a single date field, not two).
   db.prepare(
-    `UPDATE tasks SET title = ?, description = ?, due_at = ?, effort = ?, severity = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`
-  ).run(params.title, params.description || null, params.dueAt || null, params.effort, params.severity, actor.id, ts, taskId);
+    `UPDATE tasks SET title = ?, description = ?, due_at = ?, scheduled_date = COALESCE(?, scheduled_date), effort = ?, severity = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`
+  ).run(params.title, params.description || null, params.dueAt || null, params.scheduledDate || null, params.effort, params.severity, actor.id, ts, taskId);
   writeAudit({
     entityType: "task",
     entityId: taskId,

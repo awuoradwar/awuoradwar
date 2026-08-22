@@ -66,6 +66,7 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
       title,
       description: String(formData.get("description") || "") || null,
       dueAt: dueDate ? storeLocalIso(user.storeId, dueDate, dueTime || "00:00") : null,
+      scheduledDate: dueDate || null,
       effort: String(formData.get("effort") || "STANDARD"),
       severity: String(formData.get("severity") || "NORMAL"),
     },
