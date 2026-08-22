@@ -1,61 +1,25 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { getMealReplacementsGrouped, MealReplacementRow as MealReplacementRowData } from "@/lib/services/guestRecoveryService";
+import { getOpenMealReplacements, getMealReplacementHistory, MealReplacementRow as MealReplacementRowData } from "@/lib/services/guestRecoveryService";
 import MealReplacementRow from "@/components/MealReplacementRow";
+import HistoryByWeek from "@/components/HistoryByWeek";
 import PageHeader from "@/components/PageHeader";
 import { Language } from "@/lib/types";
-import { storeToday } from "@/lib/storeTime";
 
-function Section({
+function OpenSection({
   title,
   sub,
   rows,
   lang,
   storeId,
-  collapsible,
 }: {
   title: string;
   sub?: string;
   rows: MealReplacementRowData[];
   lang: Language;
   storeId: string;
-  collapsible?: boolean;
 }) {
-  const body =
-    rows.length === 0 ? (
-      <p
-        className={
-          collapsible
-            ? "border-t border-border p-4 text-center text-xs text-muted"
-            : "rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted"
-        }
-      >
-        {lang === "es" ? "Todo en orden." : "All clear."}
-      </p>
-    ) : (
-      <div className={collapsible ? "divide-y divide-border border-t border-border" : "card divide-y divide-border"}>
-        {rows.map((r) => (
-          <MealReplacementRow key={r.id} item={r} lang={lang} storeId={storeId} />
-        ))}
-      </div>
-    );
-
-  if (collapsible) {
-    return (
-      <details className="card overflow-hidden">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wide text-accent">{title}</span>
-            {sub && <p className="text-xs text-muted">{sub}</p>}
-          </div>
-          <span className="shrink-0 text-xs font-semibold text-muted">{rows.length}</span>
-        </summary>
-        {body}
-      </details>
-    );
-  }
-
   return (
     <section>
       <div className="flex items-baseline justify-between">
@@ -63,7 +27,17 @@ function Section({
         {rows.length > 0 && <span className="text-xs font-semibold text-muted">{rows.length}</span>}
       </div>
       {sub && <p className="mb-2 text-xs text-muted">{sub}</p>}
-      {body}
+      {rows.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">
+          {lang === "es" ? "Todo en orden." : "All clear."}
+        </p>
+      ) : (
+        <div className="card divide-y divide-border">
+          {rows.map((r) => (
+            <MealReplacementRow key={r.id} item={r} lang={lang} storeId={storeId} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -72,8 +46,8 @@ export default async function MealReplacementsPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const lang = user.language;
-  const today = storeToday(user.storeId);
-  const { open, completedToday } = getMealReplacementsGrouped(user.storeId, today);
+  const open = getOpenMealReplacements(user.storeId);
+  const history = getMealReplacementHistory(user.storeId);
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
@@ -86,7 +60,7 @@ export default async function MealReplacementsPage() {
         {lang === "es" ? "+ Agregar reemplazo de comida" : "+ Add meal replacement"}
       </Link>
 
-      <Section
+      <OpenSection
         title={lang === "es" ? "Esperando Cumplimiento" : "Awaiting Fulfillment"}
         sub={
           lang === "es"
@@ -97,7 +71,21 @@ export default async function MealReplacementsPage() {
         lang={lang}
         storeId={user.storeId}
       />
-      <Section title={lang === "es" ? "Cumplidos Hoy" : "Fulfilled Today"} rows={completedToday} lang={lang} storeId={user.storeId} collapsible />
+
+      <details className="card overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+          <span className="text-xs font-bold uppercase tracking-wide text-accent">{lang === "es" ? "Historial" : "History"}</span>
+          <span className="shrink-0 text-xs font-semibold text-muted">{history.length}</span>
+        </summary>
+        <HistoryByWeek
+          items={history}
+          getDate={(item) => item.completed_at}
+          keyOf={(item) => item.id}
+          renderItem={(item) => <MealReplacementRow item={item} lang={lang} storeId={user.storeId} />}
+          lang={lang}
+          emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}
+        />
+      </details>
     </div>
   );
 }

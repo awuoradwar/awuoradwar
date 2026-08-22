@@ -3,7 +3,6 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
 import { createTask } from "./taskService";
-import { storeDayRangeUtc } from "../storeTime";
 
 export function createGuestRecovery(params: {
   storeId: string;
@@ -103,26 +102,33 @@ export interface MealReplacementRow {
  * The open queue: reported but not yet fulfilled -- one manager logs it when
  * the guest calls or can't come in right away, any manager (the same one or
  * someone else, whenever the guest actually shows up) pulls it up here and
- * completes it. Also today's already-fulfilled ones, for reference.
+ * completes it.
  */
-export function getMealReplacementsGrouped(storeId: string, todayStr: string) {
+export function getOpenMealReplacements(storeId: string): MealReplacementRow[] {
   const db = getDb();
-  const { start, end } = storeDayRangeUtc(storeId, todayStr);
-  const rows = db
+  return db
     .prepare(
       `SELECT gr.id, gr.contact_channel, gr.order_channel, gr.issue_category, gr.description, gr.item_description,
               gr.guest_name, gr.replacement_status, gr.created_at, gr.completed_at, u.name as created_by_name
        FROM guest_recoveries gr LEFT JOIN users u ON u.id = gr.created_by
-       WHERE gr.store_id = ? AND (gr.replacement_status IN ('PENDING','APPROVED') OR (gr.completed_at >= ? AND gr.completed_at < ?))
+       WHERE gr.store_id = ? AND gr.replacement_status IN ('PENDING','APPROVED')
        ORDER BY gr.created_at ASC`
     )
-    .all(storeId, start, end) as MealReplacementRow[];
+    .all(storeId) as MealReplacementRow[];
+}
 
-  const open: MealReplacementRow[] = [];
-  const completedToday: MealReplacementRow[] = [];
-  for (const row of rows) {
-    if (row.replacement_status === "PENDING" || row.replacement_status === "APPROVED") open.push(row);
-    else completedToday.push(row);
-  }
-  return { open, completedToday };
+/** Every meal replacement ever fulfilled, most recent first -- the full
+ * record behind "Fulfilled Today," which only ever showed the current day
+ * and made it impossible to see what happened last week or last month. */
+export function getMealReplacementHistory(storeId: string): MealReplacementRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT gr.id, gr.contact_channel, gr.order_channel, gr.issue_category, gr.description, gr.item_description,
+              gr.guest_name, gr.replacement_status, gr.created_at, gr.completed_at, u.name as created_by_name
+       FROM guest_recoveries gr LEFT JOIN users u ON u.id = gr.created_by
+       WHERE gr.store_id = ? AND gr.replacement_status = 'COMPLETED' AND gr.completed_at IS NOT NULL
+       ORDER BY gr.completed_at DESC`
+    )
+    .all(storeId) as MealReplacementRow[];
 }

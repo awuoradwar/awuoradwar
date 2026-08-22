@@ -12,7 +12,7 @@ const CATEGORY_LABEL: Record<string, Record<Language, string>> = {
 };
 
 export default function MealReplacementRow({ item, lang, storeId }: { item: MealReplacementRowData; lang: Language; storeId: string }) {
-  const timeLabel = formatStoreDateTime(storeId, item.created_at, lang === "es" ? "es-MX" : "en-US", {
+  const timeLabel = formatStoreDateTime(storeId, item.completed_at || item.created_at, lang === "es" ? "es-MX" : "en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
