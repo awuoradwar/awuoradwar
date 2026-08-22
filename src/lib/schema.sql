@@ -573,6 +573,7 @@ CREATE TABLE IF NOT EXISTS schedule_requests (
   requested_start_time TEXT,
   requested_end_time TEXT,
   swap_with_name TEXT, -- SHIFT_SWAP only: who's covering/trading this shift
+  swap_with_date TEXT, -- SHIFT_SWAP only: the date of swap_with_name's shift being picked up in exchange -- can differ from requested_start_date, since a swap doesn't have to be same-day
   received_via TEXT NOT NULL, -- TEXT | IN_PERSON | PHONE | WORKJAM_CHAT | OTHER
   received_by TEXT NOT NULL REFERENCES users(id),
   entered_by TEXT NOT NULL REFERENCES users(id),

@@ -12,6 +12,7 @@ export function createScheduleRequest(params: {
   requestedStartTime?: string;
   requestedEndTime?: string;
   swapWithName?: string;
+  swapWithDate?: string;
   receivedVia: string;
   notes?: string;
   actor: SessionUser; // received_by / entered_by
@@ -22,9 +23,9 @@ export function createScheduleRequest(params: {
   const status = params.gmSelfDeciding ? "APPROVED" : "PENDING_GM_APPROVAL";
   db.prepare(
     `INSERT INTO schedule_requests (id, store_id, associate_name, request_type, requested_start_date, requested_end_date,
-      requested_start_time, requested_end_time, swap_with_name, received_via, received_by, entered_by, notes, status,
+      requested_start_time, requested_end_time, swap_with_name, swap_with_date, received_via, received_by, entered_by, notes, status,
       gm_decision_by, gm_decision_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -35,6 +36,7 @@ export function createScheduleRequest(params: {
     params.requestedStartTime || null,
     params.requestedEndTime || null,
     params.swapWithName || null,
+    params.swapWithDate || null,
     params.receivedVia,
     params.actor.id,
     params.actor.id,
@@ -70,6 +72,7 @@ export function updateScheduleRequest(
     requestedStartTime: string | null;
     requestedEndTime: string | null;
     swapWithName: string | null;
+    swapWithDate: string | null;
     notes: string | null;
   },
   actor: SessionUser
@@ -77,7 +80,7 @@ export function updateScheduleRequest(
   const db = getDb();
   db.prepare(
     `UPDATE schedule_requests SET associate_name = ?, request_type = ?, requested_start_date = ?, requested_end_date = ?,
-      requested_start_time = ?, requested_end_time = ?, swap_with_name = ?, notes = ? WHERE id = ?`
+      requested_start_time = ?, requested_end_time = ?, swap_with_name = ?, swap_with_date = ?, notes = ? WHERE id = ?`
   ).run(
     params.associateName,
     params.requestType,
@@ -86,6 +89,7 @@ export function updateScheduleRequest(
     params.requestedStartTime,
     params.requestedEndTime,
     params.swapWithName,
+    params.swapWithDate,
     params.notes,
     id
   );
@@ -154,10 +158,13 @@ export function getScheduleRequestsForWeek(storeId: string, weekStart: string, w
     .prepare(
       `SELECT sr.* FROM schedule_requests sr
        WHERE sr.store_id = ? AND sr.status IN ('APPROVED', 'PENDING_GM_APPROVAL')
-       AND sr.requested_start_date <= ? AND COALESCE(sr.requested_end_date, sr.requested_start_date) >= ?
+       AND (
+         (sr.requested_start_date <= ? AND COALESCE(sr.requested_end_date, sr.requested_start_date) >= ?)
+         OR (sr.swap_with_date IS NOT NULL AND sr.swap_with_date BETWEEN ? AND ?)
+       )
        ORDER BY sr.requested_start_date ASC`
     )
-    .all(storeId, weekEnd, weekStart) as Array<{
+    .all(storeId, weekEnd, weekStart, weekStart, weekEnd) as Array<{
     id: string;
     associate_name: string;
     request_type: string;
@@ -166,6 +173,7 @@ export function getScheduleRequestsForWeek(storeId: string, weekStart: string, w
     requested_start_time: string | null;
     requested_end_time: string | null;
     swap_with_name: string | null;
+    swap_with_date: string | null;
     status: string;
   }>;
 }

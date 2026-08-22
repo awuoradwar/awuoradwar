@@ -96,6 +96,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
                     <p className="text-xs text-muted">
                       {r.request_type.replace(/_/g, " ")}
                       {r.swap_with_name ? ` ↔ ${r.swap_with_name}` : ""} · {r.requested_start_date}
+                      {r.swap_with_date ? ` ↔ ${r.swap_with_date}` : ""}
                       {r.requested_end_date && r.requested_end_date !== r.requested_start_date ? ` – ${r.requested_end_date}` : ""}
                     </p>
                   </div>

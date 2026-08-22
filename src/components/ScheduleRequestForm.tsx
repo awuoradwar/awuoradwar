@@ -54,19 +54,24 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
         </Field>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <Field label={lang === "es" ? "Fecha" : "Date"}>
+        <Field label={requestType === "SHIFT_SWAP" ? (lang === "es" ? "Cede su turno el" : "Giving away their shift on") : lang === "es" ? "Fecha" : "Date"}>
           <input name="requestedStartDate" type="date" required className={inputClass} />
         </Field>
-        <Field label={lang === "es" ? "Recibido vía" : "Received via"}>
-          <select name="receivedVia" defaultValue="TEXT" className={selectClass}>
-            <option value="TEXT">{lang === "es" ? "Mensaje de texto" : "Text"}</option>
-            <option value="IN_PERSON">{lang === "es" ? "En persona" : "In person"}</option>
-            <option value="PHONE">{lang === "es" ? "Teléfono" : "Phone"}</option>
-            <option value="WORKJAM_CHAT">WorkJam / Chat</option>
-            <option value="OTHER">{lang === "es" ? "Otro" : "Other"}</option>
-          </select>
-        </Field>
+        {requestType === "SHIFT_SWAP" && (
+          <Field label={lang === "es" ? "Toma el turno del otro el" : "Picking up their shift on"}>
+            <input name="swapWithDate" type="date" required className={inputClass} />
+          </Field>
+        )}
       </div>
+      <Field label={lang === "es" ? "Recibido vía" : "Received via"}>
+        <select name="receivedVia" defaultValue="TEXT" className={selectClass}>
+          <option value="TEXT">{lang === "es" ? "Mensaje de texto" : "Text"}</option>
+          <option value="IN_PERSON">{lang === "es" ? "En persona" : "In person"}</option>
+          <option value="PHONE">{lang === "es" ? "Teléfono" : "Phone"}</option>
+          <option value="WORKJAM_CHAT">WorkJam / Chat</option>
+          <option value="OTHER">{lang === "es" ? "Otro" : "Other"}</option>
+        </select>
+      </Field>
       <Field label={lang === "es" ? "Notas (opcional)" : "Notes (optional)"}>
         <input name="notes" className={inputClass} />
       </Field>

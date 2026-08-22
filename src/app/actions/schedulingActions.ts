@@ -34,6 +34,7 @@ export async function createScheduleRequestAction(formData: FormData) {
     requestedStartTime: String(formData.get("requestedStartTime") || "") || undefined,
     requestedEndTime: String(formData.get("requestedEndTime") || "") || undefined,
     swapWithName: String(formData.get("swapWithName") || "").trim() || undefined,
+    swapWithDate: String(formData.get("swapWithDate") || "").trim() || undefined,
     receivedVia: String(formData.get("receivedVia") || "OTHER"),
     notes: String(formData.get("notes") || "") || undefined,
     actor: user,
@@ -73,6 +74,7 @@ export async function updateScheduleRequestAction(formData: FormData) {
       requestedStartTime: String(formData.get("requestedStartTime") || "").trim() || null,
       requestedEndTime: String(formData.get("requestedEndTime") || "").trim() || null,
       swapWithName: String(formData.get("swapWithName") || "").trim() || null,
+      swapWithDate: String(formData.get("swapWithDate") || "").trim() || null,
       notes: String(formData.get("notes") || "").trim() || null,
     },
     user

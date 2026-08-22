@@ -16,6 +16,7 @@ interface RequestData {
   requested_start_time?: string | null;
   requested_end_time?: string | null;
   swap_with_name?: string | null;
+  swap_with_date?: string | null;
   notes?: string | null;
   received_via: string;
   received_by_name: string | null;
@@ -61,7 +62,8 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
               {request.swap_with_name ? ` ↔ ${request.swap_with_name}` : ""}
             </p>
             <p className="text-xs text-muted">
-              {request.requested_start_date} · {request.received_via} · {request.received_by_name}
+              {request.requested_start_date}
+              {request.swap_with_date ? ` ↔ ${request.swap_with_date}` : ""} · {request.received_via} · {request.received_by_name}
               {request.attachment_count ? (
                 <>
                   {" · "}
@@ -148,12 +150,18 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
         </Field>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <Field label={lang === "es" ? "Fecha de inicio" : "Start date"}>
+        <Field label={editRequestType === "SHIFT_SWAP" ? (lang === "es" ? "Cede su turno el" : "Giving away their shift on") : lang === "es" ? "Fecha de inicio" : "Start date"}>
           <input name="requestedStartDate" type="date" defaultValue={request.requested_start_date} required className={inputClass} />
         </Field>
-        <Field label={lang === "es" ? "Fecha de fin (opcional)" : "End date (optional)"}>
-          <input name="requestedEndDate" type="date" defaultValue={request.requested_end_date || ""} className={inputClass} />
-        </Field>
+        {editRequestType === "SHIFT_SWAP" ? (
+          <Field label={lang === "es" ? "Toma el turno del otro el" : "Picking up their shift on"}>
+            <input name="swapWithDate" type="date" defaultValue={request.swap_with_date || ""} required className={inputClass} />
+          </Field>
+        ) : (
+          <Field label={lang === "es" ? "Fecha de fin (opcional)" : "End date (optional)"}>
+            <input name="requestedEndDate" type="date" defaultValue={request.requested_end_date || ""} className={inputClass} />
+          </Field>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "Hora de inicio (opcional)" : "Start time (optional)"}>
