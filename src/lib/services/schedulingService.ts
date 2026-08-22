@@ -11,6 +11,7 @@ export function createScheduleRequest(params: {
   requestedEndDate?: string;
   requestedStartTime?: string;
   requestedEndTime?: string;
+  swapWithName?: string;
   receivedVia: string;
   notes?: string;
   actor: SessionUser; // received_by / entered_by
@@ -21,9 +22,9 @@ export function createScheduleRequest(params: {
   const status = params.gmSelfDeciding ? "APPROVED" : "PENDING_GM_APPROVAL";
   db.prepare(
     `INSERT INTO schedule_requests (id, store_id, associate_name, request_type, requested_start_date, requested_end_date,
-      requested_start_time, requested_end_time, received_via, received_by, entered_by, notes, status,
+      requested_start_time, requested_end_time, swap_with_name, received_via, received_by, entered_by, notes, status,
       gm_decision_by, gm_decision_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -33,6 +34,7 @@ export function createScheduleRequest(params: {
     params.requestedEndDate || null,
     params.requestedStartTime || null,
     params.requestedEndTime || null,
+    params.swapWithName || null,
     params.receivedVia,
     params.actor.id,
     params.actor.id,
@@ -67,6 +69,7 @@ export function updateScheduleRequest(
     requestedEndDate: string | null;
     requestedStartTime: string | null;
     requestedEndTime: string | null;
+    swapWithName: string | null;
     notes: string | null;
   },
   actor: SessionUser
@@ -74,7 +77,7 @@ export function updateScheduleRequest(
   const db = getDb();
   db.prepare(
     `UPDATE schedule_requests SET associate_name = ?, request_type = ?, requested_start_date = ?, requested_end_date = ?,
-      requested_start_time = ?, requested_end_time = ?, notes = ? WHERE id = ?`
+      requested_start_time = ?, requested_end_time = ?, swap_with_name = ?, notes = ? WHERE id = ?`
   ).run(
     params.associateName,
     params.requestType,
@@ -82,6 +85,7 @@ export function updateScheduleRequest(
     params.requestedEndDate,
     params.requestedStartTime,
     params.requestedEndTime,
+    params.swapWithName,
     params.notes,
     id
   );
@@ -161,6 +165,7 @@ export function getScheduleRequestsForWeek(storeId: string, weekStart: string, w
     requested_end_date: string | null;
     requested_start_time: string | null;
     requested_end_time: string | null;
+    swap_with_name: string | null;
     status: string;
   }>;
 }

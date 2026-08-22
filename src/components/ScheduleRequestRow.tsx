@@ -15,6 +15,7 @@ interface RequestData {
   requested_end_date?: string | null;
   requested_start_time?: string | null;
   requested_end_time?: string | null;
+  swap_with_name?: string | null;
   notes?: string | null;
   received_via: string;
   received_by_name: string | null;
@@ -36,11 +37,13 @@ const REQUEST_TYPES = [
   { value: "LATE_START", en: "Late start", es: "Inicio tardío" },
   { value: "PARTIAL_DAY", en: "Partial day", es: "Día parcial" },
   { value: "TEMP_AVAILABILITY_CHANGE", en: "Temporary availability change", es: "Cambio temporal de disponibilidad" },
+  { value: "SHIFT_SWAP", en: "Shift swap", es: "Cambio de turno" },
   { value: "OTHER", en: "Other", es: "Otro" },
 ];
 
 export default function ScheduleRequestRow({ request, lang, activity }: { request: RequestData; lang: Language; activity: ActivityEntry[] }) {
   const [editing, setEditing] = useState(false);
+  const [editRequestType, setEditRequestType] = useState(request.request_type);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [optimisticallyDeleted, setOptimisticallyDeleted] = useState(false);
@@ -55,6 +58,7 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
           <div className="min-w-0">
             <p className="truncate font-medium">
               {request.associate_name} · {request.request_type.replace(/_/g, " ")}
+              {request.swap_with_name ? ` ↔ ${request.swap_with_name}` : ""}
             </p>
             <p className="text-xs text-muted">
               {request.requested_start_date} · {request.received_via} · {request.received_by_name}
@@ -130,7 +134,7 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
         <input name="associateName" defaultValue={request.associate_name} required className={inputClass} />
       </Field>
       <Field label={lang === "es" ? "Tipo de solicitud" : "Request type"}>
-        <select name="requestType" defaultValue={request.request_type} className={selectClass}>
+        <select name="requestType" value={editRequestType} onChange={(e) => setEditRequestType(e.target.value)} className={selectClass}>
           {REQUEST_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
               {lang === "es" ? t.es : t.en}
@@ -138,6 +142,11 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
           ))}
         </select>
       </Field>
+      {editRequestType === "SHIFT_SWAP" && (
+        <Field label={lang === "es" ? "Cambiando turno con" : "Swapping shift with"}>
+          <input name="swapWithName" defaultValue={request.swap_with_name || ""} required className={inputClass} />
+        </Field>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "Fecha de inicio" : "Start date"}>
           <input name="requestedStartDate" type="date" defaultValue={request.requested_start_date} required className={inputClass} />

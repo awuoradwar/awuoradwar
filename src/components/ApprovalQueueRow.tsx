@@ -10,6 +10,7 @@ interface RequestRow {
   associate_name: string;
   request_type: string;
   requested_start_date: string;
+  swap_with_name?: string | null;
   received_via: string;
   received_by_name: string | null;
   attachment_count?: number;
@@ -36,7 +37,10 @@ export default function ApprovalQueueRow({ request, lang }: { request: RequestRo
 
   return (
     <div className="card p-3">
-      <p className="text-sm font-semibold">{request.associate_name} · {request.request_type.replace(/_/g, " ")}</p>
+      <p className="text-sm font-semibold">
+        {request.associate_name} · {request.request_type.replace(/_/g, " ")}
+        {request.swap_with_name ? ` ↔ ${request.swap_with_name}` : ""}
+      </p>
       <p className="text-xs text-muted">
         {request.requested_start_date} · {request.received_via} · {lang === "es" ? "recibido por" : "received by"} {request.received_by_name}
         {request.attachment_count ? (

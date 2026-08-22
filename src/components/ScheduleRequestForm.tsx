@@ -10,6 +10,7 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [requestType, setRequestType] = useState("FULL_DAY_OFF");
   const router = useRouter();
 
   return (
@@ -26,6 +27,7 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
           }
           setSaved(true);
           (e.target as HTMLFormElement).reset();
+          setRequestType("FULL_DAY_OFF");
           router.refresh();
           setTimeout(() => setSaved(false), 2000);
         });
@@ -36,15 +38,21 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
         <input name="associateName" required className={inputClass} />
       </Field>
       <Field label={lang === "es" ? "Tipo de solicitud" : "Request type"}>
-        <select name="requestType" defaultValue="FULL_DAY_OFF" className={selectClass}>
+        <select name="requestType" value={requestType} onChange={(e) => setRequestType(e.target.value)} className={selectClass}>
           <option value="FULL_DAY_OFF">{lang === "es" ? "Día completo libre" : "Full day off"}</option>
           <option value="LEAVE_EARLY">{lang === "es" ? "Salir temprano" : "Leave early"}</option>
           <option value="LATE_START">{lang === "es" ? "Inicio tardío" : "Late start"}</option>
           <option value="PARTIAL_DAY">{lang === "es" ? "Día parcial" : "Partial day"}</option>
           <option value="TEMP_AVAILABILITY_CHANGE">{lang === "es" ? "Cambio temporal de disponibilidad" : "Temporary availability change"}</option>
+          <option value="SHIFT_SWAP">{lang === "es" ? "Cambio de turno" : "Shift swap"}</option>
           <option value="OTHER">{lang === "es" ? "Otro" : "Other"}</option>
         </select>
       </Field>
+      {requestType === "SHIFT_SWAP" && (
+        <Field label={lang === "es" ? "Cambiando turno con" : "Swapping shift with"}>
+          <input name="swapWithName" required className={inputClass} placeholder={lang === "es" ? "Nombre del otro asociado" : "The other associate's name"} />
+        </Field>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "Fecha" : "Date"}>
           <input name="requestedStartDate" type="date" required className={inputClass} />

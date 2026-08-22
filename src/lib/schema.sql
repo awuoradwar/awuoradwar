@@ -567,11 +567,12 @@ CREATE TABLE IF NOT EXISTS schedule_requests (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
   associate_name TEXT NOT NULL,
-  request_type TEXT NOT NULL, -- FULL_DAY_OFF | LEAVE_EARLY | LATE_START | PARTIAL_DAY | TEMP_AVAILABILITY_CHANGE | OTHER
+  request_type TEXT NOT NULL, -- FULL_DAY_OFF | LEAVE_EARLY | LATE_START | PARTIAL_DAY | TEMP_AVAILABILITY_CHANGE | SHIFT_SWAP | OTHER
   requested_start_date TEXT NOT NULL,
   requested_end_date TEXT,
   requested_start_time TEXT,
   requested_end_time TEXT,
+  swap_with_name TEXT, -- SHIFT_SWAP only: who's covering/trading this shift
   received_via TEXT NOT NULL, -- TEXT | IN_PERSON | PHONE | WORKJAM_CHAT | OTHER
   received_by TEXT NOT NULL REFERENCES users(id),
   entered_by TEXT NOT NULL REFERENCES users(id),

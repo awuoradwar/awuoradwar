@@ -67,6 +67,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "training_completions", "notes", "notes TEXT");
   ensureColumn(db, "training_completions", "shift_type", "shift_type TEXT");
   ensureColumn(db, "store_pnl_periods", "cogs_theoretical_pct", "cogs_theoretical_pct REAL");
+  ensureColumn(db, "schedule_requests", "swap_with_name", "swap_with_name TEXT");
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   unassignStaleAutoAssignedTasks(db);

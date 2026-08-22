@@ -21,6 +21,7 @@ interface RequestRow {
   requested_end_date: string | null;
   requested_start_time: string | null;
   requested_end_time: string | null;
+  swap_with_name: string | null;
   notes: string | null;
   received_via: string;
   received_by_name: string | null;
