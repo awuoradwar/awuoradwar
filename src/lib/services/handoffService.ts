@@ -3,6 +3,7 @@ import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser, Language } from "../types";
 import { storeToday, storeDayRangeUtc } from "../storeTime";
+import { groupAttendanceDuplicates } from "./attendanceService";
 
 const ISSUE_CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   EQUIPMENT: { en: "Equipment", es: "Equipo" },
@@ -58,7 +59,7 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
   // staffing list, not today's -- event_date (when set) is authoritative;
   // events without one (older rows, or types that don't take a date) fall
   // back to the day they were logged, same as before.
-  const staffing = db
+  const staffingRaw = db
     .prepare(
       `SELECT id, employee_name, type, note, created_at, event_date, scheduled_time, coverage_status, covering_person FROM attendance_events
        WHERE store_id = ? AND (
@@ -78,6 +79,10 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
     coverage_status: string | null;
     covering_person: string | null;
   }>;
+  // Two managers can independently log the same call-in/late -- fold those
+  // down to one row (the first-reported one) so staffing here, and its
+  // count on My Shift, reads and counts as a single event.
+  const staffing = groupAttendanceDuplicates(staffingRaw).map((g) => g.primary);
 
   const completedHighValue = db
     .prepare(

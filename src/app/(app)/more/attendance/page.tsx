@@ -1,14 +1,14 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getUpcomingCallInsAndLates, getPastCallInsAndLates, AttendanceEventRow } from "@/lib/services/attendanceService";
+import { getUpcomingCallInsAndLates, getPastCallInsAndLates, groupAttendanceDuplicates, AttendanceEventRow, AttendanceGroup } from "@/lib/services/attendanceService";
 import { storeToday } from "@/lib/storeTime";
 import AttendanceRow from "@/components/AttendanceRow";
 import PageHeader from "@/components/PageHeader";
 import HistoryByWeek from "@/components/HistoryByWeek";
 
-function weekSubtitle(items: AttendanceEventRow[], lang: "en" | "es") {
-  const callIns = items.filter((i) => i.type === "CALL_IN").length;
-  const lates = items.filter((i) => i.type === "LATE").length;
+function weekSubtitle(groups: AttendanceGroup<AttendanceEventRow>[], lang: "en" | "es") {
+  const callIns = groups.filter((g) => g.primary.type === "CALL_IN").length;
+  const lates = groups.filter((g) => g.primary.type === "LATE").length;
   const parts: string[] = [];
   if (callIns) parts.push(lang === "es" ? `${callIns} avisos` : `${callIns} call-in${callIns === 1 ? "" : "s"}`);
   if (lates) parts.push(lang === "es" ? `${lates} tardanzas` : `${lates} late${lates === 1 ? "" : "s"}`);
@@ -21,8 +21,8 @@ export default async function AttendancePage() {
   const lang = user.language;
 
   const today = storeToday(user.storeId);
-  const upcoming = getUpcomingCallInsAndLates(user.storeId, today);
-  const past = getPastCallInsAndLates(user.storeId, today);
+  const upcoming = groupAttendanceDuplicates(getUpcomingCallInsAndLates(user.storeId, today));
+  const past = groupAttendanceDuplicates(getPastCallInsAndLates(user.storeId, today));
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
@@ -42,8 +42,8 @@ export default async function AttendancePage() {
           </p>
         ) : (
           <div className="card divide-y divide-border">
-            {upcoming.map((item) => (
-              <AttendanceRow key={item.id} item={item} lang={lang} />
+            {upcoming.map((g) => (
+              <AttendanceRow key={g.primary.id} item={g.primary} duplicates={g.duplicates} lang={lang} />
             ))}
           </div>
         )}
@@ -56,10 +56,10 @@ export default async function AttendancePage() {
         </summary>
         <HistoryByWeek
           items={past}
-          getDate={(item) => item.event_date || item.created_at}
-          keyOf={(item) => item.id}
-          renderItem={(item) => <AttendanceRow item={item} lang={lang} />}
-          renderSubtitle={(items) => weekSubtitle(items, lang)}
+          getDate={(g) => g.primary.event_date || g.primary.created_at}
+          keyOf={(g) => g.primary.id}
+          renderItem={(g) => <AttendanceRow item={g.primary} duplicates={g.duplicates} lang={lang} />}
+          renderSubtitle={(groups) => weekSubtitle(groups, lang)}
           lang={lang}
           emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}
         />

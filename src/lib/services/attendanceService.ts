@@ -102,7 +102,40 @@ export interface AttendanceEventRow {
   covering_person: string | null;
   note: string | null;
   recorded_by: string | null;
+  recorded_by_name: string | null;
   created_at: string;
+}
+
+export interface AttendanceGroup<T> {
+  primary: T;
+  duplicates: T[];
+}
+
+/** Two managers can each independently log the same real-world call-in/late
+ * (an associate reaches whoever picks up, and both enter it not knowing the
+ * other already did) -- collapses same store, same person, same type, same
+ * date into one group so it reads as -- and counts as -- a single event,
+ * with the extra report(s) kept alongside rather than discarded. The
+ * earliest-created row in a group is the primary; any others are its
+ * duplicates. Rows with no event_date only group with other date-less rows
+ * for the same person/type, since there's nothing else to match them on. */
+export function groupAttendanceDuplicates<T extends { id: string; employee_name: string; type: string; event_date: string | null; created_at: string }>(
+  rows: T[]
+): AttendanceGroup<T>[] {
+  const order: string[] = [];
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const key = `${row.type}|${row.employee_name.trim().toLowerCase()}|${row.event_date || ""}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      order.push(key);
+    }
+    groups.get(key)!.push(row);
+  }
+  return order.map((key) => {
+    const grouped = [...groups.get(key)!].sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+    return { primary: grouped[0], duplicates: grouped.slice(1) };
+  });
 }
 
 /** Call-in/Late history: everything from today forward (upcoming, by
@@ -127,8 +160,9 @@ export function getUpcomingCallInsAndLates(storeId: string, todayStr: string, li
   const db = getDb();
   const candidates = db
     .prepare(
-      `SELECT * FROM attendance_events WHERE store_id = ? AND type IN ('CALL_IN','LATE') AND event_date >= ?
-       ORDER BY event_date, scheduled_time IS NULL, scheduled_time`
+      `SELECT ae.*, u.name as recorded_by_name FROM attendance_events ae LEFT JOIN users u ON u.id = ae.recorded_by
+       WHERE ae.store_id = ? AND ae.type IN ('CALL_IN','LATE') AND ae.event_date >= ?
+       ORDER BY ae.event_date, ae.scheduled_time IS NULL, ae.scheduled_time`
     )
     .all(storeId, todayStr) as AttendanceEventRow[];
   return candidates.filter((row) => isStillUpcoming(storeId, todayStr, row)).slice(0, limit);
@@ -137,13 +171,17 @@ export function getUpcomingCallInsAndLates(storeId: string, todayStr: string, li
 export function getPastCallInsAndLates(storeId: string, todayStr: string, limit = 50): AttendanceEventRow[] {
   const db = getDb();
   const todaysCandidates = db
-    .prepare(`SELECT * FROM attendance_events WHERE store_id = ? AND type IN ('CALL_IN','LATE') AND event_date = ?`)
+    .prepare(
+      `SELECT ae.*, u.name as recorded_by_name FROM attendance_events ae LEFT JOIN users u ON u.id = ae.recorded_by
+       WHERE ae.store_id = ? AND ae.type IN ('CALL_IN','LATE') AND ae.event_date = ?`
+    )
     .all(storeId, todayStr) as AttendanceEventRow[];
   const pastToday = todaysCandidates.filter((row) => !isStillUpcoming(storeId, todayStr, row));
   const beforeToday = db
     .prepare(
-      `SELECT * FROM attendance_events WHERE store_id = ? AND type IN ('CALL_IN','LATE') AND (event_date < ? OR event_date IS NULL)
-       ORDER BY created_at DESC`
+      `SELECT ae.*, u.name as recorded_by_name FROM attendance_events ae LEFT JOIN users u ON u.id = ae.recorded_by
+       WHERE ae.store_id = ? AND ae.type IN ('CALL_IN','LATE') AND (ae.event_date < ? OR ae.event_date IS NULL)
+       ORDER BY ae.created_at DESC`
     )
     .all(storeId, todayStr) as AttendanceEventRow[];
   return [...pastToday, ...beforeToday].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, limit);
