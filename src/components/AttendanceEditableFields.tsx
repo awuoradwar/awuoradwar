@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateAttendanceEventAction } from "@/app/actions/attendanceActions";
 import { Field, inputClass, selectClass, FileField, btnOutline } from "./forms/FormShell";
 import { Language } from "@/lib/types";
-import { attendanceTypeLabel, notificationMethodLabel, NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
-
-const COVERAGE_LABEL: Record<string, { en: string; es: string }> = {
-  NEEDED: { en: "Needed", es: "Necesaria" },
-  FOUND: { en: "Found", es: "Encontrada" },
-  NOT_FOUND: { en: "Not Found", es: "No Encontrada" },
-  NOT_REQUIRED: { en: "Not Required", es: "No Requerida" },
-};
+import { attendanceTypeLabel, notificationMethodLabel, coverageStatusLabel, NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
 export default function AttendanceEditableFields({
   id,
@@ -90,7 +83,7 @@ export default function AttendanceEditableFields({
         {hasCoverage && coverageStatus && (
           <>
             <dt className="text-muted">{lang === "es" ? "Cobertura" : "Coverage"}</dt>
-            <dd>{COVERAGE_LABEL[coverageStatus]?.[lang] || coverageStatus}</dd>
+            <dd>{coverageStatusLabel(coverageStatus, lang)}</dd>
           </>
         )}
         {hasCoverage && coveringPerson && (

@@ -35,6 +35,8 @@ export interface HandoffSummary {
     created_at: string;
     event_date: string | null;
     scheduled_time: string | null;
+    coverage_status: string | null;
+    covering_person: string | null;
   }>;
   completedHighValue: Array<{ title: string; completed_by_name: string | null }>;
   unresolved: Array<{ kind: string; title: string }>;
@@ -58,7 +60,7 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
   // back to the day they were logged, same as before.
   const staffing = db
     .prepare(
-      `SELECT id, employee_name, type, note, created_at, event_date, scheduled_time FROM attendance_events
+      `SELECT id, employee_name, type, note, created_at, event_date, scheduled_time, coverage_status, covering_person FROM attendance_events
        WHERE store_id = ? AND (
          (event_date IS NOT NULL AND event_date = ?)
          OR (event_date IS NULL AND created_at >= ? AND created_at < ?)
@@ -73,6 +75,8 @@ export function buildLiveSummary(storeId: string, lang: Language = "en"): Handof
     created_at: string;
     event_date: string | null;
     scheduled_time: string | null;
+    coverage_status: string | null;
+    covering_person: string | null;
   }>;
 
   const completedHighValue = db

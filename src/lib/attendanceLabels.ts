@@ -23,3 +23,14 @@ export const NOTIFICATION_METHOD_LABEL: Record<string, { en: string; es: string 
 export function notificationMethodLabel(method: string, lang: Language): string {
   return NOTIFICATION_METHOD_LABEL[method]?.[lang] || method;
 }
+
+export const COVERAGE_STATUS_LABEL: Record<string, { en: string; es: string }> = {
+  NEEDED: { en: "Coverage needed", es: "Cobertura necesaria" },
+  FOUND: { en: "Covered", es: "Cubierto" },
+  NOT_FOUND: { en: "No coverage found", es: "Sin cobertura encontrada" },
+  NOT_REQUIRED: { en: "Coverage not required", es: "Cobertura no requerida" },
+};
+
+export function coverageStatusLabel(status: string, lang: Language): string {
+  return COVERAGE_STATUS_LABEL[status]?.[lang] || status;
+}

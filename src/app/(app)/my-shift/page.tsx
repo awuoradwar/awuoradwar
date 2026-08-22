@@ -12,7 +12,8 @@ import { getOpenBorrowedItemsDueOn } from "@/lib/services/borrowingService";
 import { storeToday, storeLocalHour, formatStoreDateTime } from "@/lib/storeTime";
 import { getDb } from "@/lib/db";
 import { buildManagerColorMap } from "@/lib/managerColor";
-import { attendanceTypeLabel } from "@/lib/attendanceLabels";
+import { attendanceTypeLabel, coverageStatusLabel } from "@/lib/attendanceLabels";
+import { Language } from "@/lib/types";
 import TaskCard from "@/components/TaskCard";
 import CompactTaskRow from "@/components/CompactTaskRow";
 import CompletedTaskRow from "@/components/CompletedTaskRow";
@@ -84,6 +85,39 @@ function SectionCard({
       </summary>
       <div className="border-t border-border p-3">{children}</div>
     </details>
+  );
+}
+
+// Only CALL_IN events actually track coverage (the edit form only exposes
+// these fields for that type) -- a LATE/NO_SHOW row never has one to show.
+const COVERAGE_TONE: Record<string, string> = {
+  NEEDED: "text-warning",
+  FOUND: "text-ok",
+  NOT_FOUND: "text-critical",
+  NOT_REQUIRED: "text-muted",
+};
+
+function StaffingRow({
+  s,
+  lang,
+}: {
+  s: { id: string; employee_name: string; type: string; note: string | null; coverage_status: string | null; covering_person: string | null };
+  lang: Language;
+}) {
+  const showCoverage = s.type === "CALL_IN" && !!s.coverage_status;
+  return (
+    <Link href={`/attendance/${s.id}`} className="card block p-3 text-sm">
+      <p>
+        🧍 {s.employee_name} — {attendanceTypeLabel(s.type, lang)}
+        {s.note ? <span className="text-muted"> · {s.note}</span> : null}
+      </p>
+      {showCoverage && (
+        <p className={`mt-1 text-xs font-semibold ${COVERAGE_TONE[s.coverage_status!] || "text-muted"}`}>
+          {coverageStatusLabel(s.coverage_status!, lang)}
+          {s.coverage_status === "FOUND" && s.covering_person ? ` · ${s.covering_person}` : ""}
+        </p>
+      )}
+    </Link>
   );
 }
 
@@ -223,10 +257,7 @@ export default async function MyShiftPage() {
               <BorrowedItemRow key={item.id} item={item} lang={user.language} storeId={user.storeId} />
             ))}
             {currentShiftStaffing.map((s) => (
-              <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">
-                🧍 {s.employee_name} — {attendanceTypeLabel(s.type, user.language)}
-                {s.note ? <span className="text-muted"> · {s.note}</span> : null}
-              </Link>
+              <StaffingRow key={s.id} s={s} lang={user.language} />
             ))}
             {currentShiftOpenItems.map((it, i) => (
               <Link
@@ -348,10 +379,7 @@ export default async function MyShiftPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {priorShiftStaffing.map((s) => (
-              <Link key={s.id} href={`/attendance/${s.id}`} className="card block p-3 text-sm">
-                🧍 {s.employee_name} — {attendanceTypeLabel(s.type, user.language)}
-                {s.note ? <span className="text-muted"> · {s.note}</span> : null}
-              </Link>
+              <StaffingRow key={s.id} s={s} lang={user.language} />
             ))}
             {priorShiftOpenItems.map((it, i) => (
               <Link key={`open-${i}`} href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`} className="card block p-3 text-sm">
