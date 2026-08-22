@@ -2,14 +2,16 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { getAreasWithProgress, ensureWeeklyCleaningRotation } from "@/lib/services/cleaningService";
+import { getAreasWithProgress, ensureWeeklyCleaningRotation, getWeeklyCleaningHistory, CleaningHistoryEntry } from "@/lib/services/cleaningService";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
 import BulkAddCleaningForm from "@/components/BulkAddCleaningForm";
 import LoadRotationButton from "@/components/LoadRotationButton";
 import AssignAreaOwnerControl from "@/components/AssignAreaOwnerControl";
 import PageHeader from "@/components/PageHeader";
+import HistoryByWeek from "@/components/HistoryByWeek";
 import { t } from "@/lib/i18n";
 import { Language } from "@/lib/types";
+import { formatStoreDateTime } from "@/lib/storeTime";
 
 interface ChecklistItem {
   id: string;
@@ -109,20 +111,37 @@ function FrequencySection({
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-accent">{title}</h2>
       <div className="flex flex-col gap-6">
         {CATEGORY_ORDER.filter((cat) => byCategory.has(cat)).map((cat) => (
-          <div key={cat}>
-            <div className="mb-3 flex items-center gap-2 border-b-2 border-accent/20 pb-1.5">
+          <details key={cat} open>
+            <summary className="mb-3 flex cursor-pointer list-none items-center gap-2 border-b-2 border-accent/20 pb-1.5">
               <span aria-hidden>{CATEGORY_ICON[cat]}</span>
               <h3 className="text-xs font-bold uppercase tracking-wide text-foreground">{CATEGORY_LABEL[cat][lang]}</h3>
-            </div>
+            </summary>
             <div className="flex flex-col gap-5">
               {byCategory.get(cat)!.map((area) => (
                 <AreaBlock key={area.id} area={area} managers={managers} lang={lang} />
               ))}
             </div>
-          </div>
+          </details>
         ))}
       </div>
     </section>
+  );
+}
+
+function HistoryRow({ entry, lang, locale, storeId }: { entry: CleaningHistoryEntry; lang: Language; locale: string; storeId: string }) {
+  const title = lang === "es" && entry.title_es ? entry.title_es : entry.title;
+  const area = lang === "es" && entry.area_name_es ? entry.area_name_es : entry.area_name;
+  const byLabel = entry.action === "VERIFIED" ? (lang === "es" ? "Verificado por" : "Verified by") : lang === "es" ? "Completado por" : "Completed by";
+  const parts = [area, entry.associate_name ? `${lang === "es" ? "Asociado" : "Associate"}: ${entry.associate_name}` : null, entry.by_name ? `${byLabel}: ${entry.by_name}` : null].filter(
+    Boolean
+  );
+  return (
+    <div className="px-3 py-2 text-sm">
+      <p className="truncate">{title}</p>
+      <p className="truncate text-xs text-muted">
+        {formatStoreDateTime(storeId, entry.at, locale, { weekday: "short", month: "short", day: "numeric" })} · {parts.join(" · ")}
+      </p>
+    </div>
   );
 }
 
@@ -145,6 +164,8 @@ export default async function CleaningPage() {
     ...a,
     tasks: a.tasks.filter((t) => t.frequency === "WEEKLY"),
   }));
+  const weeklyHistory = getWeeklyCleaningHistory(user.storeId);
+  const locale = user.language === "es" ? "es-MX" : "en-US";
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
@@ -163,6 +184,30 @@ export default async function CleaningPage() {
 
       <FrequencySection title={t(user.language, "cleaning_daily")} areas={dailyAreas} managers={managers} lang={user.language} />
       <FrequencySection title={t(user.language, "cleaning_weekly")} areas={weeklyAreas} managers={managers} lang={user.language} />
+
+      <details className="card overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">
+              {user.language === "es" ? "Historial Semanal" : "Weekly History"}
+            </span>
+            <p className="text-xs text-muted">
+              {user.language === "es"
+                ? "El horario semanal se reinicia cada semana -- aquí queda el registro de lo ya hecho."
+                : "The weekly chart resets each week -- this is the record of what's already been done."}
+            </p>
+          </div>
+          <span className="shrink-0 text-xs font-semibold text-muted">{weeklyHistory.length}</span>
+        </summary>
+        <HistoryByWeek
+          items={weeklyHistory}
+          getDate={(item) => item.at}
+          keyOf={(item) => item.id}
+          renderItem={(item) => <HistoryRow entry={item} lang={user.language} locale={locale} storeId={user.storeId} />}
+          lang={user.language}
+          emptyLabel={user.language === "es" ? "Nada todavía." : "Nothing yet."}
+        />
+      </details>
     </div>
   );
 }

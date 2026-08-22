@@ -403,6 +403,71 @@ export function getPhotoRefForTask(taskId: string, storeId: string, kind: "befor
     .get(taskId, storeId) as { photo_url: string } | undefined;
 }
 
+export interface CleaningHistoryEntry {
+  id: string;
+  title: string;
+  title_es: string | null;
+  area_name: string;
+  area_name_es: string | null;
+  associate_name: string | null;
+  action: string;
+  by_name: string | null;
+  at: string;
+}
+
+/** Full history of WEEKLY cleaning-task completions, oldest state never
+ * lost -- resetDueWeeklyCleaningTasks wipes each task's own completed_at/
+ * completed_by columns the moment its weekday comes back around (so the
+ * live chart always shows this week's fresh state), but every completion
+ * still wrote an audit_events row at the time, which nothing ever touches
+ * again. This reads from that trail instead of the live (reset) columns --
+ * the only place a manager can see what actually happened in past weeks. */
+export function getWeeklyCleaningHistory(storeId: string, limit = 200): CleaningHistoryEntry[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT ae.id, ct.title, ct.title_es, a.name as area_name, a.name_es as area_name_es,
+              ae.action, ae.new_value, ae.created_at as at, u.name as by_name
+       FROM audit_events ae
+       JOIN cleaning_tasks ct ON ct.id = ae.entity_id
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       LEFT JOIN users u ON u.id = ae.actor_id
+       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED', 'VERIFIED')
+         AND a.store_id = ? AND ct.frequency = 'WEEKLY'
+       ORDER BY ae.created_at DESC LIMIT ?`
+    )
+    .all(storeId, limit) as Array<{
+    id: string;
+    title: string;
+    title_es: string | null;
+    area_name: string;
+    area_name_es: string | null;
+    action: string;
+    new_value: string | null;
+    at: string;
+    by_name: string | null;
+  }>;
+  return rows.map((row) => {
+    let associateName: string | null = null;
+    try {
+      associateName = row.new_value ? (JSON.parse(row.new_value) as { associate_name?: string | null }).associate_name ?? null : null;
+    } catch {
+      associateName = null;
+    }
+    return {
+      id: row.id,
+      title: row.title,
+      title_es: row.title_es,
+      area_name: row.area_name,
+      area_name_es: row.area_name_es,
+      associate_name: associateName,
+      action: row.action,
+      by_name: row.by_name,
+      at: row.at,
+    };
+  });
+}
+
 export function reopenCleaningTask(id: string, actor: SessionUser) {
   const db = getDb();
   db.prepare(`UPDATE cleaning_tasks SET status = 'REOPENED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL WHERE id = ?`).run(id);
