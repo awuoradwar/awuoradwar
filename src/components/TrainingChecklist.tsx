@@ -150,9 +150,22 @@ function CompletionEditor({
  * takes its own note for this specific retrain -- kept in the item's
  * activity log alongside every other past retrain, not just overwritten
  * onto one shared field. */
-function RetrainForm({ traineeId, itemId, lang, onDone }: { traineeId: string; itemId: string; lang: Language; onDone: () => void }) {
+function RetrainForm({
+  traineeId,
+  itemId,
+  managers,
+  lang,
+  onDone,
+}: {
+  traineeId: string;
+  itemId: string;
+  managers: ManagerOption[];
+  lang: Language;
+  onDone: () => void;
+}) {
   const [date, setDate] = useState(todayLocalDateInput());
   const [shift, setShift] = useState<TrainingShiftType>(currentShiftGuess());
+  const [trainer, setTrainer] = useState("");
   const [notes, setNotes] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -174,6 +187,16 @@ function RetrainForm({ traineeId, itemId, lang, onDone }: { traineeId: string; i
           </select>
         </Field>
       </div>
+      <Field label={lang === "es" ? "Recapacitado por" : "Retrained by"}>
+        <select value={trainer} onChange={(e) => setTrainer(e.target.value)} className={`${selectClass} h-8 text-xs`}>
+          <option value="">{lang === "es" ? "Yo (quien lo registra)" : "Me (whoever's logging this)"}</option>
+          {managers.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </Field>
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
@@ -189,7 +212,7 @@ function RetrainForm({ traineeId, itemId, lang, onDone }: { traineeId: string; i
           onClick={() => {
             setError(null);
             startTransition(async () => {
-              const result = await retrainTrainingItemAction(traineeId, itemId, date, shift, notes);
+              const result = await retrainTrainingItemAction(traineeId, itemId, date, shift, trainer, notes);
               if (result && "error" in result && result.error) {
                 setError(result.error);
                 return;
@@ -339,13 +362,32 @@ export default function TrainingChecklist({
               </button>
               <button type="button" onClick={() => setExpandedFor(expanded ? null : it.id)} className="min-w-0 flex-1 text-left">
                 <p className="text-sm">{label}</p>
-                {trained && it.trained_at && (
-                  <p className="text-xs text-muted">
-                    {lang === "es" ? "Capacitado por" : "Trained by"} {it.trained_by_name || "—"} ·{" "}
-                    {new Date(it.trained_at).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
-                    {it.shift_type ? ` · ${SHIFT_LABEL[it.shift_type][lang]}` : ""}
-                  </p>
-                )}
+                {trained && it.trained_at && (() => {
+                  // log is ordered most-recent-first: index 0 is this current
+                  // completion, index 1 (if present) is what it replaced --
+                  // more than one entry means this was retrained, not just
+                  // trained once, and that's worth saying plainly instead of
+                  // burying it behind the same "Trained by" wording either way.
+                  const isRetrain = it.log.length > 1;
+                  const previous = it.log[1];
+                  return (
+                    <>
+                      <p className="text-xs text-muted">
+                        {isRetrain ? (lang === "es" ? "Recapacitado por" : "Retrained by") : lang === "es" ? "Capacitado por" : "Trained by"} {it.trained_by_name || "—"} ·{" "}
+                        {new Date(it.trained_at!).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
+                        {it.shift_type ? ` · ${SHIFT_LABEL[it.shift_type][lang]}` : ""}
+                      </p>
+                      {isRetrain && previous && (
+                        <p className="text-xs text-muted/80">
+                          {lang === "es" ? "Antes: " : "Previously: "}
+                          {previous.trained_by_name || "—"} ·{" "}
+                          {new Date(previous.trained_at).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
+                          {previous.shift_type ? ` · ${SHIFT_LABEL[previous.shift_type][lang]}` : ""}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </button>
             </div>
             {expanded && (
@@ -381,7 +423,7 @@ export default function TrainingChecklist({
                 </div>
               ) : retrainingFor === it.id ? (
                 <div className="pl-10">
-                  <RetrainForm traineeId={traineeId} itemId={it.id} lang={lang} onDone={() => setRetrainingFor(null)} />
+                  <RetrainForm traineeId={traineeId} itemId={it.id} managers={managers} lang={lang} onDone={() => setRetrainingFor(null)} />
                 </div>
               ) : (
                 <div className="flex items-center justify-end gap-3 pl-10">

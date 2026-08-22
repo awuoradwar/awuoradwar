@@ -408,11 +408,16 @@ export function retrainCompletion(
   trainingItemId: string,
   trainedAtDate: string,
   shiftType: TrainingShiftType,
+  trainedBy: string | null,
   notes: string | null,
   actor: SessionUser
 ) {
   const db = getDb();
   const trainedAt = storeLocalIso(storeId, trainedAtDate, "12:00");
+  // Who actually did the retrain is very often not whoever's logging it
+  // (same distinction updateTrainingCompletion draws) -- falls back to the
+  // person logging it only when no one else is picked.
+  const trainer = trainedBy || actor.id;
   // A blank note on the retrain form doesn't mean "clear the existing note"
   // -- only overwrite the current-state note when this retrain actually
   // provided a new one, same reasoning as updateTrainingCompletion's
@@ -420,14 +425,14 @@ export function retrainCompletion(
   const setNotes = notes ? ", notes = ?" : "";
   db.prepare(
     `UPDATE training_completions SET trained_by = ?, trained_at = ?, shift_type = ?${setNotes} WHERE trainee_id = ? AND training_item_id = ?`
-  ).run(...[actor.id, trainedAt, shiftType, ...(notes ? [notes] : []), traineeId, trainingItemId]);
-  logCompletion(traineeId, trainingItemId, trainedAt, shiftType, actor.id, notes);
+  ).run(...[trainer, trainedAt, shiftType, ...(notes ? [notes] : []), traineeId, trainingItemId]);
+  logCompletion(traineeId, trainingItemId, trainedAt, shiftType, trainer, notes);
   writeAudit({
     entityType: "trainee",
     entityId: traineeId,
     actor,
     action: "EDITED",
-    newValue: { training_item_id: trainingItemId, retrained: true, trained_at_date: trainedAtDate, shift_type: shiftType, notes },
+    newValue: { training_item_id: trainingItemId, retrained: true, trained_at_date: trainedAtDate, shift_type: shiftType, trained_by: trainer, notes },
   });
 }
 
