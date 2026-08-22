@@ -39,12 +39,14 @@ export default async function TrainingPage() {
         <span>→</span>
       </Link>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+      <details className="card mb-6 overflow-hidden">
+        <summary className="cursor-pointer list-none px-3 py-3 text-xs font-bold uppercase tracking-wide text-accent">
           {es ? "Agregar nuevo asociado" : "Add new associate"}
-        </h2>
-        <AddTraineeForm lang={user.language} />
-      </section>
+        </summary>
+        <div className="border-t border-border p-3">
+          <AddTraineeForm lang={user.language} />
+        </div>
+      </details>
 
       <section className="mb-6">
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">

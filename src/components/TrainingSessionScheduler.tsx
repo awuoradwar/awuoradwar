@@ -172,70 +172,75 @@ export default function TrainingSessionScheduler({
         </div>
       )}
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!date) return;
-          setError(null);
-          startTransition(async () => {
-            const result = await scheduleTrainingSessionAction(traineeId, date, shiftType, managerId, notes);
-            if (result?.error) {
-              setError(result.error);
-              return;
-            }
-            setDate("");
-            setManagerId("");
-            setNotes("");
-            router.refresh();
-          });
-        }}
-        className="card flex flex-col gap-2 p-3"
-      >
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
-          />
+      <details className="card overflow-hidden">
+        <summary className="cursor-pointer list-none px-3 py-3 text-xs font-bold uppercase tracking-wide text-accent">
+          {lang === "es" ? "+ Programar sesión" : "+ Schedule a session"}
+        </summary>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!date) return;
+            setError(null);
+            startTransition(async () => {
+              const result = await scheduleTrainingSessionAction(traineeId, date, shiftType, managerId, notes);
+              if (result?.error) {
+                setError(result.error);
+                return;
+              }
+              setDate("");
+              setManagerId("");
+              setNotes("");
+              router.refresh();
+            });
+          }}
+          className="flex flex-col gap-2 border-t border-border p-3"
+        >
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+            />
+            <select
+              value={shiftType}
+              onChange={(e) => setShiftType(e.target.value as TrainingShiftType)}
+              className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+            >
+              {(Object.keys(SHIFT_LABEL) as TrainingShiftType[]).map((s) => (
+                <option key={s} value={s}>
+                  {SHIFT_LABEL[s][lang]}
+                </option>
+              ))}
+            </select>
+          </div>
           <select
-            value={shiftType}
-            onChange={(e) => setShiftType(e.target.value as TrainingShiftType)}
+            value={managerId}
+            onChange={(e) => setManagerId(e.target.value)}
             className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
           >
-            {(Object.keys(SHIFT_LABEL) as TrainingShiftType[]).map((s) => (
-              <option key={s} value={s}>
-                {SHIFT_LABEL[s][lang]}
+            <option value="">{lang === "es" ? "Gerente (opcional)" : "Manager (optional)"}</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
               </option>
             ))}
           </select>
-        </div>
-        <select
-          value={managerId}
-          onChange={(e) => setManagerId(e.target.value)}
-          className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
-        >
-          <option value="">{lang === "es" ? "Gerente (opcional)" : "Manager (optional)"}</option>
-          {managers.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-        <input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={lang === "es" ? "Notas (opcional)" : "Notes (optional)"}
-          className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
-        />
-        {error && <p className="text-xs text-critical">{error}</p>}
-        <button
-          disabled={pending || !date}
-          className="tap-target rounded-xl bg-foreground text-sm font-semibold text-background transition-colors hover:bg-foreground/85 disabled:opacity-40"
-        >
-          {lang === "es" ? "Programar sesión" : "Schedule session"}
-        </button>
-      </form>
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={lang === "es" ? "Notas (opcional)" : "Notes (optional)"}
+            className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+          />
+          {error && <p className="text-xs text-critical">{error}</p>}
+          <button
+            disabled={pending || !date}
+            className="tap-target rounded-xl bg-foreground text-sm font-semibold text-background transition-colors hover:bg-foreground/85 disabled:opacity-40"
+          >
+            {lang === "es" ? "Programar sesión" : "Schedule session"}
+          </button>
+        </form>
+      </details>
     </div>
   );
 }
