@@ -83,11 +83,11 @@ export default function HistoryByWeek<T>({
     <div className="divide-y divide-border border-t border-border">
       {weeks.map((w, i) => (
         <details key={w.weekStart} open={i < defaultOpenCount}>
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-card-subtle px-3 py-2">
-            <span className="text-xs font-bold text-foreground">{fmtWeekRange(w.weekStart, w.weekEnd, locale)}</span>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-accent/10 px-3 py-2.5">
+            <span className="text-sm font-bold uppercase tracking-wide text-accent">{fmtWeekRange(w.weekStart, w.weekEnd, locale)}</span>
             <span className="flex shrink-0 items-center gap-2">
               {renderSubtitle && <span className="text-xs text-muted">{renderSubtitle(w.items)}</span>}
-              <span className="text-xs font-semibold text-muted">{w.items.length}</span>
+              <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-foreground">{w.items.length}</span>
             </span>
           </summary>
           <div className="divide-y divide-border">

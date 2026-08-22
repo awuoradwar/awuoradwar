@@ -87,7 +87,7 @@ export default function RequestsByMonth<T>({
           <div className="divide-y divide-border">
             {m.days.map((d) => (
               <div key={d.date}>
-                <p className="bg-card-subtle/50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted">{dayLabel(d.date, locale)}</p>
+                <p className="bg-card-subtle px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-foreground">{dayLabel(d.date, locale)}</p>
                 <div className="divide-y divide-border">
                   {d.items.map((item) => (
                     <div key={keyOf(item)}>{renderItem(item)}</div>
