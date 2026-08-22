@@ -53,15 +53,26 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
         </Field>
       )}
       <div className="grid grid-cols-2 gap-3">
-        <Field label={requestType === "SHIFT_SWAP" ? (lang === "es" ? "Cede su turno el" : "Giving away their shift on") : lang === "es" ? "Fecha" : "Date"}>
+        <Field label={requestType === "SHIFT_SWAP" ? (lang === "es" ? "Cede su turno el" : "Giving away their shift on") : lang === "es" ? "Fecha de inicio" : "Start date"}>
           <input name="requestedStartDate" type="date" required className={inputClass} />
         </Field>
-        {requestType === "SHIFT_SWAP" && (
+        {requestType === "SHIFT_SWAP" ? (
           <Field label={lang === "es" ? "Toma el turno del otro el" : "Picking up their shift on"}>
             <input name="swapWithDate" type="date" required className={inputClass} />
           </Field>
+        ) : (
+          <Field label={lang === "es" ? "Fecha de fin (opcional)" : "End date (optional)"}>
+            <input name="requestedEndDate" type="date" className={inputClass} />
+          </Field>
         )}
       </div>
+      {requestType !== "SHIFT_SWAP" && (
+        <p className="-mt-1.5 text-xs text-muted">
+          {lang === "es"
+            ? "Deja la fecha de fin en blanco para un solo día, o pon la última fecha para un rango (p. ej. vacaciones)."
+            : "Leave end date blank for a single day, or set the last date for a range (e.g. vacation)."}
+        </p>
+      )}
       <Field label={lang === "es" ? "Recibido vía" : "Received via"}>
         <select name="receivedVia" defaultValue="TEXT" className={selectClass}>
           <option value="TEXT">{lang === "es" ? "Mensaje de texto" : "Text"}</option>
