@@ -161,6 +161,23 @@ CREATE TABLE IF NOT EXISTS training_completions (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_training_completions_unique ON training_completions(trainee_id, training_item_id);
 
+-- One row per completion/retrain event (never overwritten) -- separate from
+-- training_completions, which only ever holds the current/latest state for
+-- the checkbox itself. This is what lets a manager look back at every past
+-- retrain for one specific checklist item, each with its own note, and
+-- correct a past note without losing the history around it.
+CREATE TABLE IF NOT EXISTS training_completion_log (
+  id TEXT PRIMARY KEY,
+  trainee_id TEXT NOT NULL REFERENCES trainees(id),
+  training_item_id TEXT NOT NULL REFERENCES training_items(id),
+  trained_at TEXT NOT NULL,
+  shift_type TEXT, -- MORNING | EVENING | DOUBLE
+  trained_by TEXT REFERENCES users(id),
+  notes TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_training_completion_log_item ON training_completion_log(trainee_id, training_item_id);
+
 CREATE TABLE IF NOT EXISTS task_templates (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),

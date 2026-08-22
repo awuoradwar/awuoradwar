@@ -2,9 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { toggleTrainingItemAction, updateTrainingCompletionAction, retrainTrainingItemAction } from "@/app/actions/trainingActions";
-import { TrainingChecklistRow, TrainingShiftType } from "@/lib/services/trainingService";
-import { Field, inputClass, selectClass, btnPrimary } from "./forms/FormShell";
+import {
+  toggleTrainingItemAction,
+  updateTrainingCompletionAction,
+  retrainTrainingItemAction,
+  updateTrainingLogNoteAction,
+} from "@/app/actions/trainingActions";
+import { TrainingChecklistRow, TrainingCompletionLogEntry, TrainingShiftType } from "@/lib/services/trainingService";
+import { Field, inputClass, selectClass, textareaClass, btnPrimary } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 
 const SHIFT_LABEL: Record<TrainingShiftType, Record<Language, string>> = {
@@ -23,6 +28,10 @@ function currentShiftGuess(): TrainingShiftType {
 function todayLocalDateInput(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function fmtLogDate(iso: string, lang: Language): string {
+  return new Date(iso).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" });
 }
 
 interface ManagerOption {
@@ -136,10 +145,14 @@ function CompletionEditor({
 /** "Retrained" needs a date/shift too, same as the full editor -- a manager
  * very often logs a retrain after the fact (later in the day, or even the
  * next shift), not at the exact moment it happened. Defaults to right now,
- * but both are editable before saving rather than silently stamped. */
+ * but both are editable before saving rather than silently stamped. Also
+ * takes its own note for this specific retrain -- kept in the item's
+ * activity log alongside every other past retrain, not just overwritten
+ * onto one shared field. */
 function RetrainForm({ traineeId, itemId, lang, onDone }: { traineeId: string; itemId: string; lang: Language; onDone: () => void }) {
   const [date, setDate] = useState(todayLocalDateInput());
   const [shift, setShift] = useState<TrainingShiftType>(currentShiftGuess());
+  const [notes, setNotes] = useState("");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -160,6 +173,13 @@ function RetrainForm({ traineeId, itemId, lang, onDone }: { traineeId: string; i
           </select>
         </Field>
       </div>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        rows={2}
+        placeholder={lang === "es" ? "Notas sobre este recapacitado (opcional)" : "Notes on this retrain (optional)"}
+        className={`${textareaClass} text-xs`}
+      />
       {error && <p className="text-xs text-critical">{error}</p>}
       <div className="flex items-center gap-3">
         <button
@@ -168,7 +188,7 @@ function RetrainForm({ traineeId, itemId, lang, onDone }: { traineeId: string; i
           onClick={() => {
             setError(null);
             startTransition(async () => {
-              const result = await retrainTrainingItemAction(traineeId, itemId, date, shift);
+              const result = await retrainTrainingItemAction(traineeId, itemId, date, shift, notes);
               if (result && "error" in result && result.error) {
                 setError(result.error);
                 return;
@@ -185,6 +205,59 @@ function RetrainForm({ traineeId, itemId, lang, onDone }: { traineeId: string; i
           {lang === "es" ? "Cancelar" : "Cancel"}
         </button>
       </div>
+    </div>
+  );
+}
+
+/** One past completion/retrain event -- its note can be corrected after the
+ * fact (a typo, more detail added later) without that looking like the
+ * retrain itself happened again; only the note field is editable here, the
+ * date/shift/trainer stay as a fixed record of what was true at the time. */
+function LogEntryRow({ traineeId, entry, lang }: { traineeId: string; entry: TrainingCompletionLogEntry; lang: Language }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(entry.notes || "");
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  return (
+    <div className="rounded-lg border border-border p-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold">
+          {fmtLogDate(entry.trained_at, lang)}
+          {entry.shift_type ? ` · ${SHIFT_LABEL[entry.shift_type][lang]}` : ""} · {entry.trained_by_name || "—"}
+        </p>
+        {!editing && (
+          <button type="button" onClick={() => setEditing(true)} className="shrink-0 text-xs font-semibold text-accent">
+            ✎
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={2} className={`${textareaClass} text-xs`} />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                startTransition(async () => {
+                  await updateTrainingLogNoteAction(traineeId, entry.id, draft);
+                  setEditing(false);
+                  router.refresh();
+                });
+              }}
+              className="h-7 rounded-full bg-accent px-3 text-xs font-semibold text-accent-foreground disabled:opacity-50"
+            >
+              {lang === "es" ? "Guardar" : "Save"}
+            </button>
+            <button type="button" onClick={() => setEditing(false)} disabled={pending} className="text-xs font-medium text-muted">
+              {lang === "es" ? "Cancelar" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-0.5 text-xs italic text-muted">{entry.notes || (lang === "es" ? "Sin notas." : "No notes.")}</p>
+      )}
     </div>
   );
 }
@@ -206,7 +279,7 @@ export default function TrainingChecklist({
   const [optimisticTrained, setOptimisticTrained] = useState<Record<string, boolean>>({});
   const [editingFor, setEditingFor] = useState<string | null>(null);
   const [retrainingFor, setRetrainingFor] = useState<string | null>(null);
-  // Which item's title was tapped to reveal its full details/notes --
+  // Which item's title was tapped to reveal its full details/notes/activity --
   // separate from the checkbox, which only ever toggles trained/untrained.
   const [expandedFor, setExpandedFor] = useState<string | null>(null);
   const router = useRouter();
@@ -235,7 +308,7 @@ export default function TrainingChecklist({
                 title used to be part of the same giant tap target, so
                 tapping it to read more silently flipped the checkbox
                 instead. Now the title is its own tap target that expands
-                full details/notes, without touching trained state. */}
+                full details/notes/activity, without touching trained state. */}
             <div className="flex items-start gap-3">
               <button
                 type="button"
@@ -260,8 +333,19 @@ export default function TrainingChecklist({
               </button>
             </div>
             {expanded && (
-              <div className="pl-10 text-xs text-muted">
-                {it.notes ? <p className="italic">{it.notes}</p> : <p>{lang === "es" ? "Sin notas." : "No notes."}</p>}
+              <div className="flex flex-col gap-2 pl-10">
+                {it.notes && <p className="text-xs italic text-muted">{it.notes}</p>}
+                {it.log.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs font-bold uppercase tracking-wide text-accent">
+                      {lang === "es" ? `Actividad (${it.log.length})` : `Activity (${it.log.length})`}
+                    </p>
+                    {it.log.map((entry) => (
+                      <LogEntryRow key={entry.id} traineeId={traineeId} entry={entry} lang={lang} />
+                    ))}
+                  </div>
+                )}
+                {!it.notes && it.log.length === 0 && <p className="text-xs text-muted">{lang === "es" ? "Sin notas." : "No notes."}</p>}
               </div>
             )}
             {trained &&

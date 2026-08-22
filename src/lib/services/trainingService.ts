@@ -101,11 +101,53 @@ export interface TrainingChecklistRow extends TrainingItem {
   trained_at: string | null;
   shift_type: TrainingShiftType | null;
   notes: string | null;
+  log: TrainingCompletionLogEntry[];
+}
+
+export interface TrainingCompletionLogEntry {
+  id: string;
+  trained_at: string;
+  shift_type: TrainingShiftType | null;
+  trained_by_name: string | null;
+  notes: string | null;
+}
+
+/** Every completion/retrain event ever logged for one specific checklist
+ * item -- not the same as the audit trail (which is immutable and mixes
+ * every item on the trainee together), this is a real per-item history a
+ * manager can look back through, with a note on each entry they can still
+ * correct afterward. */
+export function getTrainingCompletionLog(traineeId: string, trainingItemId: string): TrainingCompletionLogEntry[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT l.id, l.trained_at, l.shift_type, u.name as trained_by_name, l.notes
+       FROM training_completion_log l LEFT JOIN users u ON u.id = l.trained_by
+       WHERE l.trainee_id = ? AND l.training_item_id = ? ORDER BY l.trained_at DESC`
+    )
+    .all(traineeId, trainingItemId) as TrainingCompletionLogEntry[];
+}
+
+function logCompletion(traineeId: string, trainingItemId: string, trainedAt: string, shiftType: TrainingShiftType | null, trainedBy: string, notes: string | null) {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO training_completion_log (id, trainee_id, training_item_id, trained_at, shift_type, trained_by, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(newId(), traineeId, trainingItemId, trainedAt, shiftType, trainedBy, notes, nowIso());
+}
+
+/** Correct a specific past log entry's note after the fact -- distinct from
+ * every other edit path here, which all only ever touch the *current*
+ * completion state; this is the one place a manager can fix what an old
+ * entry actually says without it looking like the retrain happened again. */
+export function updateTrainingCompletionLogNote(traineeId: string, logId: string, note: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE training_completion_log SET notes = ? WHERE id = ? AND trainee_id = ?`).run(note || null, logId, traineeId);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_completion_log_id: logId, notes: note } });
 }
 
 export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRow[] {
   const db = getDb();
-  return db
+  const rows = db
     .prepare(
       `SELECT ti.id, ti.position, ti.title, ti.title_es, ti.sort_order, tc.trained_by, u.name as trained_by_name, tc.trained_at, tc.shift_type, tc.notes
        FROM training_items ti
@@ -114,7 +156,22 @@ export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRo
        WHERE ti.store_id = ? AND ti.position = ? AND ti.active = 1
        ORDER BY ti.sort_order, ti.title`
     )
-    .all(trainee.id, trainee.store_id, trainee.position) as TrainingChecklistRow[];
+    .all(trainee.id, trainee.store_id, trainee.position) as Array<Omit<TrainingChecklistRow, "log">>;
+
+  const logRows = db
+    .prepare(
+      `SELECT l.id, l.training_item_id, l.trained_at, l.shift_type, u.name as trained_by_name, l.notes
+       FROM training_completion_log l LEFT JOIN users u ON u.id = l.trained_by
+       WHERE l.trainee_id = ? ORDER BY l.trained_at DESC`
+    )
+    .all(trainee.id) as Array<TrainingCompletionLogEntry & { training_item_id: string }>;
+  const logByItem = new Map<string, TrainingCompletionLogEntry[]>();
+  for (const l of logRows) {
+    if (!logByItem.has(l.training_item_id)) logByItem.set(l.training_item_id, []);
+    logByItem.get(l.training_item_id)!.push(l);
+  }
+
+  return rows.map((r) => ({ ...r, log: logByItem.get(r.id) || [] }));
 }
 
 /** Toggles one checklist item for this trainee. Any manager can do this --
@@ -133,9 +190,11 @@ export function toggleTrainingItem(traineeId: string, trainingItemId: string, ac
     writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, trained: false } });
     return false;
   }
+  const trainedAt = nowIso();
   db.prepare(
     `INSERT INTO training_completions (id, trainee_id, training_item_id, trained_by, trained_at) VALUES (?, ?, ?, ?, ?)`
-  ).run(newId(), traineeId, trainingItemId, actor.id, nowIso());
+  ).run(newId(), traineeId, trainingItemId, actor.id, trainedAt);
+  logCompletion(traineeId, trainingItemId, trainedAt, null, actor.id, null);
   writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_item_id: trainingItemId, trained: true } });
   return true;
 }
@@ -191,31 +250,36 @@ export function updateTrainingCompletion(
  * happened at some point in the past, not specifically logging a fresh
  * retrain). Takes an explicit date/shift rather than always stamping the
  * exact moment tapped -- a manager is very often logging a retrain from
- * earlier in the day, or even a prior shift, after the fact. Leaves notes
- * alone; a manager can still adjust those separately if the retrain also
- * warrants a new note. */
+ * earlier in the day, or even a prior shift, after the fact. Also appends
+ * its own entry to training_completion_log (with this retrain's own note),
+ * so this specific event -- not just the item's current state -- stays
+ * visible afterward. */
 export function retrainCompletion(
   storeId: string,
   traineeId: string,
   trainingItemId: string,
   trainedAtDate: string,
   shiftType: TrainingShiftType,
+  notes: string | null,
   actor: SessionUser
 ) {
   const db = getDb();
-  db.prepare(`UPDATE training_completions SET trained_by = ?, trained_at = ?, shift_type = ? WHERE trainee_id = ? AND training_item_id = ?`).run(
-    actor.id,
-    storeLocalIso(storeId, trainedAtDate, "12:00"),
-    shiftType,
-    traineeId,
-    trainingItemId
-  );
+  const trainedAt = storeLocalIso(storeId, trainedAtDate, "12:00");
+  // A blank note on the retrain form doesn't mean "clear the existing note"
+  // -- only overwrite the current-state note when this retrain actually
+  // provided a new one, same reasoning as updateTrainingCompletion's
+  // undefined-vs-provided handling elsewhere in this file.
+  const setNotes = notes ? ", notes = ?" : "";
+  db.prepare(
+    `UPDATE training_completions SET trained_by = ?, trained_at = ?, shift_type = ?${setNotes} WHERE trainee_id = ? AND training_item_id = ?`
+  ).run(...[actor.id, trainedAt, shiftType, ...(notes ? [notes] : []), traineeId, trainingItemId]);
+  logCompletion(traineeId, trainingItemId, trainedAt, shiftType, actor.id, notes);
   writeAudit({
     entityType: "trainee",
     entityId: traineeId,
     actor,
     action: "EDITED",
-    newValue: { training_item_id: trainingItemId, retrained: true, trained_at_date: trainedAtDate, shift_type: shiftType },
+    newValue: { training_item_id: trainingItemId, retrained: true, trained_at_date: trainedAtDate, shift_type: shiftType, notes },
   });
 }
 

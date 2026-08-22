@@ -66,12 +66,21 @@ export async function updateTrainingCompletionAction(
   return { ok: true };
 }
 
-export async function retrainTrainingItemAction(traineeId: string, trainingItemId: string, trainedAtDate: string, shiftType: string) {
+export async function retrainTrainingItemAction(traineeId: string, trainingItemId: string, trainedAtDate: string, shiftType: string, notes: string) {
   const user = await requireCurrentUser();
   const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
   if (!trainee) throw new Error("NOT_FOUND");
   if (!trainedAtDate) return { error: "Date is required." };
-  trainingService.retrainCompletion(user.storeId, traineeId, trainingItemId, trainedAtDate, shiftType as TrainingShiftType, user);
+  trainingService.retrainCompletion(user.storeId, traineeId, trainingItemId, trainedAtDate, shiftType as TrainingShiftType, notes.trim() || null, user);
+  refresh(traineeId);
+  return { ok: true };
+}
+
+export async function updateTrainingLogNoteAction(traineeId: string, logId: string, note: string) {
+  const user = await requireCurrentUser();
+  const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
+  if (!trainee) throw new Error("NOT_FOUND");
+  trainingService.updateTrainingCompletionLogNote(traineeId, logId, note.trim(), user);
   refresh(traineeId);
   return { ok: true };
 }
