@@ -14,7 +14,14 @@ export interface RecurrenceConfig {
 }
 
 function matchesToday(recurrenceType: string, config: RecurrenceConfig, date: Date): boolean {
-  const weekday = date.getDay();
+  // `date` is always built at UTC midnight for the target dateStr (see
+  // ensureInstancesForDate) -- read it back with the UTC getters, not the
+  // local-timezone ones. getDay()/getDate() interpret the instant in the
+  // server process's own local timezone, which silently shifts the weekday
+  // by a day whenever that's not UTC (any self-hosted deployment not
+  // running its Node process in UTC), breaking every WEEKLY/WEEKDAYS/
+  // BIWEEKLY/MONTHLY template while DAILY (which ignores weekday) masked it.
+  const weekday = date.getUTCDay();
   switch (recurrenceType) {
     case "DAILY":
       return true;
@@ -30,7 +37,7 @@ function matchesToday(recurrenceType: string, config: RecurrenceConfig, date: Da
       return diffWeeks % 2 === 0;
     }
     case "MONTHLY":
-      return date.getDate() === 1;
+      return date.getUTCDate() === 1;
     case "ONE_TIME":
       return false; // one-time tasks are created directly, never generated
     default:
