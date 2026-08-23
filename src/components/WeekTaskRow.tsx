@@ -12,6 +12,7 @@ export interface WeekTaskData {
   id: string;
   title: string;
   title_es: string | null;
+  description: string | null;
   source: string | null;
   status: string;
   owner_id: string | null;
@@ -61,6 +62,7 @@ export default function WeekTaskRow({
             {task.source === "recurring" ? (lang === "es" ? "Recurrente" : "Recurring") : lang === "es" ? "Agregada" : "Added"}
           </span>
         </div>
+        {task.description && <p className="mt-0.5 truncate text-xs text-muted">{task.description}</p>}
         <div className="mt-1 flex items-center gap-2">
           <select
             value={ownerId}

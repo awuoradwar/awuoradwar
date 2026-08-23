@@ -14,6 +14,7 @@ export interface TaskCardData {
   id: string;
   title: string;
   title_es?: string | null;
+  description?: string | null;
   area: string | null;
   owner_id: string | null;
   owner_name: string | null;
@@ -42,6 +43,7 @@ export default function TaskCard({ task, lang, managerColors }: { task: TaskCard
         <Link href={`/task/${task.id}`} className="block">
           <p className="truncate text-sm font-semibold">{title}</p>
         </Link>
+        {task.description && <p className="mt-0.5 text-xs text-muted">{task.description}</p>}
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
           {task.dueLabel && <span>⏰ {task.dueLabel}</span>}
           {task.area && <span>· {task.area}</span>}
