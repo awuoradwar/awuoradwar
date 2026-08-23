@@ -7,6 +7,7 @@ import { storeToday } from "@/lib/storeTime";
 import PageHeader from "@/components/PageHeader";
 import TaskForm from "@/components/forms/TaskForm";
 import TemplatesManager from "@/components/TemplatesManager";
+import AutoScrollDetails from "@/components/AutoScrollDetails";
 import CallInForm from "@/components/forms/CallInForm";
 import LateForm from "@/components/forms/LateForm";
 import CleaningForm from "@/components/forms/CleaningForm";
@@ -64,14 +65,11 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
       {type === "task" && (
         <>
           <TaskForm lang={user.language} isGM={isGM(user)} managers={managers} currentUserId={user.id} />
-          <details className="mt-6">
-            <summary className="cursor-pointer text-xs font-bold uppercase tracking-wide text-accent">
-              {user.language === "es" ? "Administrar tareas recurrentes" : "Manage recurring tasks"}
-            </summary>
+          <AutoScrollDetails className="mt-6" summary={user.language === "es" ? "Administrar tareas recurrentes" : "Manage recurring tasks"}>
             <div className="mt-3">
               <TemplatesManager user={user} />
             </div>
-          </details>
+          </AutoScrollDetails>
         </>
       )}
       {type === "call-in" && <CallInForm lang={user.language} />}
