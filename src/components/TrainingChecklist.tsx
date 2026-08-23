@@ -371,116 +371,136 @@ export default function TrainingChecklist({
   // doesn't render two empty phase headers.
   const phaseGroups = [...byPhase.entries()];
 
-  return (
-    <div className="flex flex-col gap-4">
-      {phaseGroups.map(([phase, phaseItems]) => (
-        <div key={phase}>
-          {phaseGroups.length > 1 && <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-accent">{TRAINING_PHASE_LABEL[phase][lang]}</p>}
-          <div className="card divide-y divide-border">
-            {phaseItems.map((it) => {
-              const trained = optimisticTrained[it.id] ?? !!it.trained_at;
-              const label = lang === "es" && it.title_es ? it.title_es : it.title;
-              const expanded = expandedFor === it.id;
+  function renderItem(it: TrainingChecklistRow) {
+    const trained = optimisticTrained[it.id] ?? !!it.trained_at;
+    const label = lang === "es" && it.title_es ? it.title_es : it.title;
+    const expanded = expandedFor === it.id;
+    return (
+      <div key={it.id} className="flex flex-col gap-1.5 px-3 py-3">
+        {/* Only the checkbox itself toggles trained/untrained -- the
+            title used to be part of the same giant tap target, so
+            tapping it to read more silently flipped the checkbox
+            instead. Now the title is its own tap target that expands
+            full details/notes/activity, without touching trained state. */}
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => toggle(it.id, trained)}
+            title={trained ? (lang === "es" ? "Marcar como no capacitado" : "Mark as not trained") : lang === "es" ? "Marcar como capacitado" : "Mark as trained"}
+            className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors disabled:opacity-60 ${
+              trained ? "border-ok bg-ok text-background" : "border-border text-transparent hover:border-accent"
+            }`}
+          >
+            ✓
+          </button>
+          <button type="button" onClick={() => setExpandedFor(expanded ? null : it.id)} className="min-w-0 flex-1 text-left">
+            <p className="text-sm">{label}</p>
+            {trained && it.trained_at && (() => {
+              // log is ordered most-recent-first: index 0 is this current
+              // completion, index 1 (if present) is what it replaced --
+              // more than one entry means this was retrained, not just
+              // trained once, and that's worth saying plainly instead of
+              // burying it behind the same "Trained by" wording either way.
+              const isRetrain = it.log.length > 1;
+              const previous = it.log[1];
               return (
-                <div key={it.id} className="flex flex-col gap-1.5 px-3 py-3">
-            {/* Only the checkbox itself toggles trained/untrained -- the
-                title used to be part of the same giant tap target, so
-                tapping it to read more silently flipped the checkbox
-                instead. Now the title is its own tap target that expands
-                full details/notes/activity, without touching trained state. */}
-            <div className="flex items-start gap-3">
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => toggle(it.id, trained)}
-                title={trained ? (lang === "es" ? "Marcar como no capacitado" : "Mark as not trained") : lang === "es" ? "Marcar como capacitado" : "Mark as trained"}
-                className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors disabled:opacity-60 ${
-                  trained ? "border-ok bg-ok text-background" : "border-border text-transparent hover:border-accent"
-                }`}
-              >
-                ✓
-              </button>
-              <button type="button" onClick={() => setExpandedFor(expanded ? null : it.id)} className="min-w-0 flex-1 text-left">
-                <p className="text-sm">{label}</p>
-                {trained && it.trained_at && (() => {
-                  // log is ordered most-recent-first: index 0 is this current
-                  // completion, index 1 (if present) is what it replaced --
-                  // more than one entry means this was retrained, not just
-                  // trained once, and that's worth saying plainly instead of
-                  // burying it behind the same "Trained by" wording either way.
-                  const isRetrain = it.log.length > 1;
-                  const previous = it.log[1];
-                  return (
-                    <>
-                      <p className="text-xs text-muted">
-                        {isRetrain ? (lang === "es" ? "Recapacitado por" : "Retrained by") : lang === "es" ? "Capacitado por" : "Trained by"} {it.trained_by_name || "—"} ·{" "}
-                        {new Date(it.trained_at!).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
-                        {it.shift_type ? ` · ${SHIFT_LABEL[it.shift_type][lang]}` : ""}
-                      </p>
-                      {isRetrain && previous && (
-                        <p className="text-xs text-muted/80">
-                          {lang === "es" ? "Antes: " : "Previously: "}
-                          {previous.trained_by_name || "—"} ·{" "}
-                          {new Date(previous.trained_at).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
-                          {previous.shift_type ? ` · ${SHIFT_LABEL[previous.shift_type][lang]}` : ""}
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
-              </button>
-            </div>
-            {expanded && (
-              <div className="flex flex-col gap-2 pl-10">
-                {it.notes && <p className="text-xs italic text-muted">{it.notes}</p>}
-                {it.log.length > 0 && (
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-xs font-bold uppercase tracking-wide text-accent">
-                      {lang === "es" ? `Actividad (${it.log.length})` : `Activity (${it.log.length})`}
+                <>
+                  <p className="text-xs text-muted">
+                    {isRetrain ? (lang === "es" ? "Recapacitado por" : "Retrained by") : lang === "es" ? "Capacitado por" : "Trained by"} {it.trained_by_name || "—"} ·{" "}
+                    {new Date(it.trained_at!).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
+                    {it.shift_type ? ` · ${SHIFT_LABEL[it.shift_type][lang]}` : ""}
+                  </p>
+                  {isRetrain && previous && (
+                    <p className="text-xs text-muted/80">
+                      {lang === "es" ? "Antes: " : "Previously: "}
+                      {previous.trained_by_name || "—"} ·{" "}
+                      {new Date(previous.trained_at).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
+                      {previous.shift_type ? ` · ${SHIFT_LABEL[previous.shift_type][lang]}` : ""}
                     </p>
-                    {it.log.map((entry) => (
-                      <LogEntryRow key={entry.id} traineeId={traineeId} entry={entry} managers={managers} lang={lang} />
-                    ))}
-                  </div>
-                )}
-                {!it.notes && it.log.length === 0 && <p className="text-xs text-muted">{lang === "es" ? "Sin notas." : "No notes."}</p>}
+                  )}
+                </>
+              );
+            })()}
+          </button>
+        </div>
+        {expanded && (
+          <div className="flex flex-col gap-2 pl-10">
+            {it.notes && <p className="text-xs italic text-muted">{it.notes}</p>}
+            {it.log.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-xs font-bold uppercase tracking-wide text-accent">
+                  {lang === "es" ? `Actividad (${it.log.length})` : `Activity (${it.log.length})`}
+                </p>
+                {it.log.map((entry) => (
+                  <LogEntryRow key={entry.id} traineeId={traineeId} entry={entry} managers={managers} lang={lang} />
+                ))}
               </div>
             )}
-            {trained &&
-              (editingFor === it.id ? (
-                <div className="pl-10">
-                  <CompletionEditor
-                    traineeId={traineeId}
-                    itemId={it.id}
-                    trainedAt={it.trained_at || new Date().toISOString()}
-                    shiftType={it.shift_type}
-                    trainedBy={it.trained_by}
-                    notes={it.notes || ""}
-                    managers={managers}
-                    lang={lang}
-                    onDone={() => setEditingFor(null)}
-                  />
-                </div>
-              ) : retrainingFor === it.id ? (
-                <div className="pl-10">
-                  <RetrainForm traineeId={traineeId} itemId={it.id} managers={managers} lang={lang} onDone={() => setRetrainingFor(null)} />
-                </div>
-              ) : (
-                <div className="flex items-center justify-end gap-3 pl-10">
-                  <button type="button" disabled={pending} onClick={() => setRetrainingFor(it.id)} className="shrink-0 text-xs font-semibold text-accent disabled:opacity-60">
-                    ↻ {lang === "es" ? "Recapacitado" : "Retrained"}
-                  </button>
-                  <button type="button" onClick={() => setEditingFor(it.id)} className="shrink-0 text-xs font-semibold text-accent">
-                    ✎ {lang === "es" ? "Editar" : "Edit"}
-                  </button>
-                </div>
-              ))}
-                </div>
-              );
-            })}
+            {!it.notes && it.log.length === 0 && <p className="text-xs text-muted">{lang === "es" ? "Sin notas." : "No notes."}</p>}
           </div>
-        </div>
-      ))}
+        )}
+        {trained &&
+          (editingFor === it.id ? (
+            <div className="pl-10">
+              <CompletionEditor
+                traineeId={traineeId}
+                itemId={it.id}
+                trainedAt={it.trained_at || new Date().toISOString()}
+                shiftType={it.shift_type}
+                trainedBy={it.trained_by}
+                notes={it.notes || ""}
+                managers={managers}
+                lang={lang}
+                onDone={() => setEditingFor(null)}
+              />
+            </div>
+          ) : retrainingFor === it.id ? (
+            <div className="pl-10">
+              <RetrainForm traineeId={traineeId} itemId={it.id} managers={managers} lang={lang} onDone={() => setRetrainingFor(null)} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-end gap-3 pl-10">
+              <button type="button" disabled={pending} onClick={() => setRetrainingFor(it.id)} className="shrink-0 text-xs font-semibold text-accent disabled:opacity-60">
+                ↻ {lang === "es" ? "Recapacitado" : "Retrained"}
+              </button>
+              <button type="button" onClick={() => setEditingFor(it.id)} className="shrink-0 text-xs font-semibold text-accent">
+                ✎ {lang === "es" ? "Editar" : "Edit"}
+              </button>
+            </div>
+          ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {phaseGroups.map(([phase, phaseItems]) => {
+        if (phaseGroups.length === 1) {
+          return (
+            <div key={phase} className="card divide-y divide-border">
+              {phaseItems.map(renderItem)}
+            </div>
+          );
+        }
+        const trainedCount = phaseItems.filter((it) => optimisticTrained[it.id] ?? !!it.trained_at).length;
+        const allDone = trainedCount === phaseItems.length;
+        return (
+          // Starts open unless every step in it is already checked off --
+          // nothing left to do there shouldn't take up screen space, but a
+          // group still in progress should be visible without an extra tap
+          // (this is the page someone's actively working through a shift).
+          <details key={phase} className="card overflow-hidden" open={!allDone}>
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-accent">{TRAINING_PHASE_LABEL[phase][lang]}</span>
+              <span className="shrink-0 text-xs font-semibold text-accent">
+                {trainedCount}/{phaseItems.length}
+              </span>
+            </summary>
+            <div className="divide-y divide-border border-t border-border">{phaseItems.map(renderItem)}</div>
+          </details>
+        );
+      })}
     </div>
   );
 }
