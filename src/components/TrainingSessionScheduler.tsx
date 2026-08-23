@@ -20,7 +20,16 @@ interface ManagerOption {
 }
 
 function fmtDate(d: string, lang: Language) {
-  return new Date(d + "T00:00:00Z").toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { weekday: "short", month: "short", day: "numeric" });
+  // timeZone: "UTC" pins this to the date the string names -- without it,
+  // toLocaleDateString reinterprets the UTC-midnight instant in the
+  // browser's own local timezone, which rolls back a day for anyone west
+  // of UTC (any US timezone) and shows the session one day early.
+  return new Date(d + "T00:00:00Z").toLocaleDateString(lang === "es" ? "es-MX" : "en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 /** A scheduled session's date/shift/manager/notes are all provisional until

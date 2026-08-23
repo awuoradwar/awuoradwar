@@ -38,8 +38,16 @@ function fmtDisplay(value: string, locale: string): string {
 // weekday abbreviations off of via Intl. Uses "short" (Sun, Mon, ...) rather
 // than single-letter "narrow" labels -- narrow makes Sunday and Saturday
 // both render as "S", which reads as a bug (which end is which?).
+// timeZone: "UTC" is required here -- these reference dates are built at UTC
+// midnight, and toLocaleDateString with no explicit zone falls back to the
+// browser's own local one. For anyone west of UTC (any US timezone), UTC
+// midnight is still the previous evening locally, which silently rotates
+// every label back by a day -- Sunday's slot shows "Sat", and so on around
+// the row.
 function weekdayInitials(locale: string): string[] {
-  return Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2023, 0, 1 + i)).toLocaleDateString(locale, { weekday: "short" }));
+  return Array.from({ length: 7 }, (_, i) =>
+    new Date(Date.UTC(2023, 0, 1 + i)).toLocaleDateString(locale, { weekday: "short", timeZone: "UTC" })
+  );
 }
 
 interface CalendarPopoverProps {
