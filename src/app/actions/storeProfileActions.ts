@@ -98,22 +98,41 @@ export async function updateStorePeriodAction(formData: FormData) {
   return { ok: true };
 }
 
-export async function saveWeeklyOpsSummaryAction(formData: FormData) {
+export async function saveWeeklyOtSummaryAction(formData: FormData) {
   const user = await requireCurrentUser();
   if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };
 
   const weekStart = String(formData.get("weekStart") || "").trim();
   if (!weekStart) return { error: "Week is required." };
 
-  storeProfileService.upsertWeeklyOpsSummary(
+  storeProfileService.upsertWeeklyOtSummary(
     user.storeId,
     weekStart,
     {
       otFohHours: num(formData, "otFohHours"),
       otBohHours: num(formData, "otBohHours"),
+      otNotes: String(formData.get("otNotes") || "").trim() || null,
+    },
+    user
+  );
+
+  refresh();
+  return { ok: true };
+}
+
+export async function saveWeeklyCogsSummaryAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "store_profile.manage")) return { error: "FORBIDDEN" };
+
+  const weekStart = String(formData.get("weekStart") || "").trim();
+  if (!weekStart) return { error: "Week is required." };
+
+  storeProfileService.upsertWeeklyCogsSummary(
+    user.storeId,
+    weekStart,
+    {
       cogsActualPct: num(formData, "cogsActualPct"),
       cogsGoalPct: num(formData, "cogsGoalPct"),
-      otNotes: String(formData.get("otNotes") || "").trim() || null,
       cogsNotes: String(formData.get("cogsNotes") || "").trim() || null,
     },
     user

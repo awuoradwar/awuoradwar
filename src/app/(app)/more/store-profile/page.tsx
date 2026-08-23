@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
-import { getLatestPeriod, getPeriodHistory, getGemScore, getWeeklyOpsSummaryHistory } from "@/lib/services/storeProfileService";
+import { getLatestPeriod, getPeriodHistory, getGemScore, getWeeklyOtSummaryHistory, getWeeklyCogsSummaryHistory } from "@/lib/services/storeProfileService";
 import { formatStoreDateTime, storeToday } from "@/lib/storeTime";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import StorePeriodForm from "@/components/StorePeriodForm";
 import StorePeriodEditToggle from "@/components/StorePeriodEditToggle";
 import GemScoreCard from "@/components/GemScoreCard";
-import WeeklyOpsSummaryCard from "@/components/WeeklyOpsSummaryCard";
+import WeeklyOtSummaryCard from "@/components/WeeklyOtSummaryCard";
+import WeeklyCogsSummaryCard from "@/components/WeeklyCogsSummaryCard";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -43,9 +44,20 @@ export default async function StoreProfilePage() {
   const locale = es ? "es-MX" : "en-US";
 
   const currentWeekStart = weekStartOf(storeToday(user.storeId));
-  const weeklyHistory = getWeeklyOpsSummaryHistory(user.storeId, 12);
-  const currentWeekSummary = weeklyHistory.find((w) => w.week_start === currentWeekStart);
-  const pastWeeklySummaries = weeklyHistory.filter((w) => w.week_start !== currentWeekStart);
+  // COGS actual only exists once a week's Saturday inventory count is in --
+  // it's always reported for the week that just ended, not the one
+  // currently in progress, so its "primary" week is last week, not this one.
+  const lastWeekStart = new Date(new Date(currentWeekStart + "T00:00:00Z").getTime() - 7 * 86400000).toISOString().slice(0, 10);
+
+  const otHistory = getWeeklyOtSummaryHistory(user.storeId, 24);
+  const currentWeekOt = otHistory.find((w) => w.week_start === currentWeekStart);
+  const upcomingOt = otHistory.filter((w) => w.week_start > currentWeekStart);
+  const pastOt = otHistory.filter((w) => w.week_start < currentWeekStart);
+
+  const cogsHistory = getWeeklyCogsSummaryHistory(user.storeId, 24);
+  const primaryCogs = cogsHistory.find((w) => w.week_start === lastWeekStart);
+  const upcomingCogs = cogsHistory.filter((w) => w.week_start > lastWeekStart);
+  const pastCogs = cogsHistory.filter((w) => w.week_start < lastWeekStart);
 
   const kpis = latest
     ? [
@@ -99,24 +111,76 @@ export default async function StoreProfilePage() {
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-accent">{es ? "Horas Extra y COGS Semanal" : "Weekly OT & COGS"}</h2>
+        <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-accent">{es ? "Horas Extra Semanal" : "Weekly Overtime"}</h2>
         <p className="mb-2 text-xs text-muted">
           {es
-            ? "Un renglón por semana, separado del período de P&L -- registra qué pasó realmente cada semana."
-            : "One row per week, separate from the P&L period -- logs what actually happened each week."}
+            ? "Normalmente se registra tan pronto se arma el horario de esa semana."
+            : "Usually logged as soon as that week's schedule is built."}
         </p>
-        <WeeklyOpsSummaryCard summary={currentWeekSummary} weekStart={currentWeekStart} canEdit={gm} lang={user.language} />
+        <WeeklyOtSummaryCard summary={currentWeekOt} weekStart={currentWeekStart} canEdit={gm} lang={user.language} />
       </section>
 
-      {pastWeeklySummaries.length > 0 && (
+      {upcomingOt.length > 0 && (
         <details className="card mb-6 overflow-hidden">
           <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
-            <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Historial Semanal" : "Weekly History"}</span>
-            <span className="shrink-0 text-xs font-semibold text-muted">{pastWeeklySummaries.length}</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Próximas Semanas (OT)" : "Upcoming Weeks (OT)"}</span>
+            <span className="shrink-0 text-xs font-semibold text-muted">{upcomingOt.length}</span>
           </summary>
           <div className="flex flex-col gap-2 border-t border-border p-3">
-            {pastWeeklySummaries.map((w) => (
-              <WeeklyOpsSummaryCard key={w.id} summary={w} weekStart={w.week_start} canEdit={gm} lang={user.language} />
+            {upcomingOt.map((w) => (
+              <WeeklyOtSummaryCard key={w.id} summary={w} weekStart={w.week_start} canEdit={gm} lang={user.language} />
+            ))}
+          </div>
+        </details>
+      )}
+
+      {pastOt.length > 0 && (
+        <details className="card mb-6 overflow-hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Historial de Horas Extra" : "OT History"}</span>
+            <span className="shrink-0 text-xs font-semibold text-muted">{pastOt.length}</span>
+          </summary>
+          <div className="flex flex-col gap-2 border-t border-border p-3">
+            {pastOt.map((w) => (
+              <WeeklyOtSummaryCard key={w.id} summary={w} weekStart={w.week_start} canEdit={gm} lang={user.language} />
+            ))}
+          </div>
+        </details>
+      )}
+
+      <section className="mb-6">
+        <h2 className="mb-1 text-xs font-bold uppercase tracking-wide text-accent">{es ? "COGS Semanal" : "Weekly COGS"}</h2>
+        <p className="mb-2 text-xs text-muted">
+          {es
+            ? "El COGS real solo existe después del conteo de inventario del sábado -- siempre es de la semana que acaba de terminar."
+            : "COGS actual only exists after Saturday's inventory count -- always for the week that just ended."}
+        </p>
+        <WeeklyCogsSummaryCard summary={primaryCogs} weekStart={lastWeekStart} canEdit={gm} lang={user.language} />
+      </section>
+
+      {upcomingCogs.length > 0 && (
+        <details className="card mb-6 overflow-hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Semanas Más Recientes (COGS)" : "More Recent Weeks (COGS)"}</span>
+            <span className="shrink-0 text-xs font-semibold text-muted">{upcomingCogs.length}</span>
+          </summary>
+          <div className="flex flex-col gap-2 border-t border-border p-3">
+            {upcomingCogs.map((w) => (
+              <WeeklyCogsSummaryCard key={w.id} summary={w} weekStart={w.week_start} canEdit={gm} lang={user.language} />
+            ))}
+          </div>
+        </details>
+      )}
+
+      {pastCogs.length > 0 && (
+        <details className="card mb-6 overflow-hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Historial de COGS" : "COGS History"}</span>
+            <span className="shrink-0 text-xs font-semibold text-muted">{pastCogs.length}</span>
+          </summary>
+          <div className="flex flex-col gap-2 border-t border-border p-3">
+            {pastCogs.map((w) => (
+              <WeeklyCogsSummaryCard key={w.id} summary={w} weekStart={w.week_start} canEdit={gm} lang={user.language} />
             ))}
           </div>
         </details>

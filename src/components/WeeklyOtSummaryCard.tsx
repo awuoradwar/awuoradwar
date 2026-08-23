@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveWeeklyOpsSummaryAction } from "@/app/actions/storeProfileActions";
-import { WeeklyOpsSummary } from "@/lib/services/storeProfileService";
+import { saveWeeklyOtSummaryAction } from "@/app/actions/storeProfileActions";
+import { WeeklyOtSummary } from "@/lib/services/storeProfileService";
 import { Field, inputClass, textareaClass, btnPrimary, btnOutline } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 
@@ -20,18 +20,14 @@ function fmtHours(n: number | null): string {
   return n === null ? "—" : `${n.toFixed(1)}h`;
 }
 
-function fmtPct(n: number | null): string {
-  return n === null ? "—" : `${n.toFixed(1)}%`;
-}
-
-function WeeklyOpsSummaryForm({
+function WeeklyOtSummaryForm({
   weekStart,
   summary,
   lang,
   onDone,
 }: {
   weekStart: string;
-  summary?: WeeklyOpsSummary;
+  summary?: WeeklyOtSummary;
   lang: Language;
   onDone: () => void;
 }) {
@@ -46,7 +42,7 @@ function WeeklyOpsSummaryForm({
         const fd = new FormData(e.currentTarget);
         setError(null);
         startTransition(async () => {
-          const result = await saveWeeklyOpsSummaryAction(fd);
+          const result = await saveWeeklyOtSummaryAction(fd);
           if (result?.error) {
             setError(result.error);
             return;
@@ -60,8 +56,6 @@ function WeeklyOpsSummaryForm({
       <Field label={lang === "es" ? "Semana (cualquier día)" : "Week (any day in it)"}>
         <input name="weekStart" type="date" required defaultValue={summary?.week_start ?? weekStart} className={inputClass} />
       </Field>
-
-      <p className="text-xs font-bold uppercase tracking-wide text-accent">{lang === "es" ? "Horas Extra" : "Overtime"}</p>
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "FOH (horas)" : "FOH (hours)"}>
           <input name="otFohHours" type="number" step="any" inputMode="decimal" defaultValue={summary?.ot_foh_hours ?? undefined} className={inputClass} />
@@ -70,27 +64,8 @@ function WeeklyOpsSummaryForm({
           <input name="otBohHours" type="number" step="any" inputMode="decimal" defaultValue={summary?.ot_boh_hours ?? undefined} className={inputClass} />
         </Field>
       </div>
-      <Field label={lang === "es" ? "Notas sobre horas extra (opcional)" : "OT notes (optional)"}>
+      <Field label={lang === "es" ? "Notas (opcional)" : "Notes (optional)"}>
         <textarea name="otNotes" rows={2} defaultValue={summary?.ot_notes ?? undefined} placeholder={lang === "es" ? "Ej: cubrimos una llamada, capacitación extra" : "e.g. covered a call-in, extra training"} className={textareaClass} />
-      </Field>
-
-      <p className="text-xs font-bold uppercase tracking-wide text-accent">{lang === "es" ? "COGS / Inventario" : "COGS / Inventory"}</p>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label={lang === "es" ? "COGS real %" : "COGS actual %"}>
-          <input name="cogsActualPct" type="number" step="any" inputMode="decimal" defaultValue={summary?.cogs_actual_pct ?? undefined} className={inputClass} />
-        </Field>
-        <Field label={lang === "es" ? "Meta de la empresa %" : "Company goal %"}>
-          <input name="cogsGoalPct" type="number" step="any" inputMode="decimal" defaultValue={summary?.cogs_goal_pct ?? undefined} className={inputClass} />
-        </Field>
-      </div>
-      <Field label={lang === "es" ? "Notas sobre variación de inventario (opcional)" : "Inventory variance notes (optional)"}>
-        <textarea
-          name="cogsNotes"
-          rows={2}
-          defaultValue={summary?.cogs_notes ?? undefined}
-          placeholder={lang === "es" ? "Ej: merma por camión tardío, error de conteo" : "e.g. waste from a late truck, count error"}
-          className={textareaClass}
-        />
       </Field>
 
       {error && <p className="text-sm text-critical">{error}</p>}
@@ -106,18 +81,20 @@ function WeeklyOpsSummaryForm({
   );
 }
 
-/** One week's OT + COGS/inventory-variance figures, with a tap-to-edit
- * form -- entering a week that already has a row corrects it in place
- * (see upsertWeeklyOpsSummary), so this doubles as both "add this week"
- * and "fix last week's numbers" without two different UIs. */
-export default function WeeklyOpsSummaryCard({
+/** One week's OT figures, with a tap-to-edit form -- entering a week that
+ * already has a row corrects it in place (see upsertWeeklyOtSummary), so
+ * this doubles as both "add this week" and "fix an earlier week's numbers"
+ * without two different UIs. Kept separate from COGS: OT is normally logged
+ * for the week whose schedule was just built (often before or right as that
+ * week starts), which is a different week than COGS actual is ever about. */
+export default function WeeklyOtSummaryCard({
   summary,
   weekStart,
   canEdit,
   lang,
   startOpenForEdit,
 }: {
-  summary?: WeeklyOpsSummary;
+  summary?: WeeklyOtSummary;
   weekStart: string;
   canEdit: boolean;
   lang: Language;
@@ -127,7 +104,7 @@ export default function WeeklyOpsSummaryCard({
   const locale = lang === "es" ? "es-MX" : "en-US";
 
   if (editing) {
-    return <WeeklyOpsSummaryForm weekStart={weekStart} summary={summary} lang={lang} onDone={() => setEditing(false)} />;
+    return <WeeklyOtSummaryForm weekStart={weekStart} summary={summary} lang={lang} onDone={() => setEditing(false)} />;
   }
 
   if (!summary) {
@@ -145,7 +122,6 @@ export default function WeeklyOpsSummaryCard({
 
   const totalOt = (summary.ot_foh_hours ?? 0) + (summary.ot_boh_hours ?? 0);
   const hasOt = summary.ot_foh_hours !== null || summary.ot_boh_hours !== null;
-  const variance = summary.cogs_actual_pct !== null && summary.cogs_goal_pct !== null ? summary.cogs_actual_pct - summary.cogs_goal_pct : null;
 
   return (
     <div className="card p-3">
@@ -173,24 +149,6 @@ export default function WeeklyOpsSummaryCard({
         </div>
       </div>
       {summary.ot_notes && <p className="mt-2 text-xs italic text-muted">{summary.ot_notes}</p>}
-
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        <div className="rounded-lg bg-card-subtle p-2">
-          <p className="text-xs text-muted">{lang === "es" ? "COGS real" : "COGS actual"}</p>
-          <p className="text-sm font-bold">{fmtPct(summary.cogs_actual_pct)}</p>
-        </div>
-        <div className="rounded-lg bg-card-subtle p-2">
-          <p className="text-xs text-muted">{lang === "es" ? "Meta" : "Goal"}</p>
-          <p className="text-sm font-bold">{fmtPct(summary.cogs_goal_pct)}</p>
-        </div>
-        <div className="rounded-lg bg-card-subtle p-2">
-          <p className="text-xs text-muted">{lang === "es" ? "Variación" : "Variance"}</p>
-          <p className={`text-sm font-bold ${variance !== null && variance > 0 ? "text-critical" : ""}`}>
-            {variance === null ? "—" : `${variance > 0 ? "+" : ""}${variance.toFixed(1)}%`}
-          </p>
-        </div>
-      </div>
-      {summary.cogs_notes && <p className="mt-2 text-xs italic text-muted">{summary.cogs_notes}</p>}
 
       <p className="mt-3 text-xs text-muted">
         {lang === "es" ? "Actualizado por" : "Updated by"}: {summary.created_by_name || "—"}

@@ -536,6 +536,12 @@ CREATE TABLE IF NOT EXISTS store_pnl_periods (
 -- week) -- lets a GM log what actually happened week to week, with notes
 -- explaining an OT spike or a COGS goal miss, for trend-spotting between
 -- P&L releases.
+-- Superseded by weekly_ot_summaries/weekly_cogs_summaries below -- OT is
+-- entered proactively for the week its schedule was just built for, while
+-- COGS actual only exists once that week's Saturday inventory count closes
+-- it out, so the two never share the same "which week is this" answer.
+-- Table (and any rows already in it) kept only so createConnection's
+-- one-time migration can still read out of it; nothing writes here anymore.
 CREATE TABLE IF NOT EXISTS weekly_ops_summaries (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
@@ -550,6 +556,37 @@ CREATE TABLE IF NOT EXISTS weekly_ops_summaries (
   created_at TEXT NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_ops_summaries_unique ON weekly_ops_summaries(store_id, week_start);
+
+-- One row per week a GM logs overtime for -- typically the week whose
+-- schedule was just built, so this is very often entered before or right as
+-- that week starts, not after it ends.
+CREATE TABLE IF NOT EXISTS weekly_ot_summaries (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  week_start TEXT NOT NULL, -- YYYY-MM-DD, Sunday -- the week this OT is for
+  ot_foh_hours REAL,
+  ot_boh_hours REAL,
+  ot_notes TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_ot_summaries_unique ON weekly_ot_summaries(store_id, week_start);
+
+-- One row per week a GM logs COGS actual/goal for -- the actual number only
+-- exists once that week's Saturday inventory count is done, so this is
+-- always entered after the week it describes has already ended (typically
+-- early in the following week), never during or ahead of it.
+CREATE TABLE IF NOT EXISTS weekly_cogs_summaries (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  week_start TEXT NOT NULL, -- YYYY-MM-DD, Sunday -- the week this COGS actually measures
+  cogs_actual_pct REAL,
+  cogs_goal_pct REAL,
+  cogs_notes TEXT,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_weekly_cogs_summaries_unique ON weekly_cogs_summaries(store_id, week_start);
 
 CREATE TABLE IF NOT EXISTS handoffs (
   id TEXT PRIMARY KEY,

@@ -73,6 +73,7 @@ function createConnection(): Database.Database {
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   unassignStaleAutoAssignedTasks(db);
+  splitWeeklyOpsSummaries(db);
   return db;
 }
 
@@ -131,6 +132,45 @@ function migrateLegacyTrainingPositions(db: Database.Database) {
   for (const table of ["training_items", "trainees"]) {
     db.prepare(`UPDATE ${table} SET position = 'COUNTERHELP' WHERE position = 'FOH'`).run();
     db.prepare(`UPDATE ${table} SET position = 'COOK' WHERE position = 'BOH'`).run();
+  }
+}
+
+/** weekly_ops_summaries used to bundle OT and COGS into one row per week --
+ * split into weekly_ot_summaries/weekly_cogs_summaries (see schema.sql) so
+ * each can carry its own week_start, since OT is entered for the week just
+ * scheduled while COGS actual only exists once that week's Saturday
+ * inventory count closes it out. One-time, idempotent: INSERT OR IGNORE
+ * against each new table's own (store_id, week_start) unique index means a
+ * second run just does nothing once the old rows are already carried over. */
+function splitWeeklyOpsSummaries(db: Database.Database) {
+  const rows = db.prepare(`SELECT * FROM weekly_ops_summaries`).all() as Array<{
+    id: string;
+    store_id: string;
+    week_start: string;
+    ot_foh_hours: number | null;
+    ot_boh_hours: number | null;
+    cogs_actual_pct: number | null;
+    cogs_goal_pct: number | null;
+    ot_notes: string | null;
+    cogs_notes: string | null;
+    created_by: string | null;
+    created_at: string;
+  }>;
+  const insertOt = db.prepare(
+    `INSERT OR IGNORE INTO weekly_ot_summaries (id, store_id, week_start, ot_foh_hours, ot_boh_hours, ot_notes, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const insertCogs = db.prepare(
+    `INSERT OR IGNORE INTO weekly_cogs_summaries (id, store_id, week_start, cogs_actual_pct, cogs_goal_pct, cogs_notes, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  for (const r of rows) {
+    if (r.ot_foh_hours !== null || r.ot_boh_hours !== null || r.ot_notes !== null) {
+      insertOt.run(r.id + "-ot", r.store_id, r.week_start, r.ot_foh_hours, r.ot_boh_hours, r.ot_notes, r.created_by, r.created_at);
+    }
+    if (r.cogs_actual_pct !== null || r.cogs_goal_pct !== null || r.cogs_notes !== null) {
+      insertCogs.run(r.id + "-cogs", r.store_id, r.week_start, r.cogs_actual_pct, r.cogs_goal_pct, r.cogs_notes, r.created_by, r.created_at);
+    }
   }
 }
 
