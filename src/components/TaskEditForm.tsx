@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateTaskAction } from "@/app/actions/taskActions";
 import { Field, inputClass, selectClass, textareaClass } from "./forms/FormShell";
@@ -29,9 +29,28 @@ export default function TaskEditForm({
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const detailsRef = useRef<HTMLDetailsElement>(null);
 
   return (
-    <details className="mt-3">
+    <details
+      ref={detailsRef}
+      className="mt-3"
+      onToggle={() => {
+        // Some mobile browsers reflow/scroll unpredictably when a <details>
+        // low on the page opens (reported as "jumps to the top") -- take
+        // over the scroll explicitly on open instead of leaving it to
+        // whatever the platform does on its own.
+        if (detailsRef.current?.open) {
+          requestAnimationFrame(() => {
+            const el = detailsRef.current;
+            if (!el) return;
+            const headerHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+            const top = el.getBoundingClientRect().top + window.scrollY - headerHeight - 8;
+            window.scrollTo({ top, behavior: "smooth" });
+          });
+        }
+      }}
+    >
       <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-accent">
         {t(lang, "action_edit")}
       </summary>
@@ -41,6 +60,7 @@ export default function TaskEditForm({
           const fd = new FormData(e.currentTarget);
           startTransition(async () => {
             await updateTaskAction(taskId, fd);
+            if (detailsRef.current) detailsRef.current.open = false;
             router.refresh();
           });
         }}
