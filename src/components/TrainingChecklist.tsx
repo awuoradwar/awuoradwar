@@ -6,7 +6,7 @@ import {
   toggleTrainingItemAction,
   updateTrainingCompletionAction,
   retrainTrainingItemAction,
-  updateTrainingLogNoteAction,
+  updateTrainingLogEntryAction,
 } from "@/app/actions/trainingActions";
 import { TrainingChecklistRow, TrainingCompletionLogEntry, TrainingItemPhase, TrainingShiftType } from "@/lib/services/trainingService";
 import { TRAINING_PHASE_LABEL } from "@/lib/trainingLabels";
@@ -234,14 +234,28 @@ function RetrainForm({
   );
 }
 
-/** One past completion/retrain event -- its note can be corrected after the
- * fact (a typo, more detail added later) without that looking like the
- * retrain itself happened again; only the note field is editable here, the
- * date/shift/trainer stay as a fixed record of what was true at the time. */
-function LogEntryRow({ traineeId, entry, lang }: { traineeId: string; entry: TrainingCompletionLogEntry; lang: Language }) {
+/** One past completion/retrain event -- fully correctable after the fact
+ * (wrong trainer picked in the moment, wrong date/shift, a typo in the
+ * note) without that looking like the retrain itself happened again. */
+function LogEntryRow({
+  traineeId,
+  entry,
+  managers,
+  lang,
+}: {
+  traineeId: string;
+  entry: TrainingCompletionLogEntry;
+  managers: ManagerOption[];
+  lang: Language;
+}) {
   const [editing, setEditing] = useState(false);
+  const d = new Date(entry.trained_at);
+  const [date, setDate] = useState(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  const [shift, setShift] = useState<TrainingShiftType | "">(entry.shift_type || "");
+  const [trainer, setTrainer] = useState(entry.trained_by || "");
   const [draft, setDraft] = useState(entry.notes || "");
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   return (
@@ -259,14 +273,39 @@ function LogEntryRow({ traineeId, entry, lang }: { traineeId: string; entry: Tra
       </div>
       {editing ? (
         <div className="mt-1.5 flex flex-col gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5">
+            <DateField value={date} onChange={setDate} lang={lang} className={`${inputClass} h-8 text-xs`} />
+            <select value={shift} onChange={(e) => setShift(e.target.value as TrainingShiftType)} className={`${selectClass} h-8 text-xs`}>
+              <option value="">{lang === "es" ? "Sin especificar" : "Unspecified"}</option>
+              {(Object.keys(SHIFT_LABEL) as TrainingShiftType[]).map((s) => (
+                <option key={s} value={s}>
+                  {SHIFT_LABEL[s][lang]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <select value={trainer} onChange={(e) => setTrainer(e.target.value)} className={`${selectClass} h-8 text-xs`}>
+            <option value="">{lang === "es" ? "Sin especificar" : "Unspecified"}</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
           <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={2} className={`${textareaClass} text-xs`} />
+          {error && <p className="text-xs text-critical">{error}</p>}
           <div className="flex items-center gap-3">
             <button
               type="button"
-              disabled={pending}
+              disabled={pending || !date}
               onClick={() => {
+                setError(null);
                 startTransition(async () => {
-                  await updateTrainingLogNoteAction(traineeId, entry.id, draft);
+                  const result = await updateTrainingLogEntryAction(traineeId, entry.id, date, shift, trainer, draft);
+                  if (result && "error" in result && result.error) {
+                    setError(result.error);
+                    return;
+                  }
                   setEditing(false);
                   router.refresh();
                 });
@@ -400,7 +439,7 @@ export default function TrainingChecklist({
                       {lang === "es" ? `Actividad (${it.log.length})` : `Activity (${it.log.length})`}
                     </p>
                     {it.log.map((entry) => (
-                      <LogEntryRow key={entry.id} traineeId={traineeId} entry={entry} lang={lang} />
+                      <LogEntryRow key={entry.id} traineeId={traineeId} entry={entry} managers={managers} lang={lang} />
                     ))}
                   </div>
                 )}

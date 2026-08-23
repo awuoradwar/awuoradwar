@@ -168,6 +168,7 @@ export interface TrainingCompletionLogEntry {
   id: string;
   trained_at: string;
   shift_type: TrainingShiftType | null;
+  trained_by: string | null;
   trained_by_name: string | null;
   notes: string | null;
 }
@@ -181,7 +182,7 @@ export function getTrainingCompletionLog(traineeId: string, trainingItemId: stri
   const db = getDb();
   return db
     .prepare(
-      `SELECT l.id, l.trained_at, l.shift_type, u.name as trained_by_name, l.notes
+      `SELECT l.id, l.trained_at, l.shift_type, l.trained_by, u.name as trained_by_name, l.notes
        FROM training_completion_log l LEFT JOIN users u ON u.id = l.trained_by
        WHERE l.trainee_id = ? AND l.training_item_id = ? ORDER BY l.trained_at DESC`
     )
@@ -195,14 +196,40 @@ function logCompletion(traineeId: string, trainingItemId: string, trainedAt: str
   ).run(newId(), traineeId, trainingItemId, trainedAt, shiftType, trainedBy, notes, nowIso());
 }
 
-/** Correct a specific past log entry's note after the fact -- distinct from
- * every other edit path here, which all only ever touch the *current*
- * completion state; this is the one place a manager can fix what an old
- * entry actually says without it looking like the retrain happened again. */
-export function updateTrainingCompletionLogNote(traineeId: string, logId: string, note: string, actor: SessionUser) {
+/** Correct a specific past log entry after the fact -- distinct from every
+ * other edit path here, which all only ever touch the *current* completion
+ * state; this is the one place a manager can fix what an old entry actually
+ * says (wrong trainer picked in the moment, wrong date, wrong shift, a typo
+ * in the note) without it looking like the retrain happened again. */
+export function updateTrainingCompletionLogEntry(
+  storeId: string,
+  traineeId: string,
+  logId: string,
+  fields: { trainedAtDate?: string; shiftType?: TrainingShiftType | null; trainedBy?: string | null; notes?: string | null },
+  actor: SessionUser
+) {
   const db = getDb();
-  db.prepare(`UPDATE training_completion_log SET notes = ? WHERE id = ? AND trainee_id = ?`).run(note || null, logId, traineeId);
-  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_completion_log_id: logId, notes: note } });
+  const sets: string[] = [];
+  const args: unknown[] = [];
+  if (fields.trainedAtDate !== undefined) {
+    sets.push("trained_at = ?");
+    args.push(storeLocalIso(storeId, fields.trainedAtDate, "12:00"));
+  }
+  if (fields.shiftType !== undefined) {
+    sets.push("shift_type = ?");
+    args.push(fields.shiftType);
+  }
+  if (fields.trainedBy !== undefined) {
+    sets.push("trained_by = ?");
+    args.push(fields.trainedBy);
+  }
+  if (fields.notes !== undefined) {
+    sets.push("notes = ?");
+    args.push(fields.notes);
+  }
+  if (sets.length === 0) return;
+  db.prepare(`UPDATE training_completion_log SET ${sets.join(", ")} WHERE id = ? AND trainee_id = ?`).run(...args, logId, traineeId);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_completion_log_id: logId, ...fields } });
 }
 
 export interface TrainingHistoryEntry {
@@ -301,7 +328,7 @@ export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRo
 
   const logRows = db
     .prepare(
-      `SELECT l.id, l.training_item_id, l.trained_at, l.shift_type, u.name as trained_by_name, l.notes
+      `SELECT l.id, l.training_item_id, l.trained_at, l.shift_type, l.trained_by, u.name as trained_by_name, l.notes
        FROM training_completion_log l LEFT JOIN users u ON u.id = l.trained_by
        WHERE l.trainee_id = ? ORDER BY l.trained_at DESC`
     )
