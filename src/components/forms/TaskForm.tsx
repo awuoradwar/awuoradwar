@@ -113,6 +113,19 @@ export default function TaskForm({
         </Field>
       )}
 
+      {!recurring && (
+        <Field label={`${lang === "es" ? "Apoyo" : "Support"} (${lang === "es" ? "opcional" : "optional"})`}>
+          <select name="supportId" defaultValue="" className={selectClass}>
+            <option value="">{lang === "es" ? "Nadie más" : "No one else"}</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.id === currentUserId ? (lang === "es" ? "Yo" : "Me") : m.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
+
       <Field label={lang === "es" ? "Esfuerzo" : "Effort"}>
         <select name="effort" defaultValue="QUICK" className={selectClass}>
           <option value="QUICK">{lang === "es" ? "Rápido" : "Quick"}</option>

@@ -104,6 +104,7 @@ export async function quickAddTaskAction(formData: FormData) {
     dueAt: dueTime ? storeLocalIso(user.storeId, scheduledDate, dueTime) : null,
     effort: fd(formData, "effort") || "QUICK",
     ownerId: fd(formData, "ownerId") || null,
+    supportIds: fd(formData, "supportId") ? [fd(formData, "supportId")] : undefined,
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });

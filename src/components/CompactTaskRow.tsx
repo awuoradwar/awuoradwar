@@ -33,6 +33,11 @@ export default function CompactTaskRow({ task, lang, managerColors }: { task: Ta
               · <OwnerBadge name={task.owner_name} ownerId={task.owner_id} managerColors={managerColors} />
             </span>
           )}
+          {task.support_name && (
+            <span>
+              + <OwnerBadge name={task.support_name} ownerId={task.support_id ?? null} managerColors={managerColors} />
+            </span>
+          )}
         </p>
       </Link>
       {canComplete && (

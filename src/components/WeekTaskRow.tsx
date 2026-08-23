@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { reassignTaskAction, cancelTaskAction } from "@/app/actions/taskActions";
+import { reassignTaskAction, setTaskSupportAction, cancelTaskAction } from "@/app/actions/taskActions";
 import { Language } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
 import { ManagerColor } from "@/lib/managerColor";
@@ -16,6 +16,7 @@ export interface WeekTaskData {
   status: string;
   owner_id: string | null;
   owner_name: string | null;
+  support_ids: string | null;
 }
 
 /** Week view row: click the title for full detail, or assign/remove right here
@@ -35,10 +36,12 @@ export default function WeekTaskRow({
   const [pending, startTransition] = useTransition();
   const [optimisticallyCancelled, setOptimisticallyCancelled] = useState(false);
   const [ownerId, setOwnerId] = useState(task.owner_id || "");
+  const [supportId, setSupportId] = useState(task.support_ids ? (JSON.parse(task.support_ids)[0] ?? "") : "");
   const router = useRouter();
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
   const removable = task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyCancelled;
   const ownerColor = ownerId ? managerColors?.[ownerId] : undefined;
+  const supportColor = supportId ? managerColors?.[supportId] : undefined;
 
   if (optimisticallyCancelled) return null;
 
@@ -75,6 +78,27 @@ export default function WeekTaskRow({
             className={`rounded-lg border px-1.5 py-0.5 text-xs outline-none transition-colors hover:border-muted/50 focus:border-accent disabled:opacity-50 ${ownerColor ? "font-medium" : "border-border bg-card text-muted"}`}
           >
             <option value="">{lang === "es" ? "Sin asignar" : "Unassigned"}</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={supportId}
+            disabled={pending || !removable}
+            onChange={(e) => {
+              const newSupportId = e.target.value;
+              setSupportId(newSupportId);
+              startTransition(async () => {
+                await setTaskSupportAction(task.id, newSupportId || null);
+                router.refresh();
+              });
+            }}
+            style={supportColor ? { backgroundColor: supportColor.bg, color: supportColor.text, borderColor: "transparent" } : undefined}
+            className={`rounded-lg border px-1.5 py-0.5 text-xs outline-none transition-colors hover:border-muted/50 focus:border-accent disabled:opacity-50 ${supportColor ? "font-medium" : "border-border bg-card text-muted"}`}
+          >
+            <option value="">{lang === "es" ? "+ Apoyo" : "+ Support"}</option>
             {managers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}

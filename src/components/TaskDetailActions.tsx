@@ -6,6 +6,7 @@ import {
   completeTaskAction,
   verifyTaskAction,
   reassignTaskAction,
+  setTaskSupportAction,
   carryForwardTaskAction,
   cancelTaskAction,
   cancelTaskSeriesAction,
@@ -22,6 +23,7 @@ export default function TaskDetailActions({
   verificationRequired,
   templateId,
   canManageSeries,
+  currentSupportId,
 }: {
   taskId: string;
   lang: Language;
@@ -30,9 +32,11 @@ export default function TaskDetailActions({
   verificationRequired: boolean;
   templateId?: string | null;
   canManageSeries?: boolean;
+  currentSupportId?: string | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [reassignTo, setReassignTo] = useState("");
+  const [supportPick, setSupportPick] = useState(currentSupportId || "");
   const [confirmingSeries, setConfirmingSeries] = useState(false);
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const [optimisticallyVerified, setOptimisticallyVerified] = useState(false);
@@ -169,6 +173,29 @@ export default function TaskDetailActions({
           <button
             disabled={pending || !reassignTo}
             onClick={() => run(() => reassignTaskAction(taskId, reassignTo))}
+            className="tap-target rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-foreground/85 disabled:opacity-40"
+          >
+            {t(lang, "action_save")}
+          </button>
+        </div>
+      )}
+      {openish && (
+        <div className="flex items-center gap-2">
+          <select
+            value={supportPick}
+            onChange={(e) => setSupportPick(e.target.value)}
+            className="tap-target flex-1 rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+          >
+            <option value="">{lang === "es" ? "Apoyo: nadie más" : "Support: no one else"}</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <button
+            disabled={pending || supportPick === (currentSupportId || "")}
+            onClick={() => run(() => setTaskSupportAction(taskId, supportPick || null))}
             className="tap-target rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-foreground/85 disabled:opacity-40"
           >
             {t(lang, "action_save")}

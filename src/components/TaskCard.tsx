@@ -17,6 +17,8 @@ export interface TaskCardData {
   area: string | null;
   owner_id: string | null;
   owner_name: string | null;
+  support_id?: string | null;
+  support_name?: string | null;
   due_at: string | null;
   /** Store-local due time, pre-formatted server-side (formatStoreDateTime
    * is server-only, so this client component can't compute it itself). */
@@ -46,6 +48,11 @@ export default function TaskCard({ task, lang, managerColors }: { task: TaskCard
           {task.owner_name && (
             <span>
               · <OwnerBadge name={task.owner_name} ownerId={task.owner_id} managerColors={managerColors} />
+            </span>
+          )}
+          {task.support_name && (
+            <span>
+              + <OwnerBadge name={task.support_name} ownerId={task.support_id ?? null} managerColors={managerColors} />
             </span>
           )}
           <span className="rounded bg-muted/10 px-1.5 py-0.5">{t(lang, `effort_${task.effort.toLowerCase()}` as never)}</span>

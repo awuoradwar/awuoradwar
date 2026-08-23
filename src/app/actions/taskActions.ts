@@ -33,6 +33,12 @@ export async function reassignTaskAction(taskId: string, newOwnerId: string) {
   refresh();
 }
 
+export async function setTaskSupportAction(taskId: string, supportId: string | null) {
+  const user = await requireCurrentUser();
+  taskService.setTaskSupport(taskId, supportId, user);
+  refresh();
+}
+
 export async function carryForwardTaskAction(taskId: string) {
   const user = await requireCurrentUser();
   const tomorrow = new Date(new Date(storeToday(user.storeId) + "T00:00:00Z").getTime() + 86400000).toISOString().slice(0, 10);

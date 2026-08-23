@@ -428,6 +428,31 @@ export function reassignTask(taskId: string, newOwnerId: string, actor: SessionU
   });
 }
 
+/** Set (or clear, passing null) the one optional second person helping on
+ * this task -- distinct from the Owner, who it's really on. Stored in the
+ * same support_ids column the schema already had room for, just always
+ * holding at most one id for now rather than the general list the column
+ * name implies. */
+export function setTaskSupport(taskId: string, supportId: string | null, actor: SessionUser) {
+  const db = getDb();
+  const task = db.prepare(`SELECT support_ids FROM tasks WHERE id = ?`).get(taskId) as { support_ids: string | null };
+  const ts = nowIso();
+  db.prepare(`UPDATE tasks SET support_ids = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`).run(
+    supportId ? JSON.stringify([supportId]) : null,
+    actor.id,
+    ts,
+    taskId
+  );
+  writeAudit({
+    entityType: "task",
+    entityId: taskId,
+    actor,
+    action: "EDITED",
+    oldValue: { support_ids: task.support_ids },
+    newValue: { support_ids: supportId ? [supportId] : null },
+  });
+}
+
 export function carryForwardTask(taskId: string, newScheduledDate: string, actor: SessionUser) {
   const db = getDb();
   const ts = nowIso();

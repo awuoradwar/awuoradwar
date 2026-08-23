@@ -133,10 +133,18 @@ export default async function MyShiftPage() {
   const tasks = getMyShiftTasks(user.storeId, today);
   // Same roster + palette as Week page's manager-capacity colors -- a
   // manager's dot is the same color everywhere they show up as an owner.
-  const managerIds = (
-    getDb().prepare(`SELECT id FROM users WHERE active = 1 AND position != 'ASSOCIATE'`).all() as Array<{ id: string }>
-  ).map((m) => m.id);
-  const managerColors = Object.fromEntries(buildManagerColorMap(managerIds));
+  const activeManagers = getDb()
+    .prepare(`SELECT id, name FROM users WHERE active = 1 AND position != 'ASSOCIATE'`)
+    .all() as Array<{ id: string; name: string }>;
+  const managerColors = Object.fromEntries(buildManagerColorMap(activeManagers.map((m) => m.id)));
+  const managerNameById = new Map(activeManagers.map((m) => [m.id, m.name]));
+  // support_ids holds at most one id today (see setTaskSupport) -- resolved
+  // here, the same way owner_name already comes pre-joined, so the card
+  // components stay simple display props instead of doing JSON parsing.
+  function supportOf(supportIds: string | null): { support_id: string | null; support_name: string | null } {
+    const id = supportIds ? (JSON.parse(supportIds)[0] ?? null) : null;
+    return { support_id: id, support_name: id ? managerNameById.get(id) || null : null };
+  }
 
   const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
@@ -289,7 +297,12 @@ export default async function MyShiftPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {buckets[bucket].map((task) => (
-                <TaskCard key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at) }} managerColors={managerColors} />
+                <TaskCard
+                  key={task.id}
+                  lang={user.language}
+                  task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids) }}
+                  managerColors={managerColors}
+                />
               ))}
             </div>
           )}
@@ -340,7 +353,12 @@ export default async function MyShiftPage() {
                   </p>
                   <div className="divide-y divide-border">
                     {dayTasks.map((task) => (
-                      <CompactTaskRow key={task.id} lang={user.language} task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at) }} managerColors={managerColors} />
+                      <CompactTaskRow
+                        key={task.id}
+                        lang={user.language}
+                        task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids) }}
+                        managerColors={managerColors}
+                      />
                     ))}
                   </div>
                 </div>

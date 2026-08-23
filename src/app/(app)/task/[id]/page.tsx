@@ -55,6 +55,12 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
     .prepare(`SELECT id, name FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
     .all() as Array<{ id: string; name: string }>;
 
+  // support_ids holds at most one id today (see setTaskSupport) -- resolved
+  // against the managers list already loaded above rather than a second
+  // query, same as how the row components do it.
+  const supportId: string | null = task.support_ids ? (JSON.parse(task.support_ids)[0] ?? null) : null;
+  const supportName = supportId ? managers.find((m) => m.id === supportId)?.name ?? null : null;
+
   const last = lastUpdatedBy("task", id) as { actor_name: string | null; created_at: string } | undefined;
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
@@ -115,6 +121,8 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
       <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
         <dt className="text-muted">{user.language === "es" ? "Responsable" : "Owner"}</dt>
         <dd>{task.owner_name || "—"}</dd>
+        <dt className="text-muted">{user.language === "es" ? "Apoyo" : "Support"}</dt>
+        <dd>{supportName || "—"}</dd>
         <dt className="text-muted">{user.language === "es" ? "Área" : "Area"}</dt>
         <dd>{task.area || "—"}</dd>
         <dt className="text-muted">{user.language === "es" ? "Esfuerzo" : "Effort"}</dt>
@@ -138,6 +146,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
           verificationRequired={!!task.verification_required}
           templateId={task.template_id}
           canManageSeries={canDo(user, "templates.manage")}
+          currentSupportId={supportId}
         />
       </div>
 
