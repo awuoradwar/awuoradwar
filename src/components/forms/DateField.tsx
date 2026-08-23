@@ -35,10 +35,11 @@ function fmtDisplay(value: string, locale: string): string {
 }
 
 // Jan 1 2023 was a Sunday -- a fixed known-Sunday-start week to read locale
-// weekday initials off of via Intl, instead of hardcoding "S M T W T F S"
-// (wrong for Spanish, where Tuesday/Thursday collide as "T" anyway).
+// weekday abbreviations off of via Intl. Uses "short" (Sun, Mon, ...) rather
+// than single-letter "narrow" labels -- narrow makes Sunday and Saturday
+// both render as "S", which reads as a bug (which end is which?).
 function weekdayInitials(locale: string): string[] {
-  return Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2023, 0, 1 + i)).toLocaleDateString(locale, { weekday: "narrow" }));
+  return Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2023, 0, 1 + i)).toLocaleDateString(locale, { weekday: "short" }));
 }
 
 interface CalendarPopoverProps {
