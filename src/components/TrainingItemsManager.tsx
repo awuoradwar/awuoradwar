@@ -176,7 +176,7 @@ function SortablePhaseList({ items: initialItems, lang }: { items: TrainingItem[
   }
 
   return (
-    <div className="card divide-y divide-border">
+    <div className="divide-y divide-border">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
           {items.map((it) => (
@@ -207,10 +207,15 @@ function PositionList({ position, label, items, lang }: { position: TrainingPosi
           const phaseItems = byPhase.get(phase) || [];
           if (phaseItems.length === 0) return null;
           return (
-            <div key={phase}>
-              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted">{TRAINING_PHASE_LABEL[phase][lang]}</p>
-              <SortablePhaseList items={phaseItems} lang={lang} />
-            </div>
+            <details key={phase} className="card overflow-hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2">
+                <span className="text-xs font-bold uppercase tracking-wide text-muted">{TRAINING_PHASE_LABEL[phase][lang]}</span>
+                <span className="shrink-0 text-xs font-semibold text-muted">{phaseItems.length}</span>
+              </summary>
+              <div className="border-t border-border">
+                <SortablePhaseList items={phaseItems} lang={lang} />
+              </div>
+            </details>
           );
         })}
       </div>
