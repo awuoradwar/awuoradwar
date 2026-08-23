@@ -90,28 +90,21 @@ export function updateTrainingItem(id: string, title: string, titleEs: string | 
   writeAudit({ entityType: "training_item", entityId: id, actor, action: "EDITED", newValue: { title, phase } });
 }
 
-/** Swaps sort_order with the immediately adjacent item in the same
- * position+phase group -- reordering never crosses phase groups, since
- * "move up" out of Closing into the end of Shift wouldn't have an obvious
- * meaning; changing phase is its own explicit edit instead. */
-export function moveTrainingItem(id: string, direction: "up" | "down", actor: SessionUser) {
+/** Persists a drag-and-drop reorder in one round trip -- orderedIds is the
+ * full new order for one position+phase group (reordering never crosses
+ * phase groups, since dragging something out of Closing into the end of
+ * Shift wouldn't have an obvious meaning; changing phase is its own
+ * explicit edit instead). Re-numbering everyone 0..n instead of touching
+ * only what changed is simpler and just as cheap for a checklist-sized
+ * group. */
+export function reorderTrainingItems(orderedIds: string[], actor: SessionUser) {
   const db = getDb();
-  const item = db.prepare(`SELECT id, store_id, position, phase, sort_order FROM training_items WHERE id = ? AND active = 1`).get(id) as
-    | { id: string; store_id: string; position: TrainingPosition; phase: TrainingItemPhase; sort_order: number }
-    | undefined;
-  if (!item) return;
-  const neighbor = db
-    .prepare(
-      `SELECT id, sort_order FROM training_items
-       WHERE store_id = ? AND position = ? AND phase = ? AND active = 1 AND id != ?
-       AND sort_order ${direction === "up" ? "<" : ">"} ?
-       ORDER BY sort_order ${direction === "up" ? "DESC" : "ASC"} LIMIT 1`
-    )
-    .get(item.store_id, item.position, item.phase, item.id, item.sort_order) as { id: string; sort_order: number } | undefined;
-  if (!neighbor) return;
-  db.prepare(`UPDATE training_items SET sort_order = ? WHERE id = ?`).run(neighbor.sort_order, item.id);
-  db.prepare(`UPDATE training_items SET sort_order = ? WHERE id = ?`).run(item.sort_order, neighbor.id);
-  writeAudit({ entityType: "training_item", entityId: id, actor, action: "EDITED", newValue: { reordered: direction } });
+  const update = db.prepare(`UPDATE training_items SET sort_order = ? WHERE id = ?`);
+  const run = db.transaction((ids: string[]) => {
+    ids.forEach((id, i) => update.run(i, id));
+  });
+  run(orderedIds);
+  writeAudit({ entityType: "training_item", entityId: orderedIds[0], actor, action: "EDITED", newValue: { reordered: orderedIds } });
 }
 
 export function removeTrainingItem(id: string, actor: SessionUser) {

@@ -2,10 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { addTrainingItemAction, updateTrainingItemAction, moveTrainingItemAction, removeTrainingItemAction } from "@/app/actions/trainingActions";
+import {
+  addTrainingItemAction,
+  updateTrainingItemAction,
+  reorderTrainingItemsAction,
+  removeTrainingItemAction,
+} from "@/app/actions/trainingActions";
 import { TrainingItem, TrainingItemPhase, TrainingPosition } from "@/lib/services/trainingService";
 import { TRAINING_POSITION_LABEL, TRAINING_POSITIONS, TRAINING_PHASE_LABEL, TRAINING_PHASES } from "@/lib/trainingLabels";
 import { Language } from "@/lib/types";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 /** Add-a-step form -- pulled out so it can render once at the top of a
  * position's list instead of after every existing item, which used to mean
@@ -56,30 +64,20 @@ function AddItemForm({ position, lang }: { position: TrainingPosition; lang: Lan
   );
 }
 
-function ItemRow({
-  item,
-  lang,
-  isFirst,
-  isLast,
-}: {
-  item: TrainingItem;
-  lang: Language;
-  isFirst: boolean;
-  isLast: boolean;
-}) {
+function ItemRow({ item, lang, onRemoved }: { item: TrainingItem; lang: Language; onRemoved: (id: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(item.title);
   const [titleEs, setTitleEs] = useState(item.title_es || "");
   const [phase, setPhase] = useState<TrainingItemPhase>(item.phase);
   const [pending, startTransition] = useTransition();
-  const [removed, setRemoved] = useState(false);
   const router = useRouter();
 
-  if (removed) return null;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  const style = { transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
   if (editing) {
     return (
-      <div className="flex flex-col gap-2 p-3">
+      <div ref={setNodeRef} style={style} className="flex flex-col gap-2 p-3">
         <input value={title} onChange={(e) => setTitle(e.target.value)} className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none" />
         <input
           value={titleEs}
@@ -118,49 +116,74 @@ function ItemRow({
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 text-sm">
-      <div className="flex shrink-0 flex-col">
-        <button
-          type="button"
-          disabled={pending || isFirst}
-          onClick={() => startTransition(async () => { await moveTrainingItemAction(item.id, "up"); router.refresh(); })}
-          className="flex h-5 w-6 items-center justify-center text-muted disabled:opacity-25"
-          title={lang === "es" ? "Subir" : "Move up"}
-        >
-          ▲
-        </button>
-        <button
-          type="button"
-          disabled={pending || isLast}
-          onClick={() => startTransition(async () => { await moveTrainingItemAction(item.id, "down"); router.refresh(); })}
-          className="flex h-5 w-6 items-center justify-center text-muted disabled:opacity-25"
-          title={lang === "es" ? "Bajar" : "Move down"}
-        >
-          ▼
-        </button>
-      </div>
+    <div ref={setNodeRef} style={style} className="flex items-center gap-1 px-1 py-2 text-sm">
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label={lang === "es" ? "Arrastrar para reordenar" : "Drag to reorder"}
+        className="tap-target flex w-8 shrink-0 cursor-grab touch-none items-center justify-center text-lg text-muted active:cursor-grabbing"
+      >
+        ⠿
+      </button>
       <span className="min-w-0 flex-1 truncate">{item.title}</span>
-      <button type="button" onClick={() => setEditing(true)} className="shrink-0 text-xs font-semibold text-accent">
+      <button type="button" onClick={() => setEditing(true)} className="tap-target shrink-0 px-2 text-xs font-semibold text-accent">
         ✎
       </button>
       <button
         type="button"
         disabled={pending}
         onClick={() => {
-          setRemoved(true);
+          onRemoved(item.id);
           startTransition(async () => {
             try {
               await removeTrainingItemAction(item.id);
             } catch {
-              setRemoved(false);
+              router.refresh();
             }
-            router.refresh();
           });
         }}
         className="tap-target shrink-0 px-2 text-xs font-semibold text-critical disabled:opacity-50"
       >
         {lang === "es" ? "Quitar" : "Remove"}
       </button>
+    </div>
+  );
+}
+
+/** One phase's worth of steps, reorderable by dragging the ⠿ handle instead
+ * of tapping up/down arrows one step at a time -- for a checklist several
+ * items long, moving something from the bottom to the top used to mean
+ * repeated round trips to the server, one per step. Drag reorders instantly
+ * in the UI and persists the whole new order in a single request. */
+function SortablePhaseList({ items: initialItems, lang }: { items: TrainingItem[]; lang: Language }) {
+  const [items, setItems] = useState(initialItems);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const router = useRouter();
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    setItems(reordered);
+    // Fire-and-forget so the drag feels instant -- if the persist actually
+    // fails (e.g. a permission change mid-session), fall back to a full
+    // refresh to resync with what the server has instead of leaving the
+    // UI showing an order that never saved.
+    reorderTrainingItemsAction(reordered.map((i) => i.id)).catch(() => router.refresh());
+  }
+
+  return (
+    <div className="card divide-y divide-border">
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+          {items.map((it) => (
+            <ItemRow key={it.id} item={it} lang={lang} onRemoved={(id) => setItems((prev) => prev.filter((i) => i.id !== id))} />
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
@@ -186,11 +209,7 @@ function PositionList({ position, label, items, lang }: { position: TrainingPosi
           return (
             <div key={phase}>
               <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted">{TRAINING_PHASE_LABEL[phase][lang]}</p>
-              <div className="card divide-y divide-border">
-                {phaseItems.map((it, i) => (
-                  <ItemRow key={it.id} item={it} lang={lang} isFirst={i === 0} isLast={i === phaseItems.length - 1} />
-                ))}
-              </div>
+              <SortablePhaseList items={phaseItems} lang={lang} />
             </div>
           );
         })}

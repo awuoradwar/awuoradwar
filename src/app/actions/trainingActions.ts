@@ -29,10 +29,10 @@ export async function updateTrainingItemAction(id: string, title: string, titleE
   return { ok: true };
 }
 
-export async function moveTrainingItemAction(id: string, direction: "up" | "down") {
+export async function reorderTrainingItemsAction(orderedIds: string[]) {
   const user = await requireCurrentUser();
   if (!canDo(user, "training_items.manage")) throw new Error("FORBIDDEN");
-  trainingService.moveTrainingItem(id, direction, user);
+  trainingService.reorderTrainingItems(orderedIds, user);
   refresh();
 }
 
