@@ -81,6 +81,7 @@ export default async function MealReplacementsPage() {
           items={history}
           getDate={(item) => item.completed_at}
           keyOf={(item) => item.id}
+          storeId={user.storeId}
           renderItem={(item) => <MealReplacementRow item={item} lang={lang} storeId={user.storeId} />}
           lang={lang}
           emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}

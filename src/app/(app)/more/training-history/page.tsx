@@ -67,6 +67,7 @@ export default async function TrainingHistoryPage() {
             items={history}
             getDate={(h) => h.trained_at}
             keyOf={(h) => h.id}
+            storeId={user.storeId}
             lang={lang}
             emptyLabel={es ? "Nada registrado todavía." : "Nothing logged yet."}
             renderItem={(h) => (

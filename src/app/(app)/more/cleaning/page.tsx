@@ -203,6 +203,7 @@ export default async function CleaningPage() {
           items={weeklyHistory}
           getDate={(item) => item.at}
           keyOf={(item) => item.id}
+          storeId={user.storeId}
           renderItem={(item) => <HistoryRow entry={item} lang={user.language} locale={locale} storeId={user.storeId} />}
           lang={user.language}
           emptyLabel={user.language === "es" ? "Nada todavía." : "Nothing yet."}

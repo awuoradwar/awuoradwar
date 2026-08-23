@@ -1,10 +1,17 @@
 import { Language } from "@/lib/types";
+import { weekStartOf } from "@/lib/services/recurrenceService";
+import { storeToday } from "@/lib/storeTime";
 
-function weekStartOf(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
-  const day = d.getDay();
-  const start = new Date(d.getTime() - day * 86400000);
-  return start.toISOString().slice(0, 10);
+/** getDate callbacks return two different shapes depending on the caller:
+ * a plain "YYYY-MM-DD" (already the store-local calendar date something is
+ * scheduled/due on -- use as-is) or a full UTC instant like `created_at`/
+ * `trained_at` (needs converting through the store's own timezone before
+ * taking its calendar date, the same trap storeTime.ts exists to avoid
+ * elsewhere -- a 11pm store-local event can carry a UTC timestamp already
+ * dated tomorrow, which silently bucketed it into the wrong week). */
+function toStoreLocalDate(raw: string, storeId?: string): string {
+  if (raw.length <= 10 || !storeId) return raw.slice(0, 10);
+  return storeToday(storeId, new Date(raw));
 }
 
 function addDaysStr(dateStr: string, days: number): string {
@@ -31,11 +38,12 @@ export interface WeekGroup<T> {
  * newest week first. Items with no usable date are dropped rather than
  * crashing a week label on them -- callers should already be filtering to
  * dated history rows, but this keeps a stray null from breaking the page. */
-export function groupByWeek<T>(items: T[], getDate: (item: T) => string | null): WeekGroup<T>[] {
+export function groupByWeek<T>(items: T[], getDate: (item: T) => string | null, storeId?: string): WeekGroup<T>[] {
   const groups = new Map<string, T[]>();
   for (const item of items) {
     const raw = getDate(item);
-    const d = (raw || "").slice(0, 10);
+    if (!raw) continue;
+    const d = toStoreLocalDate(raw, storeId);
     if (!d) continue;
     const start = weekStartOf(d);
     if (!groups.has(start)) groups.set(start, []);
@@ -61,6 +69,7 @@ export default function HistoryByWeek<T>({
   renderSubtitle,
   lang,
   emptyLabel,
+  storeId,
 }: {
   items: T[];
   getDate: (item: T) => string | null;
@@ -69,13 +78,17 @@ export default function HistoryByWeek<T>({
   renderSubtitle?: (items: T[]) => React.ReactNode;
   lang: Language;
   emptyLabel: string;
+  /** Required whenever getDate returns a full timestamp (created_at,
+   * trained_at, etc.) rather than an already-store-local "YYYY-MM-DD" --
+   * without it, late-evening events get bucketed into the wrong week. */
+  storeId?: string;
 }) {
   if (items.length === 0) {
     return <p className="border-t border-border p-4 text-center text-xs text-muted">{emptyLabel}</p>;
   }
 
   const locale = lang === "es" ? "es-MX" : "en-US";
-  const weeks = groupByWeek(items, getDate);
+  const weeks = groupByWeek(items, getDate, storeId);
 
   return (
     <div className="divide-y divide-border border-t border-border">

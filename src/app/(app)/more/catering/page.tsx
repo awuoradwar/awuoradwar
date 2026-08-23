@@ -95,6 +95,7 @@ export default async function CateringPage() {
           items={history}
           getDate={(item) => item.due_date}
           keyOf={(item) => item.id}
+          storeId={user.storeId}
           renderItem={(item) => <CateringOrderRow order={item} lang={lang} />}
           renderSubtitle={(items) => weekSubtitle(items, lang)}
           lang={lang}

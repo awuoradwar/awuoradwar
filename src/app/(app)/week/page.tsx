@@ -67,7 +67,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
 
   const days = Object.keys(byDay).map((d) => ({
     date: d,
-    label: `${dayNames[new Date(d + "T00:00:00Z").getDay()]} ${d.slice(5)}`,
+    label: `${dayNames[new Date(d + "T00:00:00Z").getUTCDay()]} ${d.slice(5)}`,
   }));
 
   const lastWeekStart = new Date(startDate.getTime() - 7 * 86400000).toISOString().slice(0, 10);
@@ -140,7 +140,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
               <div key={h.date} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                 <span className="font-medium">{user.language === "es" ? h.name_es : h.name}</span>
                 <span className="shrink-0 text-xs text-muted">
-                  {dayNames[new Date(h.date + "T00:00:00Z").getDay()]} · {h.date.slice(5)}
+                  {dayNames[new Date(h.date + "T00:00:00Z").getUTCDay()]} · {h.date.slice(5)}
                 </span>
               </div>
             ))}
@@ -205,7 +205,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
         <details key={date} className="card overflow-hidden">
           <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
             <span className="text-xs font-bold uppercase tracking-wide text-accent">
-              {dayNames[new Date(date + "T00:00:00Z").getDay()]} · {date.slice(5)}
+              {dayNames[new Date(date + "T00:00:00Z").getUTCDay()]} · {date.slice(5)}
             </span>
             <span className="shrink-0 text-xs font-semibold text-muted">{dayTasks.length}</span>
           </summary>

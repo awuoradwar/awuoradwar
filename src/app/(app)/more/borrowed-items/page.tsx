@@ -61,6 +61,7 @@ export default async function BorrowedItemsPage() {
           items={settled}
           getDate={(item) => item.completed_at || item.created_at}
           keyOf={(item) => item.id}
+          storeId={user.storeId}
           renderItem={(item) => <BorrowedItemRow item={item} lang={lang} storeId={user.storeId} />}
           renderSubtitle={(items) => weekSubtitle(items, lang)}
           lang={lang}

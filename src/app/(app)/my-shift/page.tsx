@@ -150,7 +150,7 @@ export default async function MyShiftPage() {
   // (acknowledgements) is genuinely handoff-relevant: something outstanding
   // from a prior shift.
   const unresolvedForDisplay = summary.unresolved.filter((u) => u.kind !== "task" && u.kind !== "cleaning");
-  const todayWeekday = new Date(today + "T00:00:00Z").getDay();
+  const todayWeekday = new Date(today + "T00:00:00Z").getUTCDay();
   const cleaningToday = getCleaningTasksDueToday(user.storeId, todayWeekday);
   const cateringToday = getCateringDueOn(user.storeId, today);
   const borrowedDueToday = getOpenBorrowedItemsDueOn(user.storeId, today);

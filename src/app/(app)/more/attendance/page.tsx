@@ -58,6 +58,7 @@ export default async function AttendancePage() {
           items={past}
           getDate={(g) => g.primary.event_date || g.primary.created_at}
           keyOf={(g) => g.primary.id}
+          storeId={user.storeId}
           renderItem={(g) => <AttendanceRow item={g.primary} duplicates={g.duplicates} lang={lang} />}
           renderSubtitle={(groups) => weekSubtitle(groups, lang)}
           lang={lang}

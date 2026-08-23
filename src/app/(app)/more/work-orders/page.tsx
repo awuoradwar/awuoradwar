@@ -107,6 +107,7 @@ export default async function WorkOrdersPage() {
           items={groups.done}
           getDate={(item) => item.resolved_at || item.created_at}
           keyOf={(item) => item.id}
+          storeId={user.storeId}
           renderItem={(item) => <WorkOrderRow order={item} lang={lang} />}
           renderSubtitle={(items) => weekSubtitle(items, lang)}
           lang={lang}

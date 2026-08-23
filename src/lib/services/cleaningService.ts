@@ -288,7 +288,10 @@ function resetChecklistItemsForTasks(taskIds: string[]) {
 export function resetDueWeeklyCleaningTasks(storeId: string) {
   const db = getDb();
   const todayStr = storeToday(storeId);
-  const todayWeekday = new Date(todayStr + "T00:00:00Z").getDay();
+  // getUTCDay(), not getDay() -- todayStr is built at UTC midnight, and
+  // getDay() reads it back in the server process's own local timezone,
+  // silently computing the wrong weekday whenever that's not UTC.
+  const todayWeekday = new Date(todayStr + "T00:00:00Z").getUTCDay();
   // completed_at is a UTC timestamp -- comparing it against store-local
   // midnight requires the real timezone conversion, not a bare "Z" suffix
   // (which would be off by the store's UTC offset).

@@ -151,7 +151,14 @@ export function ensureInstancesForWeek(storeId: string, weekStartStr: string) {
 /** Sunday-start of the week containing `dateStr`. */
 export function weekStartOf(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00Z");
-  const day = d.getDay();
+  // getUTCDay(), not getDay() -- same bug as matchesToday() above: `d` is
+  // built at UTC midnight, and getDay() reads it back in the server
+  // process's own local timezone. Whenever that's not UTC, this silently
+  // computes the wrong Sunday for a given date -- consistently one day late
+  // for Mon-Sat, and a full 6 days early (wrapping to the previous week's
+  // Monday) for a date that's already a Sunday -- which fragments what
+  // should be one week's records across multiple mismatched week buckets.
+  const day = d.getUTCDay();
   const start = new Date(d.getTime() - day * 86400000);
   return start.toISOString().slice(0, 10);
 }
