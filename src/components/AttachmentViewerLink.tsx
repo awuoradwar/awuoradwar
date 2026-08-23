@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Language } from "@/lib/types";
+import PdfViewer from "./PdfViewer";
 
 /** Opens an attachment in a full-screen in-app modal instead of
  * `target="_blank"`, which leaves no close/back affordance inside the PWA --
@@ -50,7 +51,9 @@ export default function AttachmentViewerLink({
               </button>
             </div>
             {imageFailed ? (
-              <iframe src={href} title={label} className="min-h-0 flex-1 border-0 bg-white" onClick={(e) => e.stopPropagation()} />
+              <div className="min-h-0 flex-1" onClick={(e) => e.stopPropagation()}>
+                <PdfViewer src={href} lang={lang} />
+              </div>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img
