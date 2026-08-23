@@ -4,7 +4,7 @@ import { newId, nowIso, writeAudit, withIdempotency } from "../audit";
 import { SessionUser } from "../types";
 import { storeToday, storeLocalHour, storeDayRangeUtc } from "../storeTime";
 
-export type Section = "NOW" | "TODAY" | "THIS_WEEK";
+export type Section = "NOW" | "OVERDUE" | "TODAY" | "THIS_WEEK";
 
 export interface TaskRow {
   id: string;
@@ -173,6 +173,10 @@ function isDueThisShiftWindow(task: TaskRow, nowDate: Date, viewerShiftType: Vie
  *  - TODAY: due today store-wide, but not this viewer's right now (not
  *    theirs, or theirs but scheduled for the other shift window, or urgent
  *    but this viewer isn't on shift today to act on it).
+ *  - OVERDUE: scheduled for a day before today and still open -- getMyShiftTasks
+ *    never drops an unfinished task no matter how old, so without this check
+ *    these fall through to THIS_WEEK and get mislabeled as upcoming planning
+ *    items instead of flagged as missed.
  *  - THIS_WEEK: everything else due later this week.
  */
 export function computeSection(
@@ -200,6 +204,7 @@ export function computeSection(
     return "TODAY";
   }
   if (dueToday) return "TODAY";
+  if (task.scheduled_date && task.scheduled_date < todayStr) return "OVERDUE";
   return "THIS_WEEK";
 }
 

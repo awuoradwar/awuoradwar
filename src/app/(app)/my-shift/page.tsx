@@ -146,7 +146,7 @@ export default async function MyShiftPage() {
     return { support_id: id, support_name: id ? managerNameById.get(id) || null : null };
   }
 
-  const buckets: Record<Section, typeof tasks> = { NOW: [], TODAY: [], THIS_WEEK: [] };
+  const buckets: Record<Section, typeof tasks> = { NOW: [], OVERDUE: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
     buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today, viewerShiftType)].push(task);
   }
@@ -285,7 +285,7 @@ export default async function MyShiftPage() {
         </SectionCard>
       )}
 
-      {(["NOW", "TODAY"] as const).map((bucket) => (
+      {(["NOW", "OVERDUE", "TODAY"] as const).map((bucket) => (
         <SectionCard
           key={bucket}
           title={t(user.language, `section_${bucket.toLowerCase()}` as never)}

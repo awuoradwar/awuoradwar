@@ -8,12 +8,14 @@ const es: Record<DictKeys, string> = {
   nav_more: "Más",
 
   section_now: "MI TURNO",
+  section_overdue: "ATRASADAS",
   section_today: "HOY",
   section_this_week: "ESTA SEMANA",
   section_completed: "COMPLETADAS",
   section_from_last_shift: "DEL TURNO ANTERIOR",
 
   section_now_sub: "Lo tuyo para este turno, más lo urgente",
+  section_overdue_sub: "Programadas para un día anterior, aún sin terminar",
   section_today_sub: "Vence hoy en toda la tienda, cualquier turno",
   section_this_week_sub: "Nivel de planeación, aún no urgente",
   section_completed_sub: "Terminadas hoy, más reciente primero",
