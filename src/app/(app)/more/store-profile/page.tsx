@@ -9,6 +9,7 @@ import StorePeriodEditToggle from "@/components/StorePeriodEditToggle";
 import GemScoreCard from "@/components/GemScoreCard";
 import WeeklyOtSummaryCard from "@/components/WeeklyOtSummaryCard";
 import WeeklyCogsSummaryCard from "@/components/WeeklyCogsSummaryCard";
+import AttachmentViewerLink from "@/components/AttachmentViewerLink";
 import PageHeader from "@/components/PageHeader";
 import { t } from "@/lib/i18n";
 
@@ -214,14 +215,12 @@ export default async function StoreProfilePage() {
                 ))}
               </div>
               {latest.pnl_file_ref && (
-                <a
+                <AttachmentViewerLink
                   href={`/api/store-pnl/${latest.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="tap-target mt-3 flex items-center justify-center rounded-xl border border-border text-sm font-medium text-accent"
-                >
-                  📄 {t(user.language, "store_profile_view_pnl")}
-                </a>
+                  label={`📄 ${t(user.language, "store_profile_view_pnl")}`}
+                  lang={user.language}
+                  className="tap-target mt-3 flex w-full items-center justify-center rounded-xl border border-border text-sm font-medium text-accent"
+                />
               )}
               {latest.notes && <p className="mt-3 text-sm text-muted">{latest.notes}</p>}
               <p className="mt-2 text-xs text-muted">

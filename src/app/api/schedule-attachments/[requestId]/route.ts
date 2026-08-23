@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getCurrentUser } from "@/lib/auth";
 import { getLatestAttachmentForRequest } from "@/lib/services/schedulingService";
+import { contentTypeForFile } from "@/lib/fileContentType";
 
 const ATTACHMENT_DIR = path.join(process.cwd(), "data", "private-uploads", "schedule-requests");
 
@@ -24,7 +25,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/schedule-at
     const data = await readFile(filePath);
     return new Response(new Uint8Array(data), {
       headers: {
-        "Content-Type": "application/octet-stream",
+        "Content-Type": contentTypeForFile(attachment.file_ref),
         "Content-Disposition": `inline; filename="${attachment.file_ref}"`,
         "Cache-Control": "private, no-store",
       },
