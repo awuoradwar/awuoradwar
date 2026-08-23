@@ -4,6 +4,7 @@ import { useState } from "react";
 import { quickAddTaskAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
+import DateField from "./DateField";
 import { Language } from "@/lib/types";
 
 const WEEKDAYS: Array<{ value: number; en: string; es: string }> = [
@@ -91,7 +92,7 @@ export default function TaskForm({
 
       {!recurring && scheduledFor === "CUSTOM" && (
         <Field label={lang === "es" ? "Fecha" : "Date"}>
-          <input name="customDate" type="date" required className={inputClass} />
+          <DateField name="customDate" required lang={lang} />
         </Field>
       )}
 

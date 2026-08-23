@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { scheduleTrainingSessionAction, removeTrainingSessionAction, updateTrainingSessionAction } from "@/app/actions/trainingActions";
 import { TrainingSessionRow, TrainingShiftType } from "@/lib/services/trainingService";
 import { Field, inputClass, selectClass, btnPrimary } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 
 const SHIFT_LABEL: Record<TrainingShiftType, Record<Language, string>> = {
@@ -50,7 +51,7 @@ function EditSessionForm({
     <div className="flex flex-col gap-2.5 px-3 py-3">
       <div className="grid grid-cols-2 gap-2">
         <Field label={lang === "es" ? "Fecha" : "Date"}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+          <DateField value={date} onChange={setDate} lang={lang} className={inputClass} />
         </Field>
         <Field label={lang === "es" ? "Turno" : "Shift"}>
           <select value={shiftType} onChange={(e) => setShiftType(e.target.value as TrainingShiftType)} className={selectClass}>
@@ -196,10 +197,10 @@ export default function TrainingSessionScheduler({
           className="flex flex-col gap-2 border-t border-border p-3"
         >
           <div className="grid grid-cols-2 gap-2">
-            <input
-              type="date"
+            <DateField
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={setDate}
+              lang={lang}
               className="tap-target rounded-xl border border-border bg-card px-3 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
             <select

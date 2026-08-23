@@ -6,6 +6,7 @@ import { addIssueUpdateAction, resolveIssueAction, reopenIssueAction, updateIssu
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import { Field, inputClass, selectClass, textareaClass, btnPrimary, btnOutline, btnNeutral, btnDanger } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 
 export default function IssueDetailActions({
   id,
@@ -93,7 +94,7 @@ export default function IssueDetailActions({
           </select>
         </Field>
         <Field label={lang === "es" ? "Fecha límite (opcional)" : "Due date (optional)"}>
-          <input name="dueDate" type="date" defaultValue={dueDate || ""} className={inputClass} />
+          <DateField name="dueDate" defaultValue={dueDate || ""} lang={lang} />
         </Field>
         {editError && <p className="text-sm text-critical">{editError}</p>}
         <div className="flex items-center gap-3">

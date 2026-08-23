@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveWeeklyOtSummaryAction } from "@/app/actions/storeProfileActions";
 import { WeeklyOtSummary } from "@/lib/services/storeProfileService";
 import { Field, inputClass, textareaClass, btnPrimary, btnOutline } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 
 function fmtWeekRange(weekStart: string, locale: string): string {
@@ -54,7 +55,7 @@ function WeeklyOtSummaryForm({
       className="card flex flex-col gap-3 p-3"
     >
       <Field label={lang === "es" ? "Semana (cualquier día)" : "Week (any day in it)"}>
-        <input name="weekStart" type="date" required defaultValue={summary?.week_start ?? weekStart} className={inputClass} />
+        <DateField name="weekStart" required defaultValue={summary?.week_start ?? weekStart} lang={lang} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "FOH (horas)" : "FOH (hours)"}>

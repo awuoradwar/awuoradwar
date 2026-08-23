@@ -6,6 +6,7 @@ import { getHistoryForRange } from "@/lib/services/searchService";
 import { getQualityMetrics, getCompletionStats } from "@/lib/services/reportsService";
 import PageHeader from "@/components/PageHeader";
 import FilterForm from "@/components/FilterForm";
+import DateField from "@/components/forms/DateField";
 import { t } from "@/lib/i18n";
 import { storeToday } from "@/lib/storeTime";
 
@@ -118,8 +119,18 @@ export default async function ReportsPage({ searchParams }: PageProps<"/more/rep
           {user.language === "es" ? "Historial" : "History"}
         </h2>
         <FilterForm className="mb-3 flex gap-2">
-          <input type="date" name="start" defaultValue={start} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15" />
-          <input type="date" name="end" defaultValue={end} className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15" />
+          <DateField
+            name="start"
+            defaultValue={start}
+            lang={user.language}
+            className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+          />
+          <DateField
+            name="end"
+            defaultValue={end}
+            lang={user.language}
+            className="tap-target flex-1 rounded-xl border border-border bg-card px-2 text-sm outline-none transition-colors hover:border-muted/50 focus:border-accent focus:ring-2 focus:ring-accent/15"
+          />
           <button type="submit" className="tap-target rounded-xl bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-foreground/85">
             {user.language === "es" ? "Ir" : "Go"}
           </button>

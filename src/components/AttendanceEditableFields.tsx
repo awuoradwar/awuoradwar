@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateAttendanceEventAction } from "@/app/actions/attendanceActions";
 import { Field, inputClass, selectClass, FileField, btnOutline } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import AttachmentViewerLink from "./AttachmentViewerLink";
 import { Language } from "@/lib/types";
 import { attendanceTypeLabel, notificationMethodLabel, coverageStatusLabel, NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
@@ -140,7 +141,7 @@ export default function AttendanceEditableFields({
           <input name="employeeName" defaultValue={employeeName} required className={inputClass} />
         </Field>
         <Field label={lang === "es" ? "Fecha" : "Date"}>
-          <input name="eventDate" type="date" defaultValue={eventDate || ""} className={inputClass} />
+          <DateField name="eventDate" defaultValue={eventDate || ""} lang={lang} />
         </Field>
         <Field label={lang === "es" ? "Hora programada" : "Scheduled time"}>
           <input name="scheduledTime" type="time" defaultValue={scheduledTime || ""} className={inputClass} />

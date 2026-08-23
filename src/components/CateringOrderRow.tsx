@@ -13,6 +13,7 @@ import { t } from "@/lib/i18n";
 import { cateringChannelLabel } from "@/lib/cateringLabels";
 import StatusBadge from "./StatusBadge";
 import { Field, inputClass, selectClass, textareaClass, btnPrimary, btnOutline, btnDanger, btnNeutral } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 
 export interface CateringOrderData {
   id: string;
@@ -52,7 +53,7 @@ function EditCateringForm({ order, lang, onDone }: { order: CateringOrderData; l
       <input type="hidden" name="id" value={order.id} />
       <div className="grid grid-cols-2 gap-2">
         <Field label={t(lang, "field_due_date")}>
-          <input name="dueDate" type="date" required defaultValue={order.due_date} className={inputClass} />
+          <DateField name="dueDate" required defaultValue={order.due_date} lang={lang} />
         </Field>
         <Field label={t(lang, "field_pickup_time")}>
           <input name="pickupTime" type="time" defaultValue={order.pickup_time || ""} className={inputClass} />

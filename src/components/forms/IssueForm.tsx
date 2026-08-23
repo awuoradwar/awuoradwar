@@ -4,6 +4,7 @@ import { useState } from "react";
 import { quickAddIssueAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, selectClass, inputClass, textareaClass, SubmitBar } from "./FormShell";
+import DateField from "./DateField";
 import { Language } from "@/lib/types";
 
 export default function IssueForm({ lang }: { lang: Language }) {
@@ -43,7 +44,7 @@ export default function IssueForm({ lang }: { lang: Language }) {
       </Field>
       {when === "CUSTOM" && (
         <Field label={lang === "es" ? "Fecha" : "Date"}>
-          <input name="customDate" type="date" required className={inputClass} />
+          <DateField name="customDate" required lang={lang} />
         </Field>
       )}
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Reportar" : "Report"} />

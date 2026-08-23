@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createStorePeriodAction, updateStorePeriodAction } from "@/app/actions/storeProfileActions";
 import { Field, inputClass, textareaClass, FileField } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -76,6 +77,10 @@ export default function StorePeriodForm({ lang, period, onDone }: { lang: Langua
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const isEdit = !!period;
+  // DateField manages its own React state, not a native defaultValue a plain
+  // form.reset() can touch -- bumping this key after a successful create
+  // remounts the release-date field fresh, same as the rest of the form.
+  const [resetKey, setResetKey] = useState(0);
 
   return (
     <form
@@ -89,7 +94,10 @@ export default function StorePeriodForm({ lang, period, onDone }: { lang: Langua
             setError(result.error);
             return;
           }
-          if (!isEdit) (e.target as HTMLFormElement).reset();
+          if (!isEdit) {
+            (e.target as HTMLFormElement).reset();
+            setResetKey((k) => k + 1);
+          }
           router.refresh();
           onDone?.();
         });
@@ -116,7 +124,7 @@ export default function StorePeriodForm({ lang, period, onDone }: { lang: Langua
       </div>
 
       <Field label={lang === "es" ? "Fecha de lanzamiento" : "Release date"}>
-        <input name="releasedAt" type="date" defaultValue={period?.released_at ?? ""} className={inputClass} />
+        <DateField key={resetKey} name="releasedAt" defaultValue={period?.released_at ?? ""} lang={lang} />
         <p className="mt-1 text-xs text-muted">
           {lang === "es"
             ? "La fecha real en que corporativo publicó este período (normalmente el primer viernes). Se usa para el aviso de 'Publicado esta semana'."

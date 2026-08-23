@@ -3,6 +3,7 @@
 import { quickAddCateringAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, textareaClass, SubmitBar } from "./FormShell";
+import DateField from "./DateField";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -16,7 +17,7 @@ export default function CateringForm({ lang, defaultDueDate }: { lang: Language;
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
       <Field label={t(lang, "field_due_date")}>
-        <input name="dueDate" type="date" required defaultValue={defaultDueDate} className={inputClass} />
+        <DateField name="dueDate" required defaultValue={defaultDueDate} lang={lang} />
       </Field>
       <Field label={`${t(lang, "field_pickup_time")} (${lang === "es" ? "opcional" : "optional"})`}>
         <input name="pickupTime" type="time" className={inputClass} />

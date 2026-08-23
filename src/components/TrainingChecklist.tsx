@@ -11,6 +11,7 @@ import {
 import { TrainingChecklistRow, TrainingCompletionLogEntry, TrainingItemPhase, TrainingShiftType } from "@/lib/services/trainingService";
 import { TRAINING_PHASE_LABEL } from "@/lib/trainingLabels";
 import { Field, inputClass, selectClass, textareaClass, btnPrimary } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 
 const SHIFT_LABEL: Record<TrainingShiftType, Record<Language, string>> = {
@@ -85,7 +86,7 @@ function CompletionEditor({
     <div className="flex flex-col gap-2 rounded-lg border border-accent/30 bg-accent/5 p-2.5">
       <div className="grid grid-cols-2 gap-2">
         <Field label={lang === "es" ? "Fecha" : "Date"}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${inputClass} h-8 text-xs`} />
+          <DateField value={date} onChange={setDate} lang={lang} className={`${inputClass} h-8 text-xs`} />
         </Field>
         <Field label={lang === "es" ? "Turno" : "Shift"}>
           <select value={shift} onChange={(e) => setShift(e.target.value as TrainingShiftType)} className={`${selectClass} h-8 text-xs`}>
@@ -175,7 +176,7 @@ function RetrainForm({
     <div className="flex flex-col gap-2 rounded-lg border border-accent/30 bg-accent/5 p-2.5">
       <div className="grid grid-cols-2 gap-2">
         <Field label={lang === "es" ? "Fecha" : "Date"}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={`${inputClass} h-8 text-xs`} />
+          <DateField value={date} onChange={setDate} lang={lang} className={`${inputClass} h-8 text-xs`} />
         </Field>
         <Field label={lang === "es" ? "Turno" : "Shift"}>
           <select value={shift} onChange={(e) => setShift(e.target.value as TrainingShiftType)} className={`${selectClass} h-8 text-xs`}>

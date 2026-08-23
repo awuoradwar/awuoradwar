@@ -3,6 +3,7 @@
 import { quickAddLateAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, FileField, SubmitBar } from "./FormShell";
+import DateField from "./DateField";
 import { Language } from "@/lib/types";
 import { NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
@@ -19,7 +20,7 @@ export default function LateForm({ lang }: { lang: Language }) {
         <input name="employeeName" required className={inputClass} />
       </Field>
       <Field label={lang === "es" ? "Fecha" : "Date"}>
-        <input name="eventDate" type="date" className={inputClass} />
+        <DateField name="eventDate" lang={lang} />
       </Field>
       <Field label={lang === "es" ? "Hora programada" : "Scheduled time"}>
         <input name="scheduledTime" type="time" className={inputClass} />

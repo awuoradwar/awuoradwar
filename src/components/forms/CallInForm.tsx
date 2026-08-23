@@ -3,6 +3,7 @@
 import { quickAddCallInAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, FileField, SubmitBar } from "./FormShell";
+import DateField from "./DateField";
 import { Language } from "@/lib/types";
 import { NOTIFICATION_METHOD_LABEL } from "@/lib/attendanceLabels";
 
@@ -19,7 +20,7 @@ export default function CallInForm({ lang }: { lang: Language }) {
         <input name="employeeName" required className={inputClass} placeholder={lang === "es" ? "Nombre" : "Name"} />
       </Field>
       <Field label={lang === "es" ? "Fecha" : "Date"}>
-        <input name="eventDate" type="date" className={inputClass} />
+        <DateField name="eventDate" lang={lang} />
       </Field>
       <Field label={lang === "es" ? "Turno programado" : "Scheduled shift"}>
         <input name="scheduledTime" type="time" className={inputClass} />

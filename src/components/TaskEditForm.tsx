@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateTaskAction } from "@/app/actions/taskActions";
 import { Field, inputClass, selectClass, textareaClass } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -53,7 +54,7 @@ export default function TaskEditForm({
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t(lang, "field_date")}>
-            <input name="dueDate" type="date" defaultValue={dueDateLocal || ""} className={inputClass} />
+            <DateField name="dueDate" defaultValue={dueDateLocal || ""} lang={lang} />
           </Field>
           <Field label={t(lang, "field_time")}>
             <input name="dueTime" type="time" defaultValue={dueTimeLocal || ""} className={inputClass} />

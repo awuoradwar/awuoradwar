@@ -6,6 +6,7 @@ import { formatStoreDateTime } from "@/lib/storeTime";
 import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
 import FilterForm from "@/components/FilterForm";
+import DateField from "@/components/forms/DateField";
 
 const inputClass = "tap-target w-full rounded-xl border border-border bg-card px-3 text-base outline-none focus:border-accent";
 const selectClass = inputClass;
@@ -92,8 +93,8 @@ export default async function SearchPage({ searchParams }: PageProps<"/more/sear
           </select>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input type="date" name="start" defaultValue={start} className={inputClass} />
-          <input type="date" name="end" defaultValue={end} className={inputClass} />
+          <DateField name="start" defaultValue={start} lang={user.language} className={inputClass} />
+          <DateField name="end" defaultValue={end} lang={user.language} className={inputClass} />
         </div>
         <button type="submit" className="tap-target rounded-xl bg-accent text-sm font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover">
           {user.language === "es" ? "Buscar" : "Search"}

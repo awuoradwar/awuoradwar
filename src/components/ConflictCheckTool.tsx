@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { checkConflictAction } from "@/app/actions/schedulingActions";
 import { Field, inputClass } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -39,7 +40,7 @@ export default function ConflictCheckTool({ lang }: { lang: Language }) {
         </Field>
         <div className="grid grid-cols-3 gap-2">
           <Field label={t(lang, "field_date")}>
-            <input name="shiftDate" type="date" required className={inputClass} />
+            <DateField name="shiftDate" required lang={lang} />
           </Field>
           <Field label={t(lang, "field_start_time")}>
             <input name="startTime" type="time" className={inputClass} />

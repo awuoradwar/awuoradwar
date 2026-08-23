@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateScheduleRequestAction, deleteScheduleRequestAction } from "@/app/actions/schedulingActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import StatusBadge from "./StatusBadge";
 import AttachmentViewerLink from "./AttachmentViewerLink";
 import { Language } from "@/lib/types";
@@ -165,15 +166,15 @@ export default function ScheduleRequestRow({ request, lang, activity }: { reques
       )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={editRequestType === "SHIFT_SWAP" ? (lang === "es" ? "Cede su turno el" : "Giving away their shift on") : lang === "es" ? "Fecha de inicio" : "Start date"}>
-          <input name="requestedStartDate" type="date" defaultValue={request.requested_start_date} required className={inputClass} />
+          <DateField name="requestedStartDate" defaultValue={request.requested_start_date} required lang={lang} />
         </Field>
         {editRequestType === "SHIFT_SWAP" ? (
           <Field label={lang === "es" ? "Toma el turno del otro el" : "Picking up their shift on"}>
-            <input name="swapWithDate" type="date" defaultValue={request.swap_with_date || ""} required className={inputClass} />
+            <DateField name="swapWithDate" defaultValue={request.swap_with_date || ""} required lang={lang} />
           </Field>
         ) : (
           <Field label={lang === "es" ? "Fecha de fin (opcional)" : "End date (optional)"}>
-            <input name="requestedEndDate" type="date" defaultValue={request.requested_end_date || ""} className={inputClass} />
+            <DateField name="requestedEndDate" defaultValue={request.requested_end_date || ""} lang={lang} />
           </Field>
         )}
       </div>

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createScheduleRequestAction } from "@/app/actions/schedulingActions";
 import { Field, inputClass, selectClass, FileField } from "./forms/FormShell";
+import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 import { SCHEDULE_REQUEST_TYPE_LABEL } from "@/lib/scheduleRequestLabels";
 
@@ -12,6 +13,11 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [requestType, setRequestType] = useState("FULL_DAY_OFF");
+  // DateField manages its own React state, not a native defaultValue a plain
+  // form.reset() can touch -- bumping this key after a successful submit
+  // remounts every DateField below fresh, same as the rest of the form
+  // clearing back to blank.
+  const [resetKey, setResetKey] = useState(0);
   const router = useRouter();
 
   return (
@@ -29,6 +35,7 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
           setSaved(true);
           (e.target as HTMLFormElement).reset();
           setRequestType("FULL_DAY_OFF");
+          setResetKey((k) => k + 1);
           router.refresh();
           setTimeout(() => setSaved(false), 2000);
         });
@@ -54,15 +61,15 @@ export default function ScheduleRequestForm({ lang, isGM }: { lang: Language; is
       )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={requestType === "SHIFT_SWAP" ? (lang === "es" ? "Cede su turno el" : "Giving away their shift on") : lang === "es" ? "Fecha de inicio" : "Start date"}>
-          <input name="requestedStartDate" type="date" required className={inputClass} />
+          <DateField key={`start-${resetKey}`} name="requestedStartDate" required lang={lang} />
         </Field>
         {requestType === "SHIFT_SWAP" ? (
           <Field label={lang === "es" ? "Toma el turno del otro el" : "Picking up their shift on"}>
-            <input name="swapWithDate" type="date" required className={inputClass} />
+            <DateField key={`swap-${resetKey}`} name="swapWithDate" required lang={lang} />
           </Field>
         ) : (
           <Field label={lang === "es" ? "Fecha de fin (opcional)" : "End date (optional)"}>
-            <input name="requestedEndDate" type="date" className={inputClass} />
+            <DateField key={`end-${resetKey}`} name="requestedEndDate" lang={lang} />
           </Field>
         )}
       </div>
