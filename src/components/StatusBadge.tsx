@@ -23,7 +23,10 @@ const STYLES: Record<string, string> = {
   SETTLEMENT_SELECTED: "bg-warning/10 text-warning",
   RETURN_PENDING: "bg-warning/10 text-warning",
   OVERDUE: "bg-critical/10 text-critical",
-  DUE_SOON: "bg-warning/10 text-warning",
+  // Due within 24 hours is close enough to overdue to read as urgent, not
+  // just "in progress" -- same red as OVERDUE rather than the amber used
+  // for ordinary pending/waiting states, so it actually draws the eye.
+  DUE_SOON: "bg-critical/10 text-critical",
 };
 
 const KEY_MAP: Record<string, string> = {
