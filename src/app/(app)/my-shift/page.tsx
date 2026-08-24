@@ -22,6 +22,7 @@ import CleaningTaskRow from "@/components/CleaningTaskRow";
 import CateringOrderRow from "@/components/CateringOrderRow";
 import BorrowedItemRow from "@/components/BorrowedItemRow";
 import ShiftNoteRow from "@/components/ShiftNoteRow";
+import { withFrom } from "@/lib/backHref";
 import { t } from "@/lib/i18n";
 
 const OPEN_ITEM_HREF: Record<string, string> = {
@@ -108,7 +109,7 @@ function StaffingRow({
 }) {
   const showCoverage = s.type === "CALL_IN" && !!s.coverage_status;
   return (
-    <Link href={`/attendance/${s.id}`} className="card block p-3 text-sm">
+    <Link href={withFrom(`/attendance/${s.id}`, "/my-shift")} className="card block p-3 text-sm">
       <p>
         🧍 {s.employee_name} — {attendanceTypeLabel(s.type, lang)}
         {s.note ? <span className="text-muted"> · {s.note}</span> : null}
@@ -288,7 +289,7 @@ export default async function MyShiftPage() {
               <CateringOrderRow key={order.id} order={order} lang={user.language} />
             ))}
             {borrowedDueToday.map((item) => (
-              <BorrowedItemRow key={item.id} item={item} lang={user.language} storeId={user.storeId} />
+              <BorrowedItemRow key={item.id} item={item} lang={user.language} storeId={user.storeId} from="/my-shift" />
             ))}
             {currentShiftStaffing.map((s) => (
               <StaffingRow key={s.id} s={s} lang={user.language} />
@@ -296,7 +297,7 @@ export default async function MyShiftPage() {
             {currentShiftOpenItems.map((it, i) => (
               <Link
                 key={`current-open-${i}`}
-                href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`}
+                href={withFrom(`${OPEN_ITEM_HREF[it.kind]}/${it.id}`, "/my-shift")}
                 className={`card block p-3 text-sm ${it.critical ? "border-critical/40" : ""}`}
               >
                 {it.critical ? "🔴" : it.kind === "guest_recovery" ? "🍽️" : it.kind === "issue" ? "⚠️" : "📦"} {it.title}
@@ -328,6 +329,7 @@ export default async function MyShiftPage() {
                   lang={user.language}
                   task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids) }}
                   managerColors={managerColors}
+                  from="/my-shift"
                 />
               ))}
             </div>
@@ -384,6 +386,7 @@ export default async function MyShiftPage() {
                         lang={user.language}
                         task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids) }}
                         managerColors={managerColors}
+                        from="/my-shift"
                       />
                     ))}
                   </div>
@@ -407,7 +410,7 @@ export default async function MyShiftPage() {
         ) : (
           <div className="divide-y divide-border border-t border-border">
             {completedToday.map((task) => (
-              <CompletedTaskRow key={task.id} lang={user.language} task={task} storeId={user.storeId} />
+              <CompletedTaskRow key={task.id} lang={user.language} task={task} storeId={user.storeId} from="/my-shift" />
             ))}
           </div>
         )}
@@ -426,7 +429,7 @@ export default async function MyShiftPage() {
               <StaffingRow key={s.id} s={s} lang={user.language} />
             ))}
             {priorShiftOpenItems.map((it, i) => (
-              <Link key={`open-${i}`} href={`${OPEN_ITEM_HREF[it.kind]}/${it.id}`} className="card block p-3 text-sm">
+              <Link key={`open-${i}`} href={withFrom(`${OPEN_ITEM_HREF[it.kind]}/${it.id}`, "/my-shift")} className="card block p-3 text-sm">
                 {it.kind === "guest_recovery" ? "🍽️" : it.kind === "issue" ? "⚠️" : "📦"} {it.title}
               </Link>
             ))}

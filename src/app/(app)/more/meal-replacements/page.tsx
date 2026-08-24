@@ -34,7 +34,7 @@ function OpenSection({
       ) : (
         <div className="card divide-y divide-border">
           {rows.map((r) => (
-            <MealReplacementRow key={r.id} item={r} lang={lang} storeId={storeId} />
+            <MealReplacementRow key={r.id} item={r} lang={lang} storeId={storeId} from="/more/meal-replacements" />
           ))}
         </div>
       )}
@@ -82,7 +82,7 @@ export default async function MealReplacementsPage() {
           getDate={(item) => item.completed_at}
           keyOf={(item) => item.id}
           storeId={user.storeId}
-          renderItem={(item) => <MealReplacementRow item={item} lang={lang} storeId={user.storeId} />}
+          renderItem={(item) => <MealReplacementRow item={item} lang={lang} storeId={user.storeId} from="/more/meal-replacements" />}
           lang={lang}
           emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}
         />

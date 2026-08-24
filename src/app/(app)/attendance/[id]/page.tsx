@@ -9,9 +9,11 @@ import AttendanceEditableFields from "@/components/AttendanceEditableFields";
 import AttendanceFollowups from "@/components/AttendanceFollowups";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
+import { resolveBackHref } from "@/lib/backHref";
 
-export default async function AttendanceDetailPage({ params }: PageProps<"/attendance/[id]">) {
+export default async function AttendanceDetailPage({ params, searchParams }: PageProps<"/attendance/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -26,7 +28,7 @@ export default async function AttendanceDetailPage({ params }: PageProps<"/atten
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref="/my-shift" lang={user.language} title={title} />
+      <PageHeader backHref={resolveBackHref(sp.from, "/my-shift")} lang={user.language} title={title} />
       <p className="mt-2 text-xs text-muted">{fmt(event.created_at)}</p>
 
       <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">

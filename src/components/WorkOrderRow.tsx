@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Language } from "@/lib/types";
 import { WorkOrderRow as WorkOrderRowData } from "@/lib/services/issueService";
+import { withFrom } from "@/lib/backHref";
 
 const CATEGORY_ICON: Record<string, string> = {
   EQUIPMENT: "🔧",
@@ -16,16 +17,17 @@ const CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   OTHER: { en: "Other", es: "Otro" },
 };
 
-export default function WorkOrderRow({ order, lang }: { order: WorkOrderRowData; lang: Language }) {
+export default function WorkOrderRow({ order, lang, from }: { order: WorkOrderRowData; lang: Language; from?: string }) {
   const dateLabel = order.due_date
     ? new Date(order.due_date + "T00:00:00").toLocaleDateString(lang === "es" ? "es-MX" : "en-US", {
         month: "short",
         day: "numeric",
       })
     : null;
+  const href = `/issue/${order.id}`;
 
   return (
-    <Link href={`/issue/${order.id}`} className="flex items-center gap-2 px-3 py-2">
+    <Link href={from ? withFrom(href, from) : href} className="flex items-center gap-2 px-3 py-2">
       <span className="text-lg">{CATEGORY_ICON[order.category] || "⚠️"}</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">{order.description}</p>

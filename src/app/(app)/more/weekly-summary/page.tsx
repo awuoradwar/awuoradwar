@@ -5,6 +5,7 @@ import { getWeekSummary, getWeekDetail, WeekItemRow } from "@/lib/services/weekS
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import PageHeader from "@/components/PageHeader";
 import { storeToday, formatStoreDateTime } from "@/lib/storeTime";
+import { withFrom } from "@/lib/backHref";
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00Z");
@@ -38,6 +39,9 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
   const summary = getWeekSummary(user.storeId, weekStart, weekEnd);
   const detail = getWeekDetail(user.storeId, weekStart, weekEnd, user.language);
   const isCurrentWeek = weekStart === currentWeekStart;
+  // Carries the week actually being viewed, so a detail page's back button
+  // returns to that same week instead of always landing on the current one.
+  const backFrom = isCurrentWeek ? "/more/weekly-summary" : `/more/weekly-summary?weekStart=${weekStart}`;
 
   const fmtDate = (d: string) =>
     new Date(d + "T00:00:00Z").toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "numeric" });
@@ -140,7 +144,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
                     </div>
                   );
                   return tile.href ? (
-                    <Link key={item.id} href={tile.href(item.id)} className="block hover:bg-card-subtle">
+                    <Link key={item.id} href={withFrom(tile.href(item.id), backFrom)} className="block hover:bg-card-subtle">
                       {row}
                     </Link>
                   ) : (

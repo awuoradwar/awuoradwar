@@ -7,6 +7,7 @@ import { reassignTaskAction, setTaskSupportAction, cancelTaskAction } from "@/ap
 import { Language } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
 import { ManagerColor } from "@/lib/managerColor";
+import { withFrom } from "@/lib/backHref";
 
 export interface WeekTaskData {
   id: string;
@@ -28,11 +29,13 @@ export default function WeekTaskRow({
   managers,
   lang,
   managerColors,
+  from,
 }: {
   task: WeekTaskData;
   managers: Array<{ id: string; name: string }>;
   lang: Language;
   managerColors?: Record<string, ManagerColor>;
+  from?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyCancelled, setOptimisticallyCancelled] = useState(false);
@@ -50,7 +53,7 @@ export default function WeekTaskRow({
     <div className="flex items-center justify-between gap-2 p-3 text-sm">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <Link href={`/task/${task.id}`} className="truncate font-medium hover:text-accent">
+          <Link href={from ? withFrom(`/task/${task.id}`, from) : `/task/${task.id}`} className="truncate font-medium hover:text-accent">
             {title}
           </Link>
           <span

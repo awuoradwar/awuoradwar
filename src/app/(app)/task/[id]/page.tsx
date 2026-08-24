@@ -13,14 +13,16 @@ import TaskDetailActions from "@/components/TaskDetailActions";
 import TaskEditForm from "@/components/TaskEditForm";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
+import { resolveBackHref } from "@/lib/backHref";
 import { TaskRow } from "@/lib/services/taskService";
 
 function addDaysStr(dateStr: string, days: number): string {
   return new Date(new Date(dateStr + "T00:00:00Z").getTime() + days * 86400000).toISOString().slice(0, 10);
 }
 
-export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">) {
+export default async function TaskDetailPage({ params, searchParams }: PageProps<"/task/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -75,7 +77,7 @@ export default async function TaskDetailPage({ params }: PageProps<"/task/[id]">
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref="/my-shift" lang={user.language} title={title} />
+      <PageHeader backHref={resolveBackHref(sp.from, "/my-shift")} lang={user.language} title={title} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={task.status} lang={user.language} />
         {task.due_at && <span className="text-xs text-muted">⏰ {fmt(task.due_at)}</span>}

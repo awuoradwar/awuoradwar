@@ -220,7 +220,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
           ) : (
             <div className="divide-y divide-border border-t border-border">
               {dayTasks.map((t) => (
-                <WeekTaskRow key={t.id} task={t} managers={managers} lang={user.language} managerColors={Object.fromEntries(managerColors)} />
+                <WeekTaskRow key={t.id} task={t} managers={managers} lang={user.language} managerColors={Object.fromEntries(managerColors)} from="/week" />
               ))}
             </div>
           )}

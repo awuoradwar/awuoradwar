@@ -43,7 +43,7 @@ export default async function AttendancePage() {
         ) : (
           <div className="card divide-y divide-border">
             {upcoming.map((g) => (
-              <AttendanceRow key={g.primary.id} item={g.primary} duplicates={g.duplicates} lang={lang} />
+              <AttendanceRow key={g.primary.id} item={g.primary} duplicates={g.duplicates} lang={lang} from="/more/attendance" />
             ))}
           </div>
         )}
@@ -59,7 +59,7 @@ export default async function AttendancePage() {
           getDate={(g) => g.primary.event_date || g.primary.created_at}
           keyOf={(g) => g.primary.id}
           storeId={user.storeId}
-          renderItem={(g) => <AttendanceRow item={g.primary} duplicates={g.duplicates} lang={lang} />}
+          renderItem={(g) => <AttendanceRow item={g.primary} duplicates={g.duplicates} lang={lang} from="/more/attendance" />}
           renderSubtitle={(groups) => weekSubtitle(groups, lang)}
           lang={lang}
           emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}

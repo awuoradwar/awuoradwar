@@ -41,7 +41,7 @@ function Section({
     ) : (
       <div className={collapsible ? "divide-y divide-border border-t border-border" : "card divide-y divide-border"}>
         {rows.map((o) => (
-          <WorkOrderRow key={o.id} order={o} lang={lang} />
+          <WorkOrderRow key={o.id} order={o} lang={lang} from="/more/work-orders" />
         ))}
       </div>
     );
@@ -108,7 +108,7 @@ export default async function WorkOrdersPage() {
           getDate={(item) => item.resolved_at || item.created_at}
           keyOf={(item) => item.id}
           storeId={user.storeId}
-          renderItem={(item) => <WorkOrderRow order={item} lang={lang} />}
+          renderItem={(item) => <WorkOrderRow order={item} lang={lang} from="/more/work-orders" />}
           renderSubtitle={(items) => weekSubtitle(items, lang)}
           lang={lang}
           emptyLabel={t(lang, "all_clear")}

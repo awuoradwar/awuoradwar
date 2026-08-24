@@ -9,6 +9,7 @@ import BorrowedItemDetailActions from "@/components/BorrowedItemDetailActions";
 import BorrowedItemEditableFields from "@/components/BorrowedItemEditableFields";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
+import { resolveBackHref } from "@/lib/backHref";
 
 interface BorrowedItemRow {
   id: string;
@@ -29,8 +30,9 @@ interface BorrowedItemRow {
   created_at: string;
 }
 
-export default async function BorrowedItemDetailPage({ params }: PageProps<"/borrowed-item/[id]">) {
+export default async function BorrowedItemDetailPage({ params, searchParams }: PageProps<"/borrowed-item/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -55,7 +57,7 @@ export default async function BorrowedItemDetailPage({ params }: PageProps<"/bor
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref="/more/search" lang={user.language} title={item.item} />
+      <PageHeader backHref={resolveBackHref(sp.from, "/more/search")} lang={user.language} title={item.item} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={item.status} lang={user.language} />
         {dueStatus && <StatusBadge status={dueStatus} lang={user.language} />}

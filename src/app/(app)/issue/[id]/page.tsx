@@ -8,6 +8,7 @@ import StatusBadge from "@/components/StatusBadge";
 import IssueDetailActions from "@/components/IssueDetailActions";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
+import { resolveBackHref } from "@/lib/backHref";
 
 interface IssueRow {
   id: string;
@@ -29,8 +30,9 @@ interface IssueUpdateRow {
   created_at: string;
 }
 
-export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]">) {
+export default async function IssueDetailPage({ params, searchParams }: PageProps<"/issue/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -56,7 +58,7 @@ export default async function IssueDetailPage({ params }: PageProps<"/issue/[id]
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref="/more/work-orders" lang={user.language} title={issue.category.replace(/_/g, " ")} />
+      <PageHeader backHref={resolveBackHref(sp.from, "/more/work-orders")} lang={user.language} title={issue.category.replace(/_/g, " ")} />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <StatusBadge status={issue.status} lang={user.language} />
         {issue.severity === "CRITICAL" && <StatusBadge status="CRITICAL" lang={user.language} />}

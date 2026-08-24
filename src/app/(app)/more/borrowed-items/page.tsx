@@ -46,7 +46,7 @@ export default async function BorrowedItemsPage() {
         ) : (
           <div className="card divide-y divide-border">
             {open.map((item) => (
-              <BorrowedItemRow key={item.id} item={item} lang={lang} storeId={user.storeId} />
+              <BorrowedItemRow key={item.id} item={item} lang={lang} storeId={user.storeId} from="/more/borrowed-items" />
             ))}
           </div>
         )}
@@ -62,7 +62,7 @@ export default async function BorrowedItemsPage() {
           getDate={(item) => item.completed_at || item.created_at}
           keyOf={(item) => item.id}
           storeId={user.storeId}
-          renderItem={(item) => <BorrowedItemRow item={item} lang={lang} storeId={user.storeId} />}
+          renderItem={(item) => <BorrowedItemRow item={item} lang={lang} storeId={user.storeId} from="/more/borrowed-items" />}
           renderSubtitle={(items) => weekSubtitle(items, lang)}
           lang={lang}
           emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}

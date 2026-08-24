@@ -3,16 +3,18 @@ import { Language } from "@/lib/types";
 import { BorrowedItemRow as BorrowedItemRowData } from "@/lib/services/borrowingService";
 import { formatStoreDateTime } from "@/lib/storeTime";
 import { translateUnit } from "@/lib/borrowedItemUnits";
+import { withFrom } from "@/lib/backHref";
 
-export default function BorrowedItemRow({ item, lang, storeId }: { item: BorrowedItemRowData; lang: Language; storeId: string }) {
+export default function BorrowedItemRow({ item, lang, storeId, from }: { item: BorrowedItemRowData; lang: Language; storeId: string; from?: string }) {
   const hoursUntilDue = item.due_at ? (new Date(item.due_at).getTime() - Date.now()) / 3600000 : null;
   const overdue = item.status !== "SETTLED" && hoursUntilDue !== null && hoursUntilDue < 0;
   const dueSoon = item.status !== "SETTLED" && hoursUntilDue !== null && hoursUntilDue >= 0 && hoursUntilDue <= 24;
   const dueLabel = item.due_at ? formatStoreDateTime(storeId, item.due_at, lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" }) : null;
   const unit = translateUnit(item.unit, lang);
+  const href = `/borrowed-item/${item.id}`;
 
   return (
-    <Link href={`/borrowed-item/${item.id}`} className={`flex items-center gap-2 px-3 py-2 ${overdue || dueSoon ? "bg-critical/[0.04]" : ""}`}>
+    <Link href={from ? withFrom(href, from) : href} className={`flex items-center gap-2 px-3 py-2 ${overdue || dueSoon ? "bg-critical/[0.04]" : ""}`}>
       <span className="text-lg">📦</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">

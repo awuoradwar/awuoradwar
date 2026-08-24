@@ -9,6 +9,7 @@ import { t } from "@/lib/i18n";
 import StatusBadge from "./StatusBadge";
 import OwnerBadge from "./OwnerBadge";
 import { ManagerColor } from "@/lib/managerColor";
+import { withFrom } from "@/lib/backHref";
 
 export interface TaskCardData {
   id: string;
@@ -30,7 +31,7 @@ export interface TaskCardData {
   verification_required: number;
 }
 
-export default function TaskCard({ task, lang, managerColors }: { task: TaskCardData; lang: Language; managerColors?: Record<string, ManagerColor> }) {
+export default function TaskCard({ task, lang, managerColors, from }: { task: TaskCardData; lang: Language; managerColors?: Record<string, ManagerColor>; from?: string }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function TaskCard({ task, lang, managerColors }: { task: TaskCard
   return (
     <div className="card flex items-start gap-3 p-3">
       <div className="min-w-0 flex-1">
-        <Link href={`/task/${task.id}`} className="block">
+        <Link href={from ? withFrom(`/task/${task.id}`, from) : `/task/${task.id}`} className="block">
           <p className="truncate text-sm font-semibold">{title}</p>
         </Link>
         {task.description && <p className="mt-0.5 text-xs text-muted">{task.description}</p>}

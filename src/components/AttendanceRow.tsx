@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Language } from "@/lib/types";
 import { attendanceTypeLabel } from "@/lib/attendanceLabels";
+import { withFrom } from "@/lib/backHref";
 
 export interface AttendanceRowData {
   id: string;
@@ -17,10 +18,10 @@ export interface AttendanceRowData {
  * it) -- kept visible below the primary row instead of discarded, so no one
  * wonders where "their" entry went, but the row and any count built from
  * this list still reads as one event. */
-export default function AttendanceRow({ item, lang, duplicates }: { item: AttendanceRowData; lang: Language; duplicates?: AttendanceRowData[] }) {
+export default function AttendanceRow({ item, lang, duplicates, from }: { item: AttendanceRowData; lang: Language; duplicates?: AttendanceRowData[]; from?: string }) {
   return (
     <div className="px-3 py-2">
-      <Link href={`/attendance/${item.id}`} className="flex items-center gap-2">
+      <Link href={from ? withFrom(`/attendance/${item.id}`, from) : `/attendance/${item.id}`} className="flex items-center gap-2">
         <span className="text-lg">{item.type === "LATE" ? "⏰" : "🧍"}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm">
@@ -43,7 +44,7 @@ export default function AttendanceRow({ item, lang, duplicates }: { item: Attend
           </summary>
           <div className="mt-1 flex flex-col gap-1 border-l-2 border-border pl-2.5">
             {duplicates.map((d) => (
-              <Link key={d.id} href={`/attendance/${d.id}`} className="block text-xs text-muted hover:text-accent">
+              <Link key={d.id} href={from ? withFrom(`/attendance/${d.id}`, from) : `/attendance/${d.id}`} className="block text-xs text-muted hover:text-accent">
                 {d.recorded_by_name || (lang === "es" ? "gerente" : "manager")}
                 {d.note ? ` · ${d.note}` : ""}
               </Link>

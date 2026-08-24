@@ -8,6 +8,7 @@ import StatusBadge from "@/components/StatusBadge";
 import GuestRecoveryDetailActions from "@/components/GuestRecoveryDetailActions";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
+import { resolveBackHref } from "@/lib/backHref";
 
 interface GuestRecoveryRow {
   id: string;
@@ -25,8 +26,9 @@ interface GuestRecoveryRow {
   created_at: string;
 }
 
-export default async function GuestRecoveryDetailPage({ params }: PageProps<"/guest-recovery/[id]">) {
+export default async function GuestRecoveryDetailPage({ params, searchParams }: PageProps<"/guest-recovery/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -49,7 +51,7 @@ export default async function GuestRecoveryDetailPage({ params }: PageProps<"/gu
   return (
     <div className="mx-auto max-w-md px-4 py-5">
       <PageHeader
-        backHref="/more/meal-replacements"
+        backHref={resolveBackHref(sp.from, "/more/meal-replacements")}
         lang={user.language}
         title={`${user.language === "es" ? "Reemplazo de Comida" : "Meal Replacement"}: ${gr.issue_category}`}
       />

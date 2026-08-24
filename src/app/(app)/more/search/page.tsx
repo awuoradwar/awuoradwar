@@ -7,6 +7,7 @@ import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
 import FilterForm from "@/components/FilterForm";
 import DateField from "@/components/forms/DateField";
+import { withFrom } from "@/lib/backHref";
 
 const inputClass = "tap-target w-full rounded-xl border border-border bg-card px-3 text-base outline-none focus:border-accent";
 const selectClass = inputClass;
@@ -120,7 +121,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/more/sear
             </div>
           );
           return href ? (
-            <Link key={`${r.kind}-${r.id}`} href={`${href}/${r.id}`} className="block">
+            <Link key={`${r.kind}-${r.id}`} href={withFrom(`${href}/${r.id}`, "/more/search")} className="block">
               {row}
             </Link>
           ) : (

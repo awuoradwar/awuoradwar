@@ -8,11 +8,12 @@ import { Language } from "@/lib/types";
 import { TaskCardData } from "./TaskCard";
 import OwnerBadge from "./OwnerBadge";
 import { ManagerColor } from "@/lib/managerColor";
+import { withFrom } from "@/lib/backHref";
 
 /** Slim single-line row for lower-priority, usually-collapsed sections
  * (This Week, Recurring) -- keeps those sections scannable without the
  * full TaskCard's padding and badges. */
-export default function CompactTaskRow({ task, lang, managerColors }: { task: TaskCardData; lang: Language; managerColors?: Record<string, ManagerColor> }) {
+export default function CompactTaskRow({ task, lang, managerColors, from }: { task: TaskCardData; lang: Language; managerColors?: Record<string, ManagerColor>; from?: string }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function CompactTaskRow({ task, lang, managerColors }: { task: Ta
 
   return (
     <div className="flex items-center gap-2 px-3 py-2">
-      <Link href={`/task/${task.id}`} className="min-w-0 flex-1">
+      <Link href={from ? withFrom(`/task/${task.id}`, from) : `/task/${task.id}`} className="min-w-0 flex-1">
         <p className="truncate text-sm">{title}</p>
         {task.description && <p className="truncate text-xs text-muted">{task.description}</p>}
         <p className="truncate text-xs text-muted">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Language } from "@/lib/types";
 import { MealReplacementRow as MealReplacementRowData } from "@/lib/services/guestRecoveryService";
 import { formatStoreDateTime } from "@/lib/storeTime";
+import { withFrom } from "@/lib/backHref";
 
 const CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   FOOD_QUALITY: { en: "Food Quality", es: "Calidad de Alimentos" },
@@ -11,16 +12,17 @@ const CATEGORY_LABEL: Record<string, Record<Language, string>> = {
   OTHER: { en: "Other", es: "Otro" },
 };
 
-export default function MealReplacementRow({ item, lang, storeId }: { item: MealReplacementRowData; lang: Language; storeId: string }) {
+export default function MealReplacementRow({ item, lang, storeId, from }: { item: MealReplacementRowData; lang: Language; storeId: string; from?: string }) {
   const timeLabel = formatStoreDateTime(storeId, item.completed_at || item.created_at, lang === "es" ? "es-MX" : "en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   });
+  const href = `/guest-recovery/${item.id}`;
 
   return (
-    <Link href={`/guest-recovery/${item.id}`} className="flex items-center gap-2 px-3 py-2">
+    <Link href={from ? withFrom(href, from) : href} className="flex items-center gap-2 px-3 py-2">
       <span className="text-lg">🍽️</span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">
