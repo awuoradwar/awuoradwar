@@ -7,7 +7,7 @@ import { Field, inputClass, selectClass, textareaClass } from "./forms/FormShell
 import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 import { WasteLogEntry } from "@/lib/services/wasteService";
-import { UNITS_EN, UNITS_ES, translateWasteUnit } from "@/lib/wasteUnits";
+import { UNITS_EN, UNITS_ES, BATCH_SIZES, translateWasteUnit } from "@/lib/wasteUnits";
 
 const REASON_LABEL: Record<string, { en: string; es: string }> = {
   SPOILED: { en: "Spoiled/expired", es: "Dañado/caducado" },
@@ -23,6 +23,15 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
   const router = useRouter();
   const units = lang === "es" ? UNITS_ES : UNITS_EN;
   const displayUnit = translateWasteUnit(entry.unit, lang) || entry.unit;
+  // An existing entry's batch/party-tray unit may have been saved in
+  // whichever language it was logged in -- normalize to English before
+  // matching it against BATCH_SIZES, which is keyed in English.
+  const normalizedUnit = translateWasteUnit(entry.unit, "en") || entry.unit;
+  const isBatchUnit = normalizedUnit === "batch" || normalizedUnit === "party tray";
+  const matchedBatchIndex = BATCH_SIZES.findIndex((b) => b.unit === normalizedUnit && b.quantity === entry.quantity);
+  const initialBatchIndex = matchedBatchIndex !== -1 ? matchedBatchIndex : isBatchUnit ? BATCH_SIZES.findIndex((b) => b.unit === normalizedUnit) : 0;
+  const [measureBy, setMeasureBy] = useState<"unit" | "batch">(isBatchUnit ? "batch" : "unit");
+  const [batchIndex, setBatchIndex] = useState(initialBatchIndex === -1 ? 0 : initialBatchIndex);
 
   return (
     <form
@@ -47,19 +56,53 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
         <input name="item" defaultValue={entry.item} required className={inputClass} />
       </Field>
       <div className="grid grid-cols-2 gap-2">
-        <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
-          <input name="quantity" type="number" step="any" min="0" inputMode="decimal" defaultValue={entry.quantity} required className={inputClass} />
-        </Field>
-        <Field label={lang === "es" ? "Unidad" : "Unit"}>
-          <select name="unit" defaultValue={displayUnit} className={selectClass}>
-            {units.map((u) => (
-              <option key={u} value={u}>
-                {u}
+        <button
+          type="button"
+          onClick={() => setMeasureBy("unit")}
+          className={`tap-target rounded-xl border-2 text-sm font-semibold transition-colors ${
+            measureBy === "unit" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted"
+          }`}
+        >
+          {lang === "es" ? "Unidad" : "Unit"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMeasureBy("batch")}
+          className={`tap-target rounded-xl border-2 text-sm font-semibold transition-colors ${
+            measureBy === "batch" ? "border-accent bg-accent/10 text-accent" : "border-border text-muted"
+          }`}
+        >
+          {lang === "es" ? "Tanda de cocina" : "Cooking Batch"}
+        </button>
+      </div>
+      {measureBy === "unit" ? (
+        <div className="grid grid-cols-2 gap-2">
+          <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
+            <input name="quantity" type="number" step="any" min="0" inputMode="decimal" defaultValue={entry.quantity} required className={inputClass} />
+          </Field>
+          <Field label={lang === "es" ? "Unidad" : "Unit"}>
+            <select name="unit" defaultValue={isBatchUnit ? units[0] : displayUnit} className={selectClass}>
+              {units.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      ) : (
+        <Field label={lang === "es" ? "Tamaño de la tanda" : "Batch size"}>
+          <select value={batchIndex} onChange={(e) => setBatchIndex(Number(e.target.value))} className={selectClass}>
+            {BATCH_SIZES.map((b, i) => (
+              <option key={i} value={i}>
+                {lang === "es" ? b.labelEs : b.labelEn}
               </option>
             ))}
           </select>
+          <input type="hidden" name="quantity" value={BATCH_SIZES[batchIndex].quantity} />
+          <input type="hidden" name="unit" value={BATCH_SIZES[batchIndex].unit} />
         </Field>
-      </div>
+      )}
       <Field label={lang === "es" ? "Motivo (opcional)" : "Reason (optional)"}>
         <select name="reason" defaultValue={entry.reason || ""} className={selectClass}>
           <option value="">{lang === "es" ? "Sin especificar" : "Unspecified"}</option>
