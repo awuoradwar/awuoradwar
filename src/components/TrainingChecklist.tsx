@@ -7,6 +7,7 @@ import {
   updateTrainingCompletionAction,
   retrainTrainingItemAction,
   updateTrainingLogEntryAction,
+  deleteTrainingLogEntryAction,
 } from "@/app/actions/trainingActions";
 import { TrainingChecklistRow, TrainingCompletionLogEntry, TrainingItemPhase, TrainingShiftType } from "@/lib/services/trainingService";
 import { TRAINING_PHASE_LABEL } from "@/lib/trainingLabels";
@@ -260,6 +261,7 @@ function LogEntryRow({
   lang: Language;
 }) {
   const [editing, setEditing] = useState(false);
+  const [optimisticallyDeleted, setOptimisticallyDeleted] = useState(false);
   const d = new Date(entry.trained_at);
   const [date, setDate] = useState(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
   const [shift, setShift] = useState<TrainingShiftType | "">(entry.shift_type || "");
@@ -269,6 +271,8 @@ function LogEntryRow({
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  if (optimisticallyDeleted) return null;
+
   return (
     <div className="rounded-lg border border-border p-2">
       <div className="flex items-center justify-between gap-2">
@@ -277,9 +281,34 @@ function LogEntryRow({
           {entry.shift_type ? ` · ${SHIFT_LABEL[entry.shift_type][lang]}` : ""} · {entry.trained_by_name || "—"}
         </p>
         {!editing && (
-          <button type="button" onClick={() => setEditing(true)} className="shrink-0 text-xs font-semibold text-accent">
-            ✎
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" onClick={() => setEditing(true)} className="text-xs font-semibold text-accent">
+              ✎
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                const msg =
+                  lang === "es"
+                    ? "¿Eliminar este registro de actividad? Esto no se puede deshacer."
+                    : "Delete this activity entry? This can't be undone.";
+                if (!window.confirm(msg)) return;
+                setOptimisticallyDeleted(true);
+                startTransition(async () => {
+                  try {
+                    await deleteTrainingLogEntryAction(traineeId, entry.id);
+                  } catch {
+                    setOptimisticallyDeleted(false);
+                  }
+                  router.refresh();
+                });
+              }}
+              className="text-xs font-semibold text-critical disabled:opacity-50"
+            >
+              {lang === "es" ? "Eliminar" : "Delete"}
+            </button>
+          </div>
         )}
       </div>
       {editing ? (

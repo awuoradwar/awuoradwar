@@ -239,6 +239,18 @@ export function updateTrainingCompletionLogEntry(
   writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_completion_log_id: logId, ...fields } });
 }
 
+/** Removes one past completion/retrain event entirely -- for a genuine
+ * accidental duplicate (the same retrain logged twice in a row), not for
+ * correcting a real event's details, which is what updateTrainingCompletionLogEntry
+ * is for. Only ever touches training_completion_log, never the current
+ * training_completions row, so deleting an old entry can't un-train the item
+ * or change who/when it currently shows as trained by. */
+export function deleteTrainingCompletionLogEntry(traineeId: string, logId: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`DELETE FROM training_completion_log WHERE id = ? AND trainee_id = ?`).run(logId, traineeId);
+  writeAudit({ entityType: "trainee", entityId: traineeId, actor, action: "EDITED", newValue: { training_completion_log_id: logId, deleted: true } });
+}
+
 export interface TrainingHistoryEntry {
   id: string;
   trainee_id: string;

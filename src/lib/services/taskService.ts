@@ -190,14 +190,19 @@ export function computeSection(
   const dueToday = isDueToday(task, todayStr);
   const mine = task.owner_id ? task.owner_id === viewerId : picUserId === viewerId;
   // "Anything urgent, whoever it belongs to" only earns a spot in this
-  // viewer's personal NOW section when they're actually working today
-  // (scheduled shift, PIC, or it's genuinely their own task) -- otherwise
-  // someone else's overdue task shows up under "My Shift" on a day this
-  // viewer is off, looking like it's theirs to handle when it isn't. It's
-  // never hidden either way: off that condition, it still lands in TODAY
+  // viewer's personal NOW section when they're actually working the shift
+  // window that task's due time falls into -- being scheduled this morning
+  // doesn't make another manager's 11pm task this viewer's problem to see
+  // on their way out the door. isDueThisShiftWindow is the same window
+  // match the "mine && dueToday" branch below already uses; it's only safe
+  // to call here with viewerShiftType passed through untouched (never
+  // substituting null) since its own null-fallback compares against the
+  // CURRENT wall-clock window instead, which would wrongly let a viewer with
+  // no schedule entry at all see live urgent tasks anyway. It's never
+  // hidden either way: off that condition, it still lands in TODAY
   // (store-wide) below if due today.
-  const viewerWorkingToday = viewerShiftType !== null || mine;
-  if (isUrgentNow(task, nowDate, dueToday) && (viewerWorkingToday || task.severity === "CRITICAL")) return "NOW";
+  const viewerWorkingThisWindow = mine || (viewerShiftType !== null && isDueThisShiftWindow(task, nowDate, viewerShiftType));
+  if (isUrgentNow(task, nowDate, dueToday) && (viewerWorkingThisWindow || task.severity === "CRITICAL")) return "NOW";
 
   if (mine && dueToday) {
     if (!task.due_at || isDueThisShiftWindow(task, nowDate, viewerShiftType)) return "NOW";

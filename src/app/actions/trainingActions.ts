@@ -122,6 +122,14 @@ export async function updateTrainingLogEntryAction(
   return { ok: true };
 }
 
+export async function deleteTrainingLogEntryAction(traineeId: string, logId: string) {
+  const user = await requireCurrentUser();
+  const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
+  if (!trainee) throw new Error("NOT_FOUND");
+  trainingService.deleteTrainingCompletionLogEntry(traineeId, logId, user);
+  refresh(traineeId);
+}
+
 export async function markTraineeCompleteAction(traineeId: string) {
   const user = await requireCurrentUser();
   const trainee = trainingService.getTraineeDetail(traineeId, user.storeId);
