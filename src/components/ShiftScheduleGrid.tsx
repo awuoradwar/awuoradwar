@@ -39,16 +39,28 @@ interface ScheduleEntry {
   shift_type: ShiftType;
 }
 
+interface ActivityEntry {
+  user_id: string;
+  date: string;
+  label: string;
+}
+
 export default function ShiftScheduleGrid({
   managers,
   days,
   schedule,
+  activities = [],
   canEdit,
   lang,
 }: {
   managers: ManagerOption[];
   days: DayOption[];
   schedule: ScheduleEntry[];
+  /** Days a manager is working but not covering the store (see
+   * ManagerActivitiesSection below this grid) -- shown here too as a small
+   * dot on the day's cell, so scanning the calendar doesn't read that day
+   * as a plain day off just because there's no real shift on it. */
+  activities?: ActivityEntry[];
   canEdit: boolean;
   lang: Language;
 }) {
@@ -72,6 +84,8 @@ export default function ShiftScheduleGrid({
 
   const byManagerDate = new Map<string, ScheduleEntry>();
   for (const s of optimisticSchedule) byManagerDate.set(`${s.user_id}|${s.date}`, s);
+  const activityByManagerDate = new Map<string, string>();
+  for (const a of activities) activityByManagerDate.set(`${a.user_id}|${a.date}`, a.label);
   // Same id-sorted assignment as the Manager Capacity list above it, so a
   // given manager's dot color matches between the two sections.
   const managerColors = buildManagerColorMap(managers.map((m) => m.id));
@@ -104,6 +118,7 @@ export default function ShiftScheduleGrid({
             <div className="grid grid-cols-7 gap-1">
               {days.map((d) => {
                 const entry = byManagerDate.get(`${m.id}|${d.date}`);
+                const activityLabel = activityByManagerDate.get(`${m.id}|${d.date}`);
                 return (
                   <div key={d.date} className="flex flex-col items-center gap-1">
                     <span className="text-xs text-muted">{d.label.slice(0, 3)}</span>
@@ -118,7 +133,7 @@ export default function ShiftScheduleGrid({
                      * select-specific rendering quirk -- shows the letter. */}
                     <div className="relative h-8 w-full">
                       <select
-                        aria-label={d.label}
+                        aria-label={activityLabel ? `${d.label} -- ${activityLabel}` : d.label}
                         disabled={!canEdit || pending}
                         value={entry?.shift_type ?? ""}
                         onChange={(e) => pick(m.id, d.date, e.target.value as ShiftType | "")}
@@ -141,6 +156,18 @@ export default function ShiftScheduleGrid({
                       >
                         {OPTIONS.find((o) => o.value === (entry?.shift_type ?? ""))?.label}
                       </div>
+                      {/* A day with a logged activity (training, area
+                       * meeting) but no real shift -- so it doesn't read as
+                       * a plain day off. Deliberately just a dot, not a
+                       * letter: the select above still governs real store
+                       * coverage on its own, this is only an annotation. */}
+                      {activityLabel && (
+                        <span
+                          aria-hidden
+                          title={activityLabel}
+                          className="pointer-events-none absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-warning ring-2 ring-card"
+                        />
+                      )}
                     </div>
                   </div>
                 );
@@ -153,6 +180,9 @@ export default function ShiftScheduleGrid({
         {lang === "es"
           ? "M = Mañana (hasta 5pm) · E = Tarde/Noche (5pm en adelante) · D = Ambos (cubre todo el día -- incluye un turno que empieza a medio día y llega hasta el cierre)"
           : "M = Morning (through 5pm) · E = Evening (5pm on) · D = Both (covers the whole day -- this is what a midday-start-through-close shift counts as, whatever its exact start time)"}
+        {" · "}
+        <span className="mr-0.5 inline-block h-2 w-2 rounded-full bg-warning align-middle" />
+        {lang === "es" ? " trabajando, no cubriendo la tienda" : " working, not covering the store"}
         {canEdit ? (lang === "es" ? " · toca para elegir" : " · tap to pick") : ""}
       </p>
     </div>

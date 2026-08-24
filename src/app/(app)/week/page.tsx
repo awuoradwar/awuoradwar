@@ -198,7 +198,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
               ? `Quién trabaja · ${weekRangeLabel}`
               : `Who's Working · ${weekRangeLabel}`}
         </h2>
-        <ShiftScheduleGrid managers={managers} days={days} schedule={managerSchedule} canEdit={canEditSchedule} lang={user.language} />
+        <ShiftScheduleGrid managers={managers} days={days} schedule={managerSchedule} activities={managerActivities} canEdit={canEditSchedule} lang={user.language} />
       </section>
 
       <ManagerActivitiesSection managers={managers} days={days} activities={managerActivities} canEdit={canEditSchedule} lang={user.language} />
