@@ -5,16 +5,7 @@ import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, textareaClass, SubmitBar } from "./FormShell";
 import DateField from "./DateField";
 import { Language } from "@/lib/types";
-
-const UNITS: Array<{ value: string; en: string; es: string }> = [
-  { value: "lb", en: "lb", es: "lb" },
-  { value: "oz", en: "oz", es: "oz" },
-  { value: "each", en: "each", es: "unidad" },
-  { value: "case", en: "case", es: "caja" },
-  { value: "bag", en: "bag", es: "bolsa" },
-  { value: "tray", en: "tray", es: "charola" },
-  { value: "gallon", en: "gallon", es: "galón" },
-];
+import { UNITS_EN, UNITS_ES } from "@/lib/wasteUnits";
 
 const REASONS: Array<{ value: string; en: string; es: string }> = [
   { value: "SPOILED", en: "Spoiled/expired", es: "Dañado/caducado" },
@@ -25,6 +16,7 @@ const REASONS: Array<{ value: string; en: string; es: string }> = [
 ];
 
 export default function WasteForm({ lang, defaultDate }: { lang: Language; defaultDate: string }) {
+  const units = lang === "es" ? UNITS_ES : UNITS_EN;
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     "waste",
     quickAddWasteAction,
@@ -42,10 +34,10 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
           <input name="quantity" type="number" step="any" min="0" inputMode="decimal" required className={inputClass} />
         </Field>
         <Field label={lang === "es" ? "Unidad" : "Unit"}>
-          <select name="unit" defaultValue="lb" className={selectClass}>
-            {UNITS.map((u) => (
-              <option key={u.value} value={u.value}>
-                {lang === "es" ? u.es : u.en}
+          <select name="unit" defaultValue={units[0]} className={selectClass}>
+            {units.map((u) => (
+              <option key={u} value={u}>
+                {u}
               </option>
             ))}
           </select>

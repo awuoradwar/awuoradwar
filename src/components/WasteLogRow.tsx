@@ -7,16 +7,7 @@ import { Field, inputClass, selectClass, textareaClass } from "./forms/FormShell
 import DateField from "./forms/DateField";
 import { Language } from "@/lib/types";
 import { WasteLogEntry } from "@/lib/services/wasteService";
-
-const UNITS: Array<{ value: string; en: string; es: string }> = [
-  { value: "lb", en: "lb", es: "lb" },
-  { value: "oz", en: "oz", es: "oz" },
-  { value: "each", en: "each", es: "unidad" },
-  { value: "case", en: "case", es: "caja" },
-  { value: "bag", en: "bag", es: "bolsa" },
-  { value: "tray", en: "tray", es: "charola" },
-  { value: "gallon", en: "gallon", es: "galón" },
-];
+import { UNITS_EN, UNITS_ES, translateWasteUnit } from "@/lib/wasteUnits";
 
 const REASON_LABEL: Record<string, { en: string; es: string }> = {
   SPOILED: { en: "Spoiled/expired", es: "Dañado/caducado" },
@@ -30,6 +21,8 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const units = lang === "es" ? UNITS_ES : UNITS_EN;
+  const displayUnit = translateWasteUnit(entry.unit, lang) || entry.unit;
 
   return (
     <form
@@ -58,10 +51,10 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
           <input name="quantity" type="number" step="any" min="0" inputMode="decimal" defaultValue={entry.quantity} required className={inputClass} />
         </Field>
         <Field label={lang === "es" ? "Unidad" : "Unit"}>
-          <select name="unit" defaultValue={entry.unit} className={selectClass}>
-            {UNITS.map((u) => (
-              <option key={u.value} value={u.value}>
-                {lang === "es" ? u.es : u.en}
+          <select name="unit" defaultValue={displayUnit} className={selectClass}>
+            {units.map((u) => (
+              <option key={u} value={u}>
+                {u}
               </option>
             ))}
           </select>
@@ -118,7 +111,7 @@ export default function WasteLogRow({ entry, lang }: { entry: WasteLogEntry; lan
     <div className="flex items-start justify-between gap-2 px-3 py-2.5 text-sm">
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium text-foreground">
-          {entry.item} · {entry.quantity} {entry.unit}
+          {entry.item} · {entry.quantity} {translateWasteUnit(entry.unit, lang)}
         </p>
         <p className="text-xs text-muted">
           {entry.wasted_date}
