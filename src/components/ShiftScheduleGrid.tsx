@@ -107,22 +107,41 @@ export default function ShiftScheduleGrid({
                 return (
                   <div key={d.date} className="flex flex-col items-center gap-1">
                     <span className="text-xs text-muted">{d.label.slice(0, 3)}</span>
-                    <select
-                      aria-label={d.label}
-                      disabled={!canEdit || pending}
-                      value={entry?.shift_type ?? ""}
-                      onChange={(e) => pick(m.id, d.date, e.target.value as ShiftType | "")}
-                      style={entry ? { backgroundColor: color.bg, color: color.text } : undefined}
-                      className={`h-8 w-full appearance-none rounded-lg text-center text-xs font-bold outline-none ${
-                        entry ? "" : "bg-card-subtle text-muted"
-                      } ${canEdit ? "cursor-pointer" : "cursor-default"} disabled:cursor-default`}
-                    >
-                      {OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                    {/* A native <select>'s closed-state text doesn't reliably
+                     * honor text-align: center across browsers (iOS Safari
+                     * in particular keeps rendering it left-hugging even
+                     * with appearance:none), which is what threw this grid
+                     * out of alignment with the centered day labels above
+                     * it. Made invisible-but-fully-interactive instead, so
+                     * tapping it still opens the real native picker, and a
+                     * plain centered div underneath -- unconstrained by any
+                     * select-specific rendering quirk -- shows the letter. */}
+                    <div className="relative h-8 w-full">
+                      <select
+                        aria-label={d.label}
+                        disabled={!canEdit || pending}
+                        value={entry?.shift_type ?? ""}
+                        onChange={(e) => pick(m.id, d.date, e.target.value as ShiftType | "")}
+                        className={`absolute inset-0 h-8 w-full appearance-none opacity-0 outline-none ${
+                          canEdit ? "cursor-pointer" : "cursor-default"
+                        } disabled:cursor-default`}
+                      >
+                        {OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div
+                        aria-hidden
+                        style={entry ? { backgroundColor: color.bg, color: color.text } : undefined}
+                        className={`pointer-events-none flex h-8 w-full items-center justify-center rounded-lg text-xs font-bold ${
+                          entry ? "" : "bg-card-subtle text-muted"
+                        }`}
+                      >
+                        {OPTIONS.find((o) => o.value === (entry?.shift_type ?? ""))?.label}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
