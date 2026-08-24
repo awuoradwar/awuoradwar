@@ -7,29 +7,35 @@ import { Language } from "./types";
 export const UNITS_EN = ["lb", "oz", "each", "case", "bag", "tray", "gallon"];
 export const UNITS_ES = ["lb", "oz", "unidad", "caja", "bolsa", "charola", "galón"];
 
-/** "half batch"/"batch"/"double batch"/"party tray" are stored the same way
- * as any other unit (in the quantity + unit columns) but aren't offered in
- * the plain Unit list above -- they're a separate measure ("how many
- * cooking batches", not "how many lb/oz"), picked from BATCH_SIZES below
- * via its own toggle on the form. Kept here only so translateWasteUnit can
- * still translate them wherever an existing entry gets displayed. */
-const BATCH_UNITS_EN = ["half batch", "batch", "double batch", "party tray"];
-const BATCH_UNITS_ES = ["media tanda", "tanda", "tanda doble", "charola grande"];
+/** "batch"/"party tray" are stored the same way as any other unit (in the
+ * quantity + unit columns) but aren't offered in the plain Unit list above
+ * -- they're a separate measure ("how many cooking batches", not "how many
+ * lb/oz"), picked from BATCH_SIZES below via its own toggle on the form.
+ * Kept here only so translateWasteUnit can still translate them wherever an
+ * existing entry gets displayed. */
+const BATCH_UNITS_EN = ["batch", "party tray"];
+const BATCH_UNITS_ES = ["tanda", "charola grande"];
 
-export interface BatchSize {
+export interface BatchPreset {
+  quantity: number;
   unit: string;
   labelEn: string;
   labelEs: string;
 }
 
-/** The four cooking-batch sizes a manager actually logs waste in, paired
- * with a real Quantity field on the form (e.g. Quantity 3 of "#1/2" = three
- * half-batches) same as the plain Unit list gets. */
-export const BATCH_SIZES: BatchSize[] = [
-  { unit: "half batch", labelEn: "#1/2", labelEs: "#1/2" },
-  { unit: "batch", labelEn: "#1", labelEs: "#1" },
-  { unit: "double batch", labelEn: "#2", labelEs: "#2" },
-  { unit: "party tray", labelEn: "Party Tray", labelEs: "Charola grande" },
+/** Quick-tap shortcuts for the four cooking-batch amounts a manager
+ * actually logs -- each one fills in BOTH the Quantity and Unit fields at
+ * once (e.g. "#2" -> Quantity 2, Unit batch), but Quantity stays a normal,
+ * separately editable field afterward (e.g. tap "#1" then change Quantity
+ * to 3 for three batches). Unit itself is always just "batch" or "party
+ * tray" -- never "double batch"/"half batch" as if those were their own
+ * units, which read as a confusing compound once paired with an
+ * independent quantity (e.g. "2 double batch"). */
+export const BATCH_SIZES: BatchPreset[] = [
+  { quantity: 0.5, unit: "batch", labelEn: "#1/2", labelEs: "#1/2" },
+  { quantity: 1, unit: "batch", labelEn: "#1", labelEs: "#1" },
+  { quantity: 2, unit: "batch", labelEn: "#2", labelEs: "#2" },
+  { quantity: 1, unit: "party tray", labelEn: "Party Tray", labelEs: "Charola grande" },
 ];
 
 /** A unit is stored exactly as picked at entry time -- in whichever

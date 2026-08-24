@@ -28,8 +28,12 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
   // whichever language it was logged in -- normalize to English before
   // matching it against BATCH_SIZES, which is keyed in English.
   const normalizedUnit = translateWasteUnit(entry.unit, "en") || entry.unit;
-  const isBatchUnit = BATCH_SIZES.some((b) => b.unit === normalizedUnit);
+  const isBatchUnit = normalizedUnit === "batch" || normalizedUnit === "party tray";
   const [measureBy, setMeasureBy] = useState<"unit" | "batch">(isBatchUnit ? "batch" : "unit");
+  // Shared across both modes so a "#2" tap can fill Quantity in directly --
+  // Quantity itself stays a normal, separately editable field either way.
+  const [quantity, setQuantity] = useState(String(entry.quantity));
+  const [batchUnit, setBatchUnit] = useState<string>(isBatchUnit ? normalizedUnit : "batch");
 
   return (
     <form
@@ -73,9 +77,36 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
           {lang === "es" ? "Tanda de cocina" : "Cooking Batch"}
         </button>
       </div>
+      {measureBy === "batch" && (
+        <div className="flex flex-wrap gap-1.5">
+          {BATCH_SIZES.map((p, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                setQuantity(String(p.quantity));
+                setBatchUnit(p.unit);
+              }}
+              className="rounded-full border border-accent/30 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent/10"
+            >
+              {lang === "es" ? p.labelEs : p.labelEn}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
-          <input name="quantity" type="number" step="any" min="0" inputMode="decimal" defaultValue={entry.quantity} required className={inputClass} />
+          <input
+            name="quantity"
+            type="number"
+            step="any"
+            min="0"
+            inputMode="decimal"
+            required
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            className={inputClass}
+          />
         </Field>
         {measureBy === "unit" ? (
           <Field label={lang === "es" ? "Unidad" : "Unit"}>
@@ -88,13 +119,10 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
             </select>
           </Field>
         ) : (
-          <Field label={lang === "es" ? "Tamaño de la tanda" : "Batch size"}>
-            <select name="unit" defaultValue={isBatchUnit ? normalizedUnit : BATCH_SIZES[0].unit} className={selectClass}>
-              {BATCH_SIZES.map((b) => (
-                <option key={b.unit} value={b.unit}>
-                  {lang === "es" ? b.labelEs : b.labelEn}
-                </option>
-              ))}
+          <Field label={lang === "es" ? "Unidad de tanda" : "Batch unit"}>
+            <select name="unit" value={batchUnit} onChange={(e) => setBatchUnit(e.target.value)} className={selectClass}>
+              <option value="batch">{lang === "es" ? "Tanda" : "Batch"}</option>
+              <option value="party tray">{lang === "es" ? "Charola grande" : "Party Tray"}</option>
             </select>
           </Field>
         )}

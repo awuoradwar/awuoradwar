@@ -20,6 +20,10 @@ const REASONS: Array<{ value: string; en: string; es: string }> = [
 export default function WasteForm({ lang, defaultDate }: { lang: Language; defaultDate: string }) {
   const units = lang === "es" ? UNITS_ES : UNITS_EN;
   const [measureBy, setMeasureBy] = useState<"unit" | "batch">("unit");
+  // Shared across both modes so a "#2" tap can fill Quantity in directly --
+  // Quantity itself stays a normal, separately editable field either way.
+  const [quantity, setQuantity] = useState("1");
+  const [batchUnit, setBatchUnit] = useState<string>(BATCH_SIZES[1].unit);
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     "waste",
     quickAddWasteAction,
@@ -52,9 +56,36 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
           {lang === "es" ? "Tanda de cocina" : "Cooking Batch"}
         </button>
       </div>
+      {measureBy === "batch" && (
+        <div className="flex flex-wrap gap-1.5">
+          {BATCH_SIZES.map((p, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                setQuantity(String(p.quantity));
+                setBatchUnit(p.unit);
+              }}
+              className="rounded-full border border-accent/30 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent/10"
+            >
+              {lang === "es" ? p.labelEs : p.labelEn}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
-          <input name="quantity" type="number" step="any" min="0" inputMode="decimal" required defaultValue={1} className={inputClass} />
+          <input
+            name="quantity"
+            type="number"
+            step="any"
+            min="0"
+            inputMode="decimal"
+            required
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            className={inputClass}
+          />
         </Field>
         {measureBy === "unit" ? (
           <Field label={lang === "es" ? "Unidad" : "Unit"}>
@@ -67,13 +98,10 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
             </select>
           </Field>
         ) : (
-          <Field label={lang === "es" ? "Tamaño de la tanda" : "Batch size"}>
-            <select name="unit" defaultValue={BATCH_SIZES[0].unit} className={selectClass}>
-              {BATCH_SIZES.map((b) => (
-                <option key={b.unit} value={b.unit}>
-                  {lang === "es" ? b.labelEs : b.labelEn}
-                </option>
-              ))}
+          <Field label={lang === "es" ? "Unidad de tanda" : "Batch unit"}>
+            <select name="unit" value={batchUnit} onChange={(e) => setBatchUnit(e.target.value)} className={selectClass}>
+              <option value="batch">{lang === "es" ? "Tanda" : "Batch"}</option>
+              <option value="party tray">{lang === "es" ? "Charola grande" : "Party Tray"}</option>
             </select>
           </Field>
         )}
