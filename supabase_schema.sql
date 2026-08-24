@@ -351,6 +351,20 @@ create table catering_orders (
   created_at timestamptz not null default now()
 );
 
+create table waste_log_entries (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  item text not null,
+  quantity numeric not null,
+  unit text not null,
+  price_per_unit numeric not null,
+  reason text check (reason in ('SPOILED','OVERPREP','DROPPED','QUALITY','OTHER')),
+  wasted_date date not null,
+  notes text,
+  logged_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
 create table issues (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),

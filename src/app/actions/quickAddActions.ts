@@ -15,6 +15,8 @@ import * as acknowledgementService from "@/lib/services/acknowledgementService";
 import * as taskService from "@/lib/services/taskService";
 import * as cateringService from "@/lib/services/cateringService";
 import { CateringChannel } from "@/lib/services/cateringService";
+import * as wasteService from "@/lib/services/wasteService";
+import { WasteReason } from "@/lib/services/wasteService";
 import * as pushService from "@/lib/services/pushService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { canDo } from "@/lib/permissions";
@@ -46,6 +48,7 @@ function refresh() {
   revalidatePath("/week");
   revalidatePath("/more/templates");
   revalidatePath("/more/catering");
+  revalidatePath("/more/waste");
 }
 
 function fd(formData: FormData, key: string): string {
@@ -250,6 +253,30 @@ export async function quickAddCateringAction(formData: FormData) {
     customerName: fd(formData, "customerName") || null,
     numberOfPeople: numberOfPeopleRaw ? Number(numberOfPeopleRaw) : null,
     channel: (fd(formData, "channel") || "PHONE") as CateringChannel,
+    notes: fd(formData, "notes") || null,
+    actor: user,
+    idempotencyKey: fd(formData, "idempotencyKey") || undefined,
+  });
+  refresh();
+  return { ok: true };
+}
+
+export async function quickAddWasteAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const item = fd(formData, "item");
+  if (!item) return { error: "Item is required." };
+  const quantity = Number(fd(formData, "quantity"));
+  if (!quantity || quantity <= 0) return { error: "Quantity is required." };
+  const pricePerUnit = Number(fd(formData, "pricePerUnit"));
+  if (Number.isNaN(pricePerUnit) || pricePerUnit < 0) return { error: "Price per unit is required." };
+  wasteService.createWasteEntry({
+    storeId: user.storeId,
+    item,
+    quantity,
+    unit: fd(formData, "unit") || "each",
+    pricePerUnit,
+    reason: (fd(formData, "reason") || null) as WasteReason | null,
+    wastedDate: fd(formData, "wastedDate") || storeToday(user.storeId),
     notes: fd(formData, "notes") || null,
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,

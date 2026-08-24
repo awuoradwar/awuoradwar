@@ -83,6 +83,7 @@ const en = {
   add_schedule_request: "Associate Request",
   add_catering: "Catering Order",
   add_attendance_history: "Call-in / Late History",
+  add_waste: "Waste Log",
 
   field_title: "Title",
   field_owner: "Owner",
@@ -179,6 +180,9 @@ const en = {
   field_number_of_people: "Number of People",
   field_channel: "Channel",
   field_customer_name: "Customer Name",
+
+  waste_title: "Waste Log",
+  waste_add: "+ Log wasted item",
 
   work_orders_title: "Work Orders",
   work_orders_needs_followup: "Needs Follow-up",

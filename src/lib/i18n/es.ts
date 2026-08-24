@@ -85,6 +85,7 @@ const es: Record<DictKeys, string> = {
   add_schedule_request: "Solicitud de Asociado",
   add_catering: "Pedido de Catering",
   add_attendance_history: "Historial de Avisos/Tardanzas",
+  add_waste: "Registro de Merma",
 
   field_title: "Título",
   field_owner: "Responsable",
@@ -181,6 +182,9 @@ const es: Record<DictKeys, string> = {
   field_number_of_people: "Número de Personas",
   field_channel: "Canal",
   field_customer_name: "Nombre del Cliente",
+
+  waste_title: "Registro de Merma",
+  waste_add: "+ Registrar artículo desperdiciado",
 
   work_orders_title: "Órdenes de Trabajo",
   work_orders_needs_followup: "Necesita Seguimiento",

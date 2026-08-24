@@ -17,6 +17,7 @@ import IssueForm from "@/components/forms/IssueForm";
 import AcknowledgementForm from "@/components/forms/AcknowledgementForm";
 import NoteForm from "@/components/forms/NoteForm";
 import CateringForm from "@/components/forms/CateringForm";
+import WasteForm from "@/components/forms/WasteForm";
 
 const TITLE_KEYS: Record<string, string> = {
   task: "add_task",
@@ -29,6 +30,7 @@ const TITLE_KEYS: Record<string, string> = {
   acknowledgement: "add_acknowledgement",
   note: "add_note",
   catering: "add_catering",
+  waste: "add_waste",
 };
 
 // Types reached from their own More page (rather than the /add grid) fall
@@ -40,6 +42,7 @@ const BACK_HREF: Record<string, string> = {
   acknowledgement: "/more/acknowledgements",
   catering: "/more/catering",
   "borrowed-item": "/more/borrowed-items",
+  waste: "/more/waste",
 };
 
 export default async function AddTypePage({ params }: PageProps<"/add/[type]">) {
@@ -81,6 +84,7 @@ export default async function AddTypePage({ params }: PageProps<"/add/[type]">) 
       {type === "acknowledgement" && <AcknowledgementForm lang={user.language} />}
       {type === "note" && <NoteForm lang={user.language} />}
       {type === "catering" && <CateringForm lang={user.language} defaultDueDate={storeToday(user.storeId)} />}
+      {type === "waste" && <WasteForm lang={user.language} defaultDate={storeToday(user.storeId)} />}
     </div>
   );
 }

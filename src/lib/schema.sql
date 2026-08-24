@@ -389,6 +389,20 @@ CREATE TABLE IF NOT EXISTS catering_orders (
   created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS waste_log_entries (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  item TEXT NOT NULL,
+  quantity REAL NOT NULL,
+  unit TEXT NOT NULL,
+  price_per_unit REAL NOT NULL, -- times quantity = this entry's $ value, computed on read rather than stored
+  reason TEXT, -- SPOILED | OVERPREP | DROPPED | QUALITY | OTHER, optional
+  wasted_date TEXT NOT NULL, -- YYYY-MM-DD store-local, the day it happened (not necessarily the day it's logged)
+  notes TEXT,
+  logged_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS issues (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),

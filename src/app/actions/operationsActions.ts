@@ -8,6 +8,7 @@ import * as issueService from "@/lib/services/issueService";
 import * as acknowledgementService from "@/lib/services/acknowledgementService";
 import * as cateringService from "@/lib/services/cateringService";
 import { CateringChannel } from "@/lib/services/cateringService";
+import * as wasteService from "@/lib/services/wasteService";
 import { storeLocalIso } from "@/lib/storeTime";
 
 function refresh() {
@@ -18,6 +19,13 @@ function refresh() {
   revalidatePath("/more/acknowledgements");
   revalidatePath("/more/work-orders");
   revalidatePath("/more/catering");
+  revalidatePath("/more/waste");
+}
+
+export async function deleteWasteEntryAction(id: string) {
+  const user = await requireCurrentUser();
+  wasteService.deleteWasteEntry(id, user.storeId, user);
+  refresh();
 }
 
 export async function approveReplacementAction(id: string) {
