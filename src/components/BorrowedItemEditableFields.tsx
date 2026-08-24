@@ -23,16 +23,15 @@ function formatStoreLocal(localDateTime: string, lang: Language): string {
   });
 }
 
-/** Overdue -> critical (red), due within 24h -> warning (amber), otherwise
- * plain -- same "escalate as it approaches" idea used for CRITICAL tasks
- * elsewhere, applied here since a borrowed/lent item has no other signal
- * that it needs attention until someone happens to open it. Takes the real
- * UTC instant (not the store-local display string) so the comparison
- * against the browser's own clock is a plain, always-correct instant diff. */
-function dueTone(dueAtIso: string): "critical" | "warning" | null {
+/** Overdue or due within 24h both read as urgent -- red, same as the
+ * Overdue/Due Soon status badge elsewhere -- rather than treating "about to
+ * be overdue" as merely a lesser amber notice. Takes the real UTC instant
+ * (not the store-local display string) so the comparison against the
+ * browser's own clock is a plain, always-correct instant diff. */
+function dueTone(dueAtIso: string): "overdue" | "dueSoon" | null {
   const hoursUntil = (new Date(dueAtIso).getTime() - Date.now()) / 3600000;
-  if (hoursUntil < 0) return "critical";
-  if (hoursUntil <= 24) return "warning";
+  if (hoursUntil < 0) return "overdue";
+  if (hoursUntil <= 24) return "dueSoon";
   return null;
 }
 
@@ -120,13 +119,11 @@ export default function BorrowedItemEditableFields({
         )}
         {dueAtLocal && (
           <>
-            <dt className={tone === "critical" ? "font-semibold text-critical" : tone === "warning" ? "font-semibold text-warning" : "text-muted"}>
-              {dueLabel}
-            </dt>
-            <dd className={tone === "critical" ? "font-semibold text-critical" : tone === "warning" ? "font-semibold text-warning" : undefined}>
-              {tone === "critical" ? "⚠ " : ""}
+            <dt className={tone ? "font-semibold text-critical" : "text-muted"}>{dueLabel}</dt>
+            <dd className={tone ? "font-semibold text-critical" : undefined}>
+              {tone ? "⚠ " : ""}
               {formatStoreLocal(dueAtLocal, lang)}
-              {tone === "critical" ? (lang === "es" ? " · Vencido" : " · Overdue") : ""}
+              {tone === "overdue" ? (lang === "es" ? " · Vencido" : " · Overdue") : tone === "dueSoon" ? (lang === "es" ? " · Vence pronto" : " · Due Soon") : ""}
             </dd>
           </>
         )}
