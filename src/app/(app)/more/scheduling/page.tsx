@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isGM } from "@/lib/permissions";
 import { getPendingQueue, getAllRequests } from "@/lib/services/schedulingService";
 import { getActivity } from "@/lib/audit";
-import { formatStoreDateTime } from "@/lib/storeTime";
+import { formatStoreDateTime, storeToday } from "@/lib/storeTime";
 import { summarizeActivityChange } from "@/lib/activitySummary";
 import ScheduleRequestForm from "@/components/ScheduleRequestForm";
 import ApprovalQueueRow from "@/components/ApprovalQueueRow";
@@ -114,6 +114,7 @@ export default async function SchedulingPage() {
             getDate={(r) => r.requested_start_date}
             keyOf={(r) => r.id}
             lang={user.language}
+            today={storeToday(user.storeId)}
             emptyLabel={user.language === "es" ? "Sin solicitudes todavía." : "No requests yet."}
             renderItem={(r) => <ScheduleRequestRow request={r} lang={user.language} activity={activityByRequest.get(r.id) || []} />}
           />
