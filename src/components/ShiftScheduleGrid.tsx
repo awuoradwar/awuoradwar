@@ -7,8 +7,20 @@ import { ShiftType } from "@/lib/services/scheduleService";
 import { Language } from "@/lib/types";
 import { buildManagerColorMap } from "@/lib/managerColor";
 
-const CYCLE: Array<ShiftType | null> = [null, "MORNING", "EVENING", "DOUBLE"];
-const CODE: Record<string, string> = { MORNING: "M", EVENING: "E", DOUBLE: "D" };
+// Every option a manager's day could be, picked directly from a native
+// select instead of a cycle a manager had to tap through repeatedly to
+// reach whichever one they actually wanted (worst case 4 taps, and the two
+// most common real values -- Evening and Double -- sat furthest around the
+// cycle). A select is one extra tap for ANY target and opens the OS's own
+// picker, already sized for a thumb, with no popover-positioning code
+// needed for a 7-day grid. Kept to bare letters here so the closed cell
+// stays compact -- the legend below spells out what each one covers.
+const OPTIONS: Array<{ value: ShiftType | ""; label: string }> = [
+  { value: "", label: "—" },
+  { value: "MORNING", label: "M" },
+  { value: "EVENING", label: "E" },
+  { value: "DOUBLE", label: "D" },
+];
 
 interface DayOption {
   date: string;
@@ -44,11 +56,11 @@ export default function ShiftScheduleGrid({
   const router = useRouter();
 
   // useOptimistic over the whole schedule array (not a flag per cell) --
-  // planning a week means cycling many cells in quick succession, each tap
-  // needs to reconcile against the latest optimistic grid, and once the
-  // real schedule lands via router.refresh() it must self-clear rather
+  // planning a week means changing many cells in quick succession, each
+  // pick needs to reconcile against the latest optimistic grid, and once
+  // the real schedule lands via router.refresh() it must self-clear rather
   // than permanently hiding another manager's concurrent edit.
-  const [optimisticSchedule, applyOptimisticCycle] = useOptimistic(
+  const [optimisticSchedule, applyOptimisticChange] = useOptimistic(
     schedule,
     (state, change: { userId: string; date: string; next: ShiftType | null }) => {
       const key = `${change.userId}|${change.date}`;
@@ -64,17 +76,16 @@ export default function ShiftScheduleGrid({
   // given manager's dot color matches between the two sections.
   const managerColors = buildManagerColorMap(managers.map((m) => m.id));
 
-  function cycle(userId: string, date: string) {
+  function pick(userId: string, date: string, next: ShiftType | "") {
     if (!canEdit || pending) return;
     const current = byManagerDate.get(`${userId}|${date}`);
-    const currentIndex = CYCLE.indexOf(current?.shift_type ?? null);
-    const next = CYCLE[(currentIndex + 1) % CYCLE.length];
+    const nextValue = next === "" ? null : next;
     startTransition(async () => {
-      applyOptimisticCycle({ userId, date, next });
-      if (next === null) {
+      applyOptimisticChange({ userId, date, next: nextValue });
+      if (nextValue === null) {
         if (current) await removeManagerShiftAction(current.id);
       } else {
-        await setManagerShiftAction(userId, date, next);
+        await setManagerShiftAction(userId, date, nextValue);
       }
       router.refresh();
     });
@@ -93,22 +104,26 @@ export default function ShiftScheduleGrid({
             <div className="grid grid-cols-7 gap-1">
               {days.map((d) => {
                 const entry = byManagerDate.get(`${m.id}|${d.date}`);
-                const code = entry ? CODE[entry.shift_type] : "—";
                 return (
-                  <button
-                    key={d.date}
-                    type="button"
-                    disabled={!canEdit || pending}
-                    onClick={() => cycle(m.id, d.date)}
-                    title={d.label}
-                    style={entry ? { backgroundColor: color.bg, color: color.text } : undefined}
-                    className={`flex flex-col items-center rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                      entry ? "" : "text-muted"
-                    } ${canEdit ? "hover:opacity-80" : ""} disabled:cursor-default`}
-                  >
-                    <span>{d.label.slice(0, 3)}</span>
-                    <span className="text-xs font-bold">{code}</span>
-                  </button>
+                  <div key={d.date} className="flex flex-col items-center gap-1">
+                    <span className="text-xs text-muted">{d.label.slice(0, 3)}</span>
+                    <select
+                      aria-label={d.label}
+                      disabled={!canEdit || pending}
+                      value={entry?.shift_type ?? ""}
+                      onChange={(e) => pick(m.id, d.date, e.target.value as ShiftType | "")}
+                      style={entry ? { backgroundColor: color.bg, color: color.text } : undefined}
+                      className={`tap-target h-8 w-full appearance-none rounded-lg text-center text-xs font-bold outline-none ${
+                        entry ? "" : "bg-card-subtle text-muted"
+                      } ${canEdit ? "cursor-pointer" : "cursor-default"} disabled:cursor-default`}
+                    >
+                      {OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 );
               })}
             </div>
@@ -116,8 +131,10 @@ export default function ShiftScheduleGrid({
         );
       })}
       <p className="px-3 py-2 text-xs text-muted">
-        {lang === "es" ? "M = Mañana · E = Tarde/Noche · D = Doble" : "M = Morning · E = Evening · D = Double"}
-        {canEdit ? (lang === "es" ? " · toca para cambiar" : " · tap to change") : ""}
+        {lang === "es"
+          ? "M = Mañana (hasta 5pm) · E = Tarde/Noche (5pm en adelante) · D = Ambos (cubre todo el día -- incluye un turno que empieza a medio día y llega hasta el cierre)"
+          : "M = Morning (through 5pm) · E = Evening (5pm on) · D = Both (covers the whole day -- this is what a midday-start-through-close shift counts as, whatever its exact start time)"}
+        {canEdit ? (lang === "es" ? " · toca para elegir" : " · tap to pick") : ""}
       </p>
     </div>
   );
