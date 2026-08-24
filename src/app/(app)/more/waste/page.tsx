@@ -20,6 +20,7 @@ export default async function WastePage() {
     { label: lang === "es" ? "Esta semana" : "This week", value: totals.thisWeek },
     { label: lang === "es" ? "Este mes" : "This month", value: totals.thisMonth },
   ];
+  const itemsLabel = (n: number) => (lang === "es" ? "artículos" : n === 1 ? "item" : "items");
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
@@ -32,7 +33,9 @@ export default async function WastePage() {
       <div className="grid grid-cols-3 gap-3">
         {tiles.map((tile) => (
           <div key={tile.label} className="card p-3 text-center">
-            <p className="text-lg font-bold text-critical">${tile.value.toFixed(2)}</p>
+            <p className="text-lg font-bold text-critical">
+              {tile.value} <span className="text-xs font-normal text-muted">{itemsLabel(tile.value)}</span>
+            </p>
             <p className="text-xs text-muted">{tile.label}</p>
           </div>
         ))}
@@ -49,10 +52,6 @@ export default async function WastePage() {
           keyOf={(item) => item.id}
           storeId={user.storeId}
           renderItem={(item) => <WasteLogRow entry={item} lang={lang} />}
-          renderSubtitle={(items) => {
-            const sum = items.reduce((s, i) => s + i.quantity * (i.price_per_unit ?? 0), 0);
-            return `$${sum.toFixed(2)}`;
-          }}
           lang={lang}
           emptyLabel={t(lang, "all_clear")}
         />

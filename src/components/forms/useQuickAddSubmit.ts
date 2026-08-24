@@ -9,7 +9,8 @@ type ActionResult = { ok?: boolean; error?: string } | void;
 export function useQuickAddSubmit(
   kind: QueueKind | null,
   action: (fd: FormData) => Promise<ActionResult>,
-  labelFn: (fd: FormData) => string
+  labelFn: (fd: FormData) => string,
+  redirectTo = "/my-shift"
 ) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +49,7 @@ export function useQuickAddSubmit(
           return;
         }
         setStatus("synced");
-        setTimeout(() => router.push("/my-shift"), 500);
+        setTimeout(() => router.push(redirectTo), 500);
       } catch {
         if (kind) {
           // The request itself failed after being attempted (e.g. connection

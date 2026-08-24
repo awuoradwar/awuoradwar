@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { quickAddWasteAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, textareaClass, SubmitBar } from "./FormShell";
@@ -26,15 +25,12 @@ const REASONS: Array<{ value: string; en: string; es: string }> = [
 ];
 
 export default function WasteForm({ lang, defaultDate }: { lang: Language; defaultDate: string }) {
-  const [quantity, setQuantity] = useState("");
-  const [pricePerUnit, setPricePerUnit] = useState("");
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     "waste",
     quickAddWasteAction,
-    (fd) => `${lang === "es" ? "Merma" : "Waste"}: ${fd.get("item")}`
+    (fd) => `${lang === "es" ? "Merma" : "Waste"}: ${fd.get("item")}`,
+    "/more/waste"
   );
-
-  const total = Number(quantity) > 0 && pricePerUnit !== "" && Number(pricePerUnit) >= 0 ? Number(quantity) * Number(pricePerUnit) : null;
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
@@ -43,17 +39,7 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
-          <input
-            name="quantity"
-            type="number"
-            step="any"
-            min="0"
-            inputMode="decimal"
-            required
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
-            className={inputClass}
-          />
+          <input name="quantity" type="number" step="any" min="0" inputMode="decimal" required className={inputClass} />
         </Field>
         <Field label={lang === "es" ? "Unidad" : "Unit"}>
           <select name="unit" defaultValue="lb" className={selectClass}>
@@ -65,24 +51,6 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
           </select>
         </Field>
       </div>
-      <Field label={`${lang === "es" ? "Precio por unidad" : "Price per unit"} (${lang === "es" ? "opcional" : "optional"})`}>
-        <input
-          name="pricePerUnit"
-          type="number"
-          step="0.01"
-          min="0"
-          inputMode="decimal"
-          value={pricePerUnit}
-          onChange={(e) => setPricePerUnit(e.target.value)}
-          className={inputClass}
-          placeholder={lang === "es" ? "Déjalo en blanco si no lo sabes" : "Leave blank if you don't know"}
-        />
-      </Field>
-      {total !== null && (
-        <p className="text-sm font-semibold text-critical">
-          {lang === "es" ? "Total" : "Total"}: ${total.toFixed(2)}
-        </p>
-      )}
       <Field label={lang === "es" ? "Motivo (opcional)" : "Reason (optional)"}>
         <select name="reason" defaultValue="" className={selectClass}>
           <option value="">{lang === "es" ? "Sin especificar" : "Unspecified"}</option>

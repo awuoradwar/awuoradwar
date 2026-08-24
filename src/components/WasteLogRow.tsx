@@ -21,7 +21,6 @@ export default function WasteLogRow({ entry, lang }: { entry: WasteLogEntry; lan
 
   if (optimisticallyDeleted) return null;
 
-  const total = entry.price_per_unit !== null ? entry.quantity * entry.price_per_unit : null;
   const reasonLabel = entry.reason ? REASON_LABEL[entry.reason] : null;
 
   return (
@@ -38,9 +37,6 @@ export default function WasteLogRow({ entry, lang }: { entry: WasteLogEntry; lan
         {entry.notes && <p className="mt-0.5 text-xs text-muted">{entry.notes}</p>}
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
-        <p className={total !== null ? "font-semibold text-critical" : "text-xs text-muted"}>
-          {total !== null ? `$${total.toFixed(2)}` : lang === "es" ? "Costo desconocido" : "Cost unknown"}
-        </p>
         <button
           type="button"
           disabled={pending}
