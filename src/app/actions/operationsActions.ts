@@ -9,6 +9,7 @@ import * as acknowledgementService from "@/lib/services/acknowledgementService";
 import * as cateringService from "@/lib/services/cateringService";
 import { CateringChannel } from "@/lib/services/cateringService";
 import * as wasteService from "@/lib/services/wasteService";
+import { WasteReason } from "@/lib/services/wasteService";
 import * as noteService from "@/lib/services/noteService";
 import { storeLocalIso } from "@/lib/storeTime";
 
@@ -27,6 +28,32 @@ export async function deleteWasteEntryAction(id: string) {
   const user = await requireCurrentUser();
   wasteService.deleteWasteEntry(id, user.storeId, user);
   refresh();
+}
+
+export async function updateWasteEntryAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const id = String(formData.get("id") || "");
+  const item = String(formData.get("item") || "").trim();
+  if (!id || !item) return { error: "Item is required." };
+  const quantity = Number(formData.get("quantity"));
+  if (!quantity || quantity <= 0) return { error: "Quantity is required." };
+  const wastedDate = String(formData.get("wastedDate") || "").trim();
+  if (!wastedDate) return { error: "Date is required." };
+  wasteService.updateWasteEntry(
+    id,
+    user.storeId,
+    {
+      item,
+      quantity,
+      unit: String(formData.get("unit") || "each"),
+      reason: (String(formData.get("reason") || "") || null) as WasteReason | null,
+      wastedDate,
+      notes: String(formData.get("notes") || "").trim() || null,
+    },
+    user
+  );
+  refresh();
+  return { ok: true };
 }
 
 export async function deleteShiftNoteAction(id: string) {

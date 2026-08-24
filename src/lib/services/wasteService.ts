@@ -72,6 +72,29 @@ function insertWasteEntry(params: CreateWasteParams) {
   return id;
 }
 
+interface UpdateWasteParams {
+  item: string;
+  quantity: number;
+  unit: string;
+  reason?: WasteReason | null;
+  wastedDate: string;
+  notes?: string | null;
+}
+
+export function updateWasteEntry(id: string, storeId: string, params: UpdateWasteParams, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(
+    `UPDATE waste_log_entries SET item = ?, quantity = ?, unit = ?, reason = ?, wasted_date = ?, notes = ? WHERE id = ? AND store_id = ?`
+  ).run(params.item, params.quantity, params.unit, params.reason || null, params.wastedDate, params.notes || null, id, storeId);
+  writeAudit({
+    entityType: "waste_log_entry",
+    entityId: id,
+    actor,
+    action: "EDITED",
+    newValue: { item: params.item, quantity: params.quantity, unit: params.unit, wasted_date: params.wastedDate },
+  });
+}
+
 export function deleteWasteEntry(id: string, storeId: string, actor: SessionUser) {
   const db = getDb();
   db.prepare(`DELETE FROM waste_log_entries WHERE id = ? AND store_id = ?`).run(id, storeId);
