@@ -17,6 +17,8 @@ import * as cateringService from "@/lib/services/cateringService";
 import { CateringChannel } from "@/lib/services/cateringService";
 import * as wasteService from "@/lib/services/wasteService";
 import { WasteReason } from "@/lib/services/wasteService";
+import * as noteService from "@/lib/services/noteService";
+import { NoteSection } from "@/lib/services/noteService";
 import * as pushService from "@/lib/services/pushService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { canDo } from "@/lib/permissions";
@@ -49,6 +51,7 @@ function refresh() {
   revalidatePath("/more/templates");
   revalidatePath("/more/catering");
   revalidatePath("/more/waste");
+  revalidatePath("/more/notes");
 }
 
 function fd(formData: FormData, key: string): string {
@@ -365,19 +368,46 @@ export async function quickAddAcknowledgementAction(formData: FormData) {
   return { ok: true };
 }
 
+const NOTE_ATTACHMENT_DIR = path.join(process.cwd(), "data", "private-uploads", "shift-notes");
+
+async function storeNoteAttachments(storeId: string, formData: FormData): Promise<Array<{ fileRef: string; originalName: string; contentType: string }>> {
+  const files = formData.getAll("attachments").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length === 0) return [];
+  await mkdir(NOTE_ATTACHMENT_DIR, { recursive: true });
+  const results: Array<{ fileRef: string; originalName: string; contentType: string }> = [];
+  for (const file of files) {
+    const ext = path.extname(file.name) || "";
+    const storedName = `${storeId}-${randomUUID()}${ext}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(path.join(NOTE_ATTACHMENT_DIR, storedName), buffer);
+    results.push({ fileRef: storedName, originalName: file.name, contentType: file.type || "application/octet-stream" });
+  }
+  return results;
+}
+
+function hasContent(s: NoteSection): boolean {
+  return !!(s.topic.trim() || s.subtopic.trim() || s.bullets.some((b) => b.trim()));
+}
+
 export async function quickAddNoteAction(formData: FormData) {
   const user = await requireCurrentUser();
   const shift = getCurrentPicForStore(user.storeId);
+  const title = fd(formData, "title");
   const text = fd(formData, "text");
-  if (!text) return { error: "Note text is required." };
-  const db = getDb();
+  if (!title) return { error: "Title is required." };
+  let sections: NoteSection[] = [];
+  try {
+    const raw = fd(formData, "sectionsJson");
+    if (raw) sections = (JSON.parse(raw) as NoteSection[]).filter(hasContent);
+  } catch {
+    sections = [];
+  }
+  if (!text && sections.length === 0) return { error: "Add at least a topic or a note." };
+  const attachments = await storeNoteAttachments(user.storeId, formData);
   const id = newId();
-  db.prepare(`INSERT INTO shift_notes (id, store_id, shift_id, author_id, text, created_at) VALUES (?, ?, ?, ?, ?, ?)`).run(
+  noteService.insertNote(
+    { storeId: user.storeId, shiftId: shift?.id || null, title, text, sections, authorId: user.id, attachments },
     id,
-    user.storeId,
-    shift?.id || null,
-    user.id,
-    text,
     nowIso()
   );
   writeAudit({ entityType: "shift_note", entityId: id, actor: user, action: "CREATED" });

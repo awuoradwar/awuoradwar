@@ -267,12 +267,14 @@ export default async function MyShiftPage() {
         >
           <div className="flex flex-col gap-2">
             {todayNotes.map((note) => (
-              <ShiftNoteRow
-                key={note.id}
-                note={note}
-                lang={user.language}
-                timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
-              />
+              <div key={note.id} className="card">
+                <ShiftNoteRow
+                  note={note}
+                  lang={user.language}
+                  timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
+                  from="/my-shift"
+                />
+              </div>
             ))}
           </div>
         </SectionCard>

@@ -608,7 +608,18 @@ create table shift_notes (
   store_id uuid not null references stores(id),
   shift_id uuid references shifts(id),
   author_id uuid references users(id),
-  text text not null,
+  text text not null, -- legacy quick-note body; '' once a note uses title/sections instead
+  title text,
+  sections_json text, -- JSON array of { topic, subtopic, bullets: string[] }
+  created_at timestamptz not null default now()
+);
+
+create table note_attachments (
+  id uuid primary key default gen_random_uuid(),
+  note_id uuid not null references shift_notes(id) on delete cascade,
+  storage_path text not null, -- Supabase Storage object path (private bucket)
+  original_name text,
+  content_type text,
   created_at timestamptz not null default now()
 );
 
@@ -698,6 +709,7 @@ alter table schedule_request_attachments enable row level security;
 alter table schedule_request_events enable row level security;
 alter table schedule_conflicts enable row level security;
 alter table shift_notes enable row level security;
+alter table note_attachments enable row level security;
 alter table push_subscriptions enable row level security;
 alter table manager_shifts enable row level security;
 alter table manager_activities enable row level security;
@@ -767,6 +779,9 @@ create policy store_member_read on schedule_request_events for select using (
 );
 create policy store_member_all on schedule_conflicts for select using (is_store_member(store_id));
 create policy store_member_all on shift_notes for all using (is_store_member(store_id));
+create policy store_member_all on note_attachments for all using (
+  exists (select 1 from shift_notes n where n.id = note_id and is_store_member(n.store_id))
+);
 
 -- Push subscriptions: strictly own-row. Nobody, not even another manager
 -- at the same store, can read or write someone else's push endpoint.

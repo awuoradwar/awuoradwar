@@ -30,7 +30,7 @@ const GROUPS = [
       { slug: "catering", key: "add_catering", icon: "users", href: "/more/catering" },
       { slug: "borrowed-item", key: "add_borrowed_item", icon: "swap", href: "/more/borrowed-items" },
       { slug: "waste", key: "add_waste", icon: "trash", href: "/more/waste" },
-      { slug: "note", key: "add_note", icon: "fileText" },
+      { slug: "note", key: "add_note", icon: "fileText", href: "/more/notes" },
     ],
   },
 ] as const;

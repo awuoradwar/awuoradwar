@@ -43,6 +43,7 @@ const BACK_HREF: Record<string, string> = {
   catering: "/more/catering",
   "borrowed-item": "/more/borrowed-items",
   waste: "/more/waste",
+  note: "/more/notes",
 };
 
 export default async function AddTypePage({ params }: PageProps<"/add/[type]">) {

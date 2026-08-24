@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { deleteShiftNoteAction } from "@/app/actions/operationsActions";
+import { withFrom } from "@/lib/backHref";
 import { Language } from "@/lib/types";
+import type { NoteSection } from "@/lib/services/noteService";
 
 // storeId intentionally isn't a prop here -- formatting created_at into a
 // store-local time needs storeTime.ts, which pulls in the server-only db
@@ -14,10 +17,12 @@ export default function ShiftNoteRow({
   note,
   lang,
   timeLabel,
+  from,
 }: {
-  note: { id: string; text: string; author_name: string | null };
+  note: { id: string; title: string | null; text: string; sections: NoteSection[]; author_name: string | null };
   lang: Language;
   timeLabel: string;
+  from?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyDeleted, setOptimisticallyDeleted] = useState(false);
@@ -25,14 +30,23 @@ export default function ShiftNoteRow({
 
   if (optimisticallyDeleted) return null;
 
+  const heading = note.title || (note.text.length > 60 ? `${note.text.slice(0, 60)}…` : note.text);
+  // A one-line hint of the actual content below the heading -- the first
+  // topic (a title already stands on its own without one), or the note's
+  // plain text for a legacy pre-title note (where the heading above is
+  // already that same text, so no redundant preview needed there).
+  const preview = note.title ? note.sections[0]?.topic || null : null;
+  const href = `/note/${note.id}`;
+
   return (
-    <div className="card flex items-start justify-between gap-2 p-3 text-sm">
-      <div className="min-w-0 flex-1">
-        <p className="whitespace-pre-wrap text-foreground">{note.text}</p>
+    <div className="flex items-start justify-between gap-2 p-3 text-sm">
+      <Link href={from ? withFrom(href, from) : href} className="min-w-0 flex-1">
+        <p className="truncate font-medium text-foreground">{heading}</p>
+        {preview && <p className="truncate text-xs text-muted">{preview}</p>}
         <p className="mt-0.5 text-xs text-muted">
           {note.author_name || (lang === "es" ? "Desconocido" : "Unknown")} · {timeLabel}
         </p>
-      </div>
+      </Link>
       <button
         type="button"
         disabled={pending}

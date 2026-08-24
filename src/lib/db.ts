@@ -70,6 +70,8 @@ function createConnection(): Database.Database {
   ensureColumn(db, "schedule_requests", "swap_with_name", "swap_with_name TEXT");
   ensureColumn(db, "schedule_requests", "swap_with_date", "swap_with_date TEXT");
   ensureColumn(db, "training_items", "phase", "phase TEXT NOT NULL DEFAULT 'SHIFT'");
+  ensureColumn(db, "shift_notes", "title", "title TEXT");
+  ensureColumn(db, "shift_notes", "sections_json", "sections_json TEXT");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);

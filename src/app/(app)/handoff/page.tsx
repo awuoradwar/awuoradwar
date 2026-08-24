@@ -39,12 +39,14 @@ export default async function HandoffPage() {
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{user.language === "es" ? "Notas" : "Notes"}</h2>
           <div className="flex flex-col gap-2">
             {todayNotes.map((note) => (
-              <ShiftNoteRow
-                key={note.id}
-                note={note}
-                lang={user.language}
-                timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
-              />
+              <div key={note.id} className="card">
+                <ShiftNoteRow
+                  note={note}
+                  lang={user.language}
+                  timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
+                  from="/handoff"
+                />
+              </div>
             ))}
           </div>
         </section>

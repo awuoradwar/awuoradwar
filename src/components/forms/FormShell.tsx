@@ -47,37 +47,52 @@ export function FileField({
   accept,
   required,
   capture,
+  multiple,
   lang,
 }: {
   name: string;
   accept?: string;
   required?: boolean;
   capture?: boolean | "user" | "environment";
+  /** Lets the same picked-name/status UI cover a multi-file input (e.g.
+   * several meeting-note photos/documents at once) -- the browser's own
+   * FormData.getAll(name) already collects every file from one <input
+   * multiple>, no need for repeated single-file inputs. */
+  multiple?: boolean;
   lang: Language;
 }) {
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [fileNames, setFileNames] = useState<string[]>([]);
   return (
     <div className="flex flex-col gap-1.5">
       <label className="tap-target inline-flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-accent px-3.5 text-sm font-semibold text-accent transition-colors hover:bg-accent/5">
         <span aria-hidden>📎</span>
-        {lang === "es" ? "Elegir archivo" : "Choose file"}
+        {multiple ? (lang === "es" ? "Elegir archivos" : "Choose files") : lang === "es" ? "Elegir archivo" : "Choose file"}
         <input
           name={name}
           type="file"
           accept={accept}
           required={required}
           capture={capture}
+          multiple={multiple}
           className="sr-only"
-          onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+          onChange={(e) => setFileNames(e.target.files ? Array.from(e.target.files).map((f) => f.name) : [])}
         />
       </label>
-      {fileName ? (
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-ok">
+      {fileNames.length > 0 ? (
+        <p className="flex items-start gap-1.5 text-xs font-semibold text-ok">
           <span aria-hidden>✓</span>
-          <span className="truncate">{fileName}</span>
+          <span className="truncate">{fileNames.join(", ")}</span>
         </p>
       ) : (
-        <p className="text-xs italic text-muted">{lang === "es" ? "Ningún archivo seleccionado" : "No file selected"}</p>
+        <p className="text-xs italic text-muted">
+          {multiple
+            ? lang === "es"
+              ? "Ningún archivo seleccionado"
+              : "No files selected"
+            : lang === "es"
+              ? "Ningún archivo seleccionado"
+              : "No file selected"}
+        </p>
       )}
     </div>
   );

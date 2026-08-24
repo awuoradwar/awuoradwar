@@ -718,7 +718,18 @@ CREATE TABLE IF NOT EXISTS shift_notes (
   store_id TEXT NOT NULL REFERENCES stores(id),
   shift_id TEXT REFERENCES shifts(id),
   author_id TEXT REFERENCES users(id),
-  text TEXT NOT NULL,
+  text TEXT NOT NULL, -- legacy quick-note body; '' once a note uses title/sections instead
+  title TEXT,
+  sections_json TEXT, -- JSON array of { topic, subtopic, bullets: string[] }, added via ensureColumn in db.ts
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS note_attachments (
+  id TEXT PRIMARY KEY,
+  note_id TEXT NOT NULL REFERENCES shift_notes(id) ON DELETE CASCADE,
+  file_ref TEXT NOT NULL, -- stored filename under data/private-uploads/shift-notes
+  original_name TEXT,
+  content_type TEXT,
   created_at TEXT NOT NULL
 );
 

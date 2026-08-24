@@ -58,7 +58,7 @@ export async function updateWasteEntryAction(formData: FormData) {
 
 export async function deleteShiftNoteAction(id: string) {
   const user = await requireCurrentUser();
-  noteService.deleteShiftNote(id, user.storeId, user);
+  await noteService.deleteShiftNote(id, user.storeId, user);
   refresh();
 }
 
