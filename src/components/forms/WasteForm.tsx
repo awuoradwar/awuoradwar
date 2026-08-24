@@ -34,7 +34,7 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
     (fd) => `${lang === "es" ? "Merma" : "Waste"}: ${fd.get("item")}`
   );
 
-  const total = Number(quantity) > 0 && Number(pricePerUnit) >= 0 ? Number(quantity) * Number(pricePerUnit) : null;
+  const total = Number(quantity) > 0 && pricePerUnit !== "" && Number(pricePerUnit) >= 0 ? Number(quantity) * Number(pricePerUnit) : null;
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3">
@@ -65,18 +65,17 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
           </select>
         </Field>
       </div>
-      <Field label={lang === "es" ? "Precio por unidad" : "Price per unit"}>
+      <Field label={`${lang === "es" ? "Precio por unidad" : "Price per unit"} (${lang === "es" ? "opcional" : "optional"})`}>
         <input
           name="pricePerUnit"
           type="number"
           step="0.01"
           min="0"
           inputMode="decimal"
-          required
           value={pricePerUnit}
           onChange={(e) => setPricePerUnit(e.target.value)}
           className={inputClass}
-          placeholder="0.00"
+          placeholder={lang === "es" ? "Déjalo en blanco si no lo sabes" : "Leave blank if you don't know"}
         />
       </Field>
       {total !== null && (

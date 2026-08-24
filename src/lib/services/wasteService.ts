@@ -13,7 +13,7 @@ export interface WasteLogEntry {
   item: string;
   quantity: number;
   unit: string;
-  price_per_unit: number;
+  price_per_unit: number | null;
   reason: WasteReason | null;
   wasted_date: string;
   notes: string | null;
@@ -29,7 +29,7 @@ interface CreateWasteParams {
   item: string;
   quantity: number;
   unit: string;
-  pricePerUnit: number;
+  pricePerUnit: number | null;
   reason?: WasteReason | null;
   wastedDate: string;
   notes?: string | null;

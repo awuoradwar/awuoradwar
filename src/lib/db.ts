@@ -70,6 +70,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "schedule_requests", "swap_with_name", "swap_with_name TEXT");
   ensureColumn(db, "schedule_requests", "swap_with_date", "swap_with_date TEXT");
   ensureColumn(db, "training_items", "phase", "phase TEXT NOT NULL DEFAULT 'SHIFT'");
+  relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   unassignStaleAutoAssignedTasks(db);
@@ -133,6 +134,36 @@ function migrateLegacyTrainingPositions(db: Database.Database) {
     db.prepare(`UPDATE ${table} SET position = 'COUNTERHELP' WHERE position = 'FOH'`).run();
     db.prepare(`UPDATE ${table} SET position = 'COOK' WHERE position = 'BOH'`).run();
   }
+}
+
+/** price_per_unit on waste_log_entries started out required, then became
+ * optional -- a manager logging waste often doesn't know the exact per-unit
+ * cost off the top of their head. SQLite can't drop a NOT NULL with a plain
+ * ALTER TABLE, so an already-created table needs a rebuild. One-time,
+ * idempotent: a no-op once the column is already nullable (including on a
+ * brand-new install, where schema.sql already creates it nullable). */
+function relaxWasteLogPriceRequired(db: Database.Database) {
+  const cols = db.prepare(`PRAGMA table_info(waste_log_entries)`).all() as Array<{ name: string; notnull: number }>;
+  const priceCol = cols.find((c) => c.name === "price_per_unit");
+  if (!priceCol || priceCol.notnull === 0) return;
+  db.exec(`
+    CREATE TABLE waste_log_entries_new (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES stores(id),
+      item TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      unit TEXT NOT NULL,
+      price_per_unit REAL,
+      reason TEXT,
+      wasted_date TEXT NOT NULL,
+      notes TEXT,
+      logged_by TEXT REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    INSERT INTO waste_log_entries_new SELECT * FROM waste_log_entries;
+    DROP TABLE waste_log_entries;
+    ALTER TABLE waste_log_entries_new RENAME TO waste_log_entries;
+  `);
 }
 
 /** weekly_ops_summaries used to bundle OT and COGS into one row per week --

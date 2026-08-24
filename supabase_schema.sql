@@ -357,7 +357,7 @@ create table waste_log_entries (
   item text not null,
   quantity numeric not null,
   unit text not null,
-  price_per_unit numeric not null,
+  price_per_unit numeric,
   reason text check (reason in ('SPOILED','OVERPREP','DROPPED','QUALITY','OTHER')),
   wasted_date date not null,
   notes text,

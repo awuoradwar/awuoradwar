@@ -50,7 +50,7 @@ export default async function WastePage() {
           storeId={user.storeId}
           renderItem={(item) => <WasteLogRow entry={item} lang={lang} />}
           renderSubtitle={(items) => {
-            const sum = items.reduce((s, i) => s + i.quantity * i.price_per_unit, 0);
+            const sum = items.reduce((s, i) => s + i.quantity * (i.price_per_unit ?? 0), 0);
             return `$${sum.toFixed(2)}`;
           }}
           lang={lang}

@@ -267,8 +267,9 @@ export async function quickAddWasteAction(formData: FormData) {
   if (!item) return { error: "Item is required." };
   const quantity = Number(fd(formData, "quantity"));
   if (!quantity || quantity <= 0) return { error: "Quantity is required." };
-  const pricePerUnit = Number(fd(formData, "pricePerUnit"));
-  if (Number.isNaN(pricePerUnit) || pricePerUnit < 0) return { error: "Price per unit is required." };
+  const pricePerUnitRaw = fd(formData, "pricePerUnit");
+  const pricePerUnit = pricePerUnitRaw ? Number(pricePerUnitRaw) : null;
+  if (pricePerUnit !== null && (Number.isNaN(pricePerUnit) || pricePerUnit < 0)) return { error: "Price per unit must be a positive number." };
   wasteService.createWasteEntry({
     storeId: user.storeId,
     item,
