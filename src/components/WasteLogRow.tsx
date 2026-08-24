@@ -132,6 +132,10 @@ export default function WasteLogRow({ entry, lang }: { entry: WasteLogEntry; lan
   const [pending, startTransition] = useTransition();
   const [optimisticallyDeleted, setOptimisticallyDeleted] = useState(false);
   const [editing, setEditing] = useState(false);
+  // Delete used to sit right under Edit in the same cramped corner -- one
+  // careless tap away from an unrecoverable delete. Now it only appears
+  // after tapping the row open, a deliberate extra step Edit doesn't need.
+  const [expanded, setExpanded] = useState(false);
   const router = useRouter();
 
   if (optimisticallyDeleted) return null;
@@ -147,43 +151,47 @@ export default function WasteLogRow({ entry, lang }: { entry: WasteLogEntry; lan
   const reasonLabel = entry.reason ? REASON_LABEL[entry.reason] : null;
 
   return (
-    <div className="flex items-start justify-between gap-2 px-3 py-2.5 text-sm">
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">
-          {entry.item} · {entry.quantity} {translateWasteUnit(entry.unit, lang)}
-        </p>
-        <p className="text-xs text-muted">
-          {entry.wasted_date}
-          {reasonLabel ? ` · ${lang === "es" ? reasonLabel.es : reasonLabel.en}` : ""}
-          {entry.logged_by_name ? ` · ${entry.logged_by_name}` : ""}
-        </p>
-        {entry.notes && <p className="mt-0.5 text-xs text-muted">{entry.notes}</p>}
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
-        <button type="button" onClick={() => setEditing(true)} className="text-xs font-semibold text-accent">
+    <div className="text-sm">
+      <div className="flex items-start justify-between gap-2 px-3 py-2.5">
+        <button type="button" onClick={() => setExpanded((v) => !v)} className="min-w-0 flex-1 text-left">
+          <p className="truncate font-medium text-foreground">
+            {entry.item} · {entry.quantity} {translateWasteUnit(entry.unit, lang)}
+          </p>
+          <p className="text-xs text-muted">
+            {entry.wasted_date}
+            {reasonLabel ? ` · ${lang === "es" ? reasonLabel.es : reasonLabel.en}` : ""}
+            {entry.logged_by_name ? ` · ${entry.logged_by_name}` : ""}
+          </p>
+          {entry.notes && <p className="mt-0.5 text-xs text-muted">{entry.notes}</p>}
+        </button>
+        <button type="button" onClick={() => setEditing(true)} className="shrink-0 text-xs font-semibold text-accent">
           ✎ {lang === "es" ? "Editar" : "Edit"}
         </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            const msg = lang === "es" ? "¿Eliminar este registro? Esto no se puede deshacer." : "Delete this entry? This can't be undone.";
-            if (!window.confirm(msg)) return;
-            setOptimisticallyDeleted(true);
-            startTransition(async () => {
-              try {
-                await deleteWasteEntryAction(entry.id);
-              } catch {
-                setOptimisticallyDeleted(false);
-              }
-              router.refresh();
-            });
-          }}
-          className="text-xs font-medium text-critical disabled:opacity-50"
-        >
-          {lang === "es" ? "Eliminar" : "Delete"}
-        </button>
       </div>
+      {expanded && (
+        <div className="border-t border-border px-3 py-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              const msg = lang === "es" ? "¿Eliminar este registro? Esto no se puede deshacer." : "Delete this entry? This can't be undone.";
+              if (!window.confirm(msg)) return;
+              setOptimisticallyDeleted(true);
+              startTransition(async () => {
+                try {
+                  await deleteWasteEntryAction(entry.id);
+                } catch {
+                  setOptimisticallyDeleted(false);
+                }
+                router.refresh();
+              });
+            }}
+            className="tap-target w-full rounded-lg border border-critical/30 text-sm font-medium text-critical disabled:opacity-50"
+          >
+            {lang === "es" ? "Eliminar registro" : "Delete entry"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
