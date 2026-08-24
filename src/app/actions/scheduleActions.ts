@@ -25,3 +25,19 @@ export async function removeManagerShiftAction(id: string) {
   scheduleService.removeManagerShift(id, user);
   refresh();
 }
+
+export async function addManagerActivityAction(userId: string, date: string, label: string) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "manager_shifts.manage")) throw new Error("FORBIDDEN");
+  if (!label.trim()) return { error: "Label is required." };
+  const id = scheduleService.addManagerActivity(user.storeId, userId, date, label.trim(), user);
+  refresh();
+  return { ok: true, id };
+}
+
+export async function removeManagerActivityAction(id: string) {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "manager_shifts.manage")) throw new Error("FORBIDDEN");
+  scheduleService.removeManagerActivity(id, user);
+  refresh();
+}

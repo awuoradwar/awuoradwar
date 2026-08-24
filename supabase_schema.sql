@@ -93,6 +93,16 @@ create table manager_shifts (
   unique (store_id, user_id, date)
 );
 
+create table manager_activities (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  user_id uuid not null references users(id),
+  date date not null,
+  label text not null,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
 -- New associate training: GM-editable checklist per position (Counterhelp/
 -- Cook/Kitchenhelp -- Cook and Kitchenhelp are distinct BOH positions), so
 -- whichever manager is on shift when a step gets trained can check it off
@@ -690,6 +700,7 @@ alter table schedule_conflicts enable row level security;
 alter table shift_notes enable row level security;
 alter table push_subscriptions enable row level security;
 alter table manager_shifts enable row level security;
+alter table manager_activities enable row level security;
 alter table training_items enable row level security;
 alter table trainees enable row level security;
 alter table training_completions enable row level security;
@@ -767,6 +778,11 @@ create policy store_member_read on manager_shifts for select using (is_store_mem
 create policy gm_manage_manager_shifts on manager_shifts for insert with check (is_store_gm(store_id));
 create policy gm_update_manager_shifts on manager_shifts for update using (is_store_gm(store_id));
 create policy gm_delete_manager_shifts on manager_shifts for delete using (is_store_gm(store_id));
+
+create policy store_member_read on manager_activities for select using (is_store_member(store_id));
+create policy gm_manage_manager_activities on manager_activities for insert with check (is_store_gm(store_id));
+create policy gm_update_manager_activities on manager_activities for update using (is_store_gm(store_id));
+create policy gm_delete_manager_activities on manager_activities for delete using (is_store_gm(store_id));
 
 -- Training: any manager can read/add trainees and check off completions;
 -- only the GM edits the checklist itself (adding/removing training_items).

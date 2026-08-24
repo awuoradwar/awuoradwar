@@ -4,10 +4,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getWeekTasks } from "@/lib/services/taskService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
-import { getWeekManagerSchedule } from "@/lib/services/scheduleService";
+import { getWeekManagerSchedule, getWeekManagerActivities } from "@/lib/services/scheduleService";
 import WeekAddTaskForm from "@/components/WeekAddTaskForm";
 import WeekTaskRow from "@/components/WeekTaskRow";
 import ShiftScheduleGrid from "@/components/ShiftScheduleGrid";
+import ManagerActivitiesSection from "@/components/ManagerActivitiesSection";
 import { POSITION_LABEL, canDo } from "@/lib/permissions";
 import { Position } from "@/lib/types";
 import { buildManagerColorMap } from "@/lib/managerColor";
@@ -45,6 +46,7 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
     .prepare(`SELECT id, name, position FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
     .all() as Array<{ id: string; name: string; position: Position }>;
   const managerSchedule = getWeekManagerSchedule(user.storeId, start, end);
+  const managerActivities = getWeekManagerActivities(user.storeId, start, end);
   const canEditSchedule = canDo(user, "manager_shifts.manage");
 
   const byDay: Record<string, typeof tasks> = {};
@@ -198,6 +200,8 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
         </h2>
         <ShiftScheduleGrid managers={managers} days={days} schedule={managerSchedule} canEdit={canEditSchedule} lang={user.language} />
       </section>
+
+      <ManagerActivitiesSection managers={managers} days={days} activities={managerActivities} canEdit={canEditSchedule} lang={user.language} />
 
       <WeekAddTaskForm lang={user.language} managers={managers} days={days} managerSchedule={managerSchedule} />
 

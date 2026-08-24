@@ -28,6 +28,48 @@ export function getWeekManagerSchedule(storeId: string, weekStart: string, weekE
     .all(storeId, weekStart, weekEnd) as ManagerShiftRow[];
 }
 
+export interface ManagerActivityRow {
+  id: string;
+  user_id: string;
+  user_name: string;
+  date: string;
+  label: string;
+}
+
+/** Days a manager is working but not covering the store -- offsite
+ * training, an area meeting -- so their calendar doesn't read as "off"
+ * that day. Deliberately separate from manager_shifts: nothing here
+ * touches PIC resolution or task auto-assignment, it's purely a visible
+ * note, and a manager can have any number of these plus a real shift on
+ * the same day. */
+export function getWeekManagerActivities(storeId: string, weekStart: string, weekEnd: string): ManagerActivityRow[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT a.id, a.user_id, u.name as user_name, a.date, a.label FROM manager_activities a
+       JOIN users u ON u.id = a.user_id
+       WHERE a.store_id = ? AND a.date BETWEEN ? AND ?
+       ORDER BY a.date, u.name`
+    )
+    .all(storeId, weekStart, weekEnd) as ManagerActivityRow[];
+}
+
+export function addManagerActivity(storeId: string, userId: string, date: string, label: string, actor: SessionUser): string {
+  const db = getDb();
+  const id = newId();
+  db.prepare(
+    `INSERT INTO manager_activities (id, store_id, user_id, date, label, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, storeId, userId, date, label, actor.id, nowIso());
+  writeAudit({ entityType: "manager_activity", entityId: id, actor, action: "CREATED", newValue: { date, label } });
+  return id;
+}
+
+export function removeManagerActivity(id: string, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`DELETE FROM manager_activities WHERE id = ?`).run(id);
+  writeAudit({ entityType: "manager_activity", entityId: id, actor, action: "CANCELLED" });
+}
+
 /** Upsert: setting a shift for a manager/day who already has one replaces it. */
 export function setManagerShift(storeId: string, userId: string, date: string, shiftType: ShiftType, actor: SessionUser): string {
   const db = getDb();

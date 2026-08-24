@@ -70,6 +70,24 @@ CREATE TABLE IF NOT EXISTS manager_shifts (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_manager_shifts_unique ON manager_shifts(store_id, user_id, date);
 
+-- A manager can be working that day without covering the store -- offsite
+-- training, an area meeting -- so their day would otherwise show as blank
+-- on the schedule and read as "off" rather than "elsewhere for work."
+-- Deliberately NOT part of manager_shifts/shift_type: nothing here should
+-- ever make someone PIC-eligible or an auto-assign candidate for that
+-- window, so it's tracked as its own list of entries rather than a new
+-- shift_type value threaded through that logic.
+CREATE TABLE IF NOT EXISTS manager_activities (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  date TEXT NOT NULL,
+  label TEXT NOT NULL, -- free text, e.g. "Training", "Area meeting"
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_manager_activities_date ON manager_activities(store_id, date);
+
 -- New associate training: GM-editable checklist per position (Counterhelp/
 -- Cook/Kitchenhelp -- Cook and Kitchenhelp are distinct BOH positions), so
 -- whichever manager is on shift when a step gets trained can check it off
