@@ -1,6 +1,8 @@
 import "server-only";
 import { getDb } from "../db";
-import { storeDayRangeUtc } from "../storeTime";
+import { storeDayRangeUtc, storeToday, storeLocalHour } from "../storeTime";
+import { windowForHour } from "./taskService";
+import { getScheduledManagerNames } from "./scheduleService";
 import { Language } from "../types";
 
 export interface WeekSummary {
@@ -131,6 +133,10 @@ export interface WeekItemRow {
   title: string;
   subtitle: string | null;
   at: string;
+  /** Past its own due date/day and still open -- distinct from the tile's
+   * week-level framing (which only says "this task's week has closed"), this
+   * flags an individual item as actually late as of right now, even mid-week. */
+  isOverdue?: boolean;
 }
 
 /** The actual items behind each Weekly Summary stat tile, using the exact
@@ -151,11 +157,18 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
 
   const tasksStillOpen = db
     .prepare(
-      `SELECT t.id, t.title, t.due_at as at, u.name as by_name FROM tasks t
+      `SELECT t.id, t.title, t.due_at as at, t.scheduled_date, t.owner_id, u.name as by_name FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        WHERE t.store_id = ? AND t.scheduled_date BETWEEN ? AND ? AND t.status IN ('OPEN','IN_PROGRESS') ORDER BY t.due_at IS NULL, t.due_at ASC`
     )
-    .all(storeId, weekStart, weekEnd) as Array<{ id: string; title: string; at: string | null; by_name: string | null }>;
+    .all(storeId, weekStart, weekEnd) as Array<{
+    id: string;
+    title: string;
+    at: string | null;
+    scheduled_date: string | null;
+    owner_id: string | null;
+    by_name: string | null;
+  }>;
 
   const cleaningCompletions = db
     .prepare(
@@ -199,9 +212,25 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
     )
     .all(storeId, weekStartTs, dayEnd) as Array<{ id: string; description: string; category: string; at: string }>;
 
+  const today = storeToday(storeId);
   return {
     tasksCompleted: tasksCompleted.map((t) => ({ id: t.id, title: t.title, subtitle: t.by_name, at: t.at } satisfies WeekItemRow)),
-    tasksStillOpen: tasksStillOpen.map((t) => ({ id: t.id, title: t.title, subtitle: t.by_name, at: t.at || "" } satisfies WeekItemRow)),
+    tasksStillOpen: tasksStillOpen.map((t) => {
+      const isOverdue = !!t.scheduled_date && t.scheduled_date < today;
+      // An owned task's subtitle is just who owns it, overdue or not -- the
+      // red styling already says "late." An unowned one only gets a name
+      // once it's actually overdue (before that, "nobody's on it yet" isn't
+      // a problem worth a name); the name shown then is whoever was
+      // actually scheduled for its due window, not "nobody," since someone
+      // was there and should have caught it.
+      let subtitle = t.by_name;
+      if (!t.owner_id && isOverdue && t.scheduled_date) {
+        const window = t.at ? windowForHour(storeLocalHour(storeId, new Date(t.at))) : null;
+        const names = getScheduledManagerNames(storeId, t.scheduled_date, window);
+        subtitle = names.length > 0 ? names.join(", ") : null;
+      }
+      return { id: t.id, title: t.title, subtitle, at: t.at || "", isOverdue } satisfies WeekItemRow;
+    }),
     cleaningCompletions: cleaningCompletions.map((c) => {
       // The live associate_name gets wiped by the next daily/weekly reset,
       // so prefer the snapshot captured on the audit event itself; older

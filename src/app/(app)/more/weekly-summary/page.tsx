@@ -130,8 +130,9 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
                   const row = (
                     <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                       <div className="min-w-0">
-                        <p className="truncate">{item.title}</p>
-                        <p className="truncate text-xs text-muted">
+                        <p className={`truncate ${item.isOverdue ? "font-semibold text-critical" : ""}`}>{item.title}</p>
+                        <p className={`truncate text-xs ${item.isOverdue ? "text-critical" : "text-muted"}`}>
+                          {item.isOverdue && <span className="font-semibold uppercase tracking-wide">{es ? "Atrasado" : "Overdue"} · </span>}
                           {fmtWhen(item.at)}
                           {item.subtitle && <span> · {item.subtitle}</span>}
                         </p>

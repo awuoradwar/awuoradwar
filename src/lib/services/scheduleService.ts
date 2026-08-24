@@ -97,6 +97,21 @@ function scheduledManagersForWindow(storeId: string, date: string, window: "MORN
     .all(storeId, date, window) as ScheduledManager[];
 }
 
+/** Who was actually scheduled to be there when a still-open task came due --
+ * for a task with no owner, "nobody's responsible" isn't the useful answer;
+ * "these are the managers who were on that day/window" is. Falls back to
+ * everyone scheduled either window that day when there's no specific due
+ * time to narrow it down to one window. Deduped, name-only -- this is a
+ * display list, not something callers need ids or positions from. */
+export function getScheduledManagerNames(storeId: string, date: string, window: "MORNING" | "EVENING" | null): string[] {
+  const windows: Array<"MORNING" | "EVENING"> = window ? [window] : ["MORNING", "EVENING"];
+  const seen = new Map<string, string>();
+  for (const w of windows) {
+    for (const m of scheduledManagersForWindow(storeId, date, w)) seen.set(m.id, m.name);
+  }
+  return [...seen.values()].sort();
+}
+
 /** Whoever "owns" tasks auto-assigned to this window: the GM outranks
  * anyone else scheduled alongside them (GM + AM + Chef together is still
  * just the GM's shift), otherwise the sole scheduled manager, otherwise
