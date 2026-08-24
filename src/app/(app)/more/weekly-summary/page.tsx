@@ -46,7 +46,11 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
   const tiles: Array<{ label: string; value: number; tone: "ok" | "warning"; items: WeekItemRow[]; href?: (id: string) => string }> = [
     { label: es ? "Tareas completadas" : "Tasks completed", value: summary.tasksCompleted, tone: "ok", items: detail.tasksCompleted, href: (id) => `/task/${id}` },
     {
-      label: es ? "Tareas aún abiertas" : "Tasks still open",
+      // Still "still open" while the week's in progress -- there's time
+      // left to finish it. Once the week has closed, anything left in this
+      // tile genuinely is overdue, so the label should say that instead of
+      // reading like a normal, expected in-progress count.
+      label: isCurrentWeek ? (es ? "Tareas aún abiertas" : "Tasks still open") : es ? "Tareas atrasadas" : "Overdue",
       value: summary.tasksStillOpen,
       tone: summary.tasksStillOpen > 0 ? "warning" : "ok",
       items: detail.tasksStillOpen,

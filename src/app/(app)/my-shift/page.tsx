@@ -146,6 +146,10 @@ export default async function MyShiftPage() {
     return { support_id: id, support_name: id ? managerNameById.get(id) || null : null };
   }
 
+  // OVERDUE still gets computed (so a past-due task never falls through
+  // into THIS_WEEK and reads as an upcoming planning item) but isn't given
+  // its own section below -- Weekly Summary's "Tasks still open" tile is
+  // where a manager reviews backlog, not the daily My Shift screen.
   const buckets: Record<Section, typeof tasks> = { NOW: [], OVERDUE: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
     buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today, viewerShiftType)].push(task);
@@ -285,7 +289,7 @@ export default async function MyShiftPage() {
         </SectionCard>
       )}
 
-      {(["NOW", "OVERDUE", "TODAY"] as const).map((bucket) => (
+      {(["NOW", "TODAY"] as const).map((bucket) => (
         <SectionCard
           key={bucket}
           title={t(user.language, `section_${bucket.toLowerCase()}` as never)}

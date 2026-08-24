@@ -6,14 +6,12 @@ const en = {
   nav_more: "More",
 
   section_now: "MY SHIFT",
-  section_overdue: "OVERDUE",
   section_today: "TODAY",
   section_this_week: "THIS WEEK",
   section_completed: "COMPLETED",
   section_from_last_shift: "FROM LAST SHIFT",
 
   section_now_sub: "Yours to handle this shift, plus anything urgent",
-  section_overdue_sub: "Scheduled for an earlier day, still not done",
   section_today_sub: "Due today store-wide, any shift",
   section_this_week_sub: "Planning-level, not urgent yet",
   section_completed_sub: "Finished today, most recent first",
