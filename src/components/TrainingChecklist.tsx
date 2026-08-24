@@ -36,6 +36,17 @@ function fmtLogDate(iso: string, lang: Language): string {
   return new Date(iso).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" });
 }
 
+// trained_at is only date/shift grained (a retrain logged for a given date
+// and shift always stamps the same noon instant), so two genuinely separate
+// retrains done on the same day and shift by the same person render with
+// identical date/shift/trainer text. created_at (the real save moment) is
+// the one field that's always unique per event -- used as a tiebreaker only
+// when the date/shift/trainer would otherwise look like an exact duplicate,
+// so a manager can tell these are two real events, not one bug-duplicated.
+function fmtLogTime(iso: string, lang: Language): string {
+  return new Date(iso).toLocaleTimeString(lang === "es" ? "es-MX" : "en-US", { hour: "numeric", minute: "2-digit" });
+}
+
 interface ManagerOption {
   id: string;
   name: string;
@@ -403,13 +414,27 @@ export default function TrainingChecklist({
               // trained once, and that's worth saying plainly instead of
               // burying it behind the same "Trained by" wording either way.
               const isRetrain = it.log.length > 1;
+              const current = it.log[0];
               const previous = it.log[1];
+              // log[0] always mirrors the current completion state by
+              // construction, so it's safe to compare against log[1] here --
+              // when date, shift, and trainer all match, the two lines below
+              // would otherwise render as indistinguishable text even though
+              // they're two real, separately-saved events.
+              const looksIdentical =
+                isRetrain &&
+                !!current &&
+                !!previous &&
+                new Date(current.trained_at).toDateString() === new Date(previous.trained_at).toDateString() &&
+                current.shift_type === previous.shift_type &&
+                current.trained_by === previous.trained_by;
               return (
                 <>
                   <p className="text-xs text-muted">
                     {isRetrain ? (lang === "es" ? "Recapacitado por" : "Retrained by") : lang === "es" ? "Capacitado por" : "Trained by"} {it.trained_by_name || "—"} ·{" "}
                     {new Date(it.trained_at!).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
                     {it.shift_type ? ` · ${SHIFT_LABEL[it.shift_type][lang]}` : ""}
+                    {looksIdentical && current ? ` · ${fmtLogTime(current.created_at, lang)}` : ""}
                   </p>
                   {isRetrain && previous && (
                     <p className="text-xs text-muted/80">
@@ -417,6 +442,7 @@ export default function TrainingChecklist({
                       {previous.trained_by_name || "—"} ·{" "}
                       {new Date(previous.trained_at).toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { month: "short", day: "numeric" })}
                       {previous.shift_type ? ` · ${SHIFT_LABEL[previous.shift_type][lang]}` : ""}
+                      {looksIdentical ? ` · ${fmtLogTime(previous.created_at, lang)}` : ""}
                     </p>
                   )}
                 </>

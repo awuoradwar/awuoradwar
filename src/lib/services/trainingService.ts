@@ -171,6 +171,13 @@ export interface TrainingCompletionLogEntry {
   trained_by: string | null;
   trained_by_name: string | null;
   notes: string | null;
+  /** When this specific entry was actually saved -- distinct from
+   * trained_at, which is manager-editable and only date/shift grained (two
+   * retrains logged for the same date/shift/trainer share an identical
+   * trained_at). This is the one field that's always unique per event, so
+   * the UI can use it to prove two same-looking entries are genuinely two
+   * different saves rather than one duplicated. */
+  created_at: string;
 }
 
 /** Every completion/retrain event ever logged for one specific checklist
@@ -182,9 +189,9 @@ export function getTrainingCompletionLog(traineeId: string, trainingItemId: stri
   const db = getDb();
   return db
     .prepare(
-      `SELECT l.id, l.trained_at, l.shift_type, l.trained_by, u.name as trained_by_name, l.notes
+      `SELECT l.id, l.trained_at, l.shift_type, l.trained_by, u.name as trained_by_name, l.notes, l.created_at
        FROM training_completion_log l LEFT JOIN users u ON u.id = l.trained_by
-       WHERE l.trainee_id = ? AND l.training_item_id = ? ORDER BY l.trained_at DESC`
+       WHERE l.trainee_id = ? AND l.training_item_id = ? ORDER BY l.trained_at DESC, l.created_at DESC`
     )
     .all(traineeId, trainingItemId) as TrainingCompletionLogEntry[];
 }
@@ -328,9 +335,9 @@ export function getTraineeChecklist(trainee: TraineeDetail): TrainingChecklistRo
 
   const logRows = db
     .prepare(
-      `SELECT l.id, l.training_item_id, l.trained_at, l.shift_type, l.trained_by, u.name as trained_by_name, l.notes
+      `SELECT l.id, l.training_item_id, l.trained_at, l.shift_type, l.trained_by, u.name as trained_by_name, l.notes, l.created_at
        FROM training_completion_log l LEFT JOIN users u ON u.id = l.trained_by
-       WHERE l.trainee_id = ? ORDER BY l.trained_at DESC`
+       WHERE l.trainee_id = ? ORDER BY l.trained_at DESC, l.created_at DESC`
     )
     .all(trainee.id) as Array<TrainingCompletionLogEntry & { training_item_id: string }>;
   const logByItem = new Map<string, TrainingCompletionLogEntry[]>();
