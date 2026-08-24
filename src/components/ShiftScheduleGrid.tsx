@@ -113,7 +113,7 @@ export default function ShiftScheduleGrid({
                       value={entry?.shift_type ?? ""}
                       onChange={(e) => pick(m.id, d.date, e.target.value as ShiftType | "")}
                       style={entry ? { backgroundColor: color.bg, color: color.text } : undefined}
-                      className={`tap-target h-8 w-full appearance-none rounded-lg text-center text-xs font-bold outline-none ${
+                      className={`h-8 w-full appearance-none rounded-lg text-center text-xs font-bold outline-none ${
                         entry ? "" : "bg-card-subtle text-muted"
                       } ${canEdit ? "cursor-pointer" : "cursor-default"} disabled:cursor-default`}
                     >
