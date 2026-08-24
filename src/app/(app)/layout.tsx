@@ -7,7 +7,6 @@ import { storeToday } from "@/lib/storeTime";
 import BottomNav from "@/components/BottomNav";
 import TopBar from "@/components/TopBar";
 import OfflineQueueBanner from "@/components/OfflineQueueBanner";
-import NavDepthTracker from "@/components/NavDepthTracker";
 import AutoRefresh from "@/components/AutoRefresh";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -25,7 +24,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <NavDepthTracker />
       <AutoRefresh />
       <TopBar user={user} storeName={store?.name || "Store"} picNames={shift.picDisplayNames} picPosition={shift.picDisplayPosition} />
       <OfflineQueueBanner lang={user.language} />

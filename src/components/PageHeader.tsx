@@ -1,17 +1,18 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Language } from "@/lib/types";
 
 /** Consistent back-chevron + title used at the top of every non-tab page,
  * replacing ~17 hand-rolled copies of the same "← Back" text link.
  *
- * Prefers router.back() so it lands wherever the user actually came from
- * (e.g. a task opened from Week goes back to Week, not always My Shift),
- * but only when NavDepthTracker's baseline shows we actually navigated
- * here from another in-app page -- a deep link or fresh tab has nothing
- * to go back to, so it falls back to the static backHref instead.
+ * Always the plain, static backHref -- this used to prefer router.back()
+ * (via a sessionStorage/history-length heuristic in NavDepthTracker) so it
+ * could land wherever the user actually came from, but that heuristic goes
+ * wrong exactly in the situations most likely to burn a manager on a
+ * phone: the OS reclaiming a backgrounded PWA's memory and reloading it,
+ * a stale session-storage baseline after that reload, a deep link. Every
+ * backHref passed in throughout the app is already a deliberately-chosen
+ * sensible destination for that page, so a plain, always-reliable Link
+ * beats a "smarter" back that can silently go nowhere.
  */
 export default function PageHeader({
   backHref,
@@ -22,21 +23,10 @@ export default function PageHeader({
   title?: React.ReactNode;
   lang: Language;
 }) {
-  const router = useRouter();
-
-  function handleBack(e: React.MouseEvent) {
-    const baseline = Number(sessionStorage.getItem("appEntryHistoryLength") || 0);
-    if (baseline && window.history.length > baseline) {
-      e.preventDefault();
-      router.back();
-    }
-  }
-
   return (
     <div className={title ? "mb-4" : "mb-3"}>
       <Link
         href={backHref}
-        onClick={handleBack}
         className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted transition-colors hover:text-accent"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
