@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getLatestHandoff, getLastAcknowledgedAt } from "@/lib/services/handoffService";
 import { getRecentActivity } from "@/lib/services/activityService";
+import { getTodayNotes } from "@/lib/services/noteService";
 import { t } from "@/lib/i18n";
-import { formatStoreDateTime } from "@/lib/storeTime";
+import { formatStoreDateTime, storeToday } from "@/lib/storeTime";
 import { attendanceTypeLabel } from "@/lib/attendanceLabels";
 import HandoffActions from "@/components/HandoffActions";
 import ActivityFeed from "@/components/ActivityFeed";
+import ShiftNoteRow from "@/components/ShiftNoteRow";
 
 export default async function HandoffPage() {
   const user = await getCurrentUser();
@@ -16,6 +18,8 @@ export default async function HandoffPage() {
   const since = getLastAcknowledgedAt(user.storeId, user.id);
   const activity = getRecentActivity(user.storeId, since, 50);
   const summary = handoff ? JSON.parse(handoff.generated_summary) : null;
+  const todayNotes = getTodayNotes(user.storeId, storeToday(user.storeId));
+  const locale = user.language === "es" ? "es-MX" : "en-US";
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-5">
@@ -29,6 +33,22 @@ export default async function HandoffPage() {
               : "No handoff generated yet."}
         </p>
       </section>
+
+      {todayNotes.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{user.language === "es" ? "Notas" : "Notes"}</h2>
+          <div className="flex flex-col gap-2">
+            {todayNotes.map((note) => (
+              <ShiftNoteRow
+                key={note.id}
+                note={note}
+                lang={user.language}
+                timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{t(user.language, "handoff_since_you_were_here")}</h2>

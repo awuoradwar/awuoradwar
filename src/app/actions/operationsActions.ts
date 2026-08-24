@@ -9,6 +9,7 @@ import * as acknowledgementService from "@/lib/services/acknowledgementService";
 import * as cateringService from "@/lib/services/cateringService";
 import { CateringChannel } from "@/lib/services/cateringService";
 import * as wasteService from "@/lib/services/wasteService";
+import * as noteService from "@/lib/services/noteService";
 import { storeLocalIso } from "@/lib/storeTime";
 
 function refresh() {
@@ -25,6 +26,12 @@ function refresh() {
 export async function deleteWasteEntryAction(id: string) {
   const user = await requireCurrentUser();
   wasteService.deleteWasteEntry(id, user.storeId, user);
+  refresh();
+}
+
+export async function deleteShiftNoteAction(id: string) {
+  const user = await requireCurrentUser();
+  noteService.deleteShiftNote(id, user.storeId, user);
   refresh();
 }
 

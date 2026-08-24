@@ -9,6 +9,7 @@ import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
 import { getCateringDueOn } from "@/lib/services/cateringService";
 import { getOpenBorrowedItemsDueOn } from "@/lib/services/borrowingService";
+import { getTodayNotes } from "@/lib/services/noteService";
 import { storeToday, storeLocalHour, formatStoreDateTime } from "@/lib/storeTime";
 import { getDb } from "@/lib/db";
 import { buildManagerColorMap } from "@/lib/managerColor";
@@ -20,6 +21,7 @@ import CompletedTaskRow from "@/components/CompletedTaskRow";
 import CleaningTaskRow from "@/components/CleaningTaskRow";
 import CateringOrderRow from "@/components/CateringOrderRow";
 import BorrowedItemRow from "@/components/BorrowedItemRow";
+import ShiftNoteRow from "@/components/ShiftNoteRow";
 import { t } from "@/lib/i18n";
 
 const OPEN_ITEM_HREF: Record<string, string> = {
@@ -129,6 +131,7 @@ export default async function MyShiftPage() {
   const today = storeToday(user.storeId, now);
   const todayShift = getTodayShift(user.storeId, today);
   const viewerShiftType = getShiftTypeForUserToday(user.storeId, user.id, today);
+  const todayNotes = getTodayNotes(user.storeId, today);
 
   const tasks = getMyShiftTasks(user.storeId, today);
   // Same roster + palette as Week page's manager-capacity colors -- a
@@ -254,6 +257,25 @@ export default async function MyShiftPage() {
           </a>
         )}
       </div>
+
+      {todayNotes.length > 0 && (
+        <SectionCard
+          title={user.language === "es" ? "Notas" : "Notes"}
+          sub={user.language === "es" ? "Compartidas hoy por cualquier gerente" : "Shared today by any manager"}
+          count={todayNotes.length}
+        >
+          <div className="flex flex-col gap-2">
+            {todayNotes.map((note) => (
+              <ShiftNoteRow
+                key={note.id}
+                note={note}
+                lang={user.language}
+                timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
+              />
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       {currentShiftCount > 0 && (
         <SectionCard
