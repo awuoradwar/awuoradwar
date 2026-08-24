@@ -72,11 +72,7 @@ export default function ManagerActivitiesSection({
       <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
         {lang === "es" ? "Trabajando, pero no en tienda" : "Working, Not Covering the Store"}
       </h2>
-      <p className="mb-2 text-xs text-muted">
-        {lang === "es"
-          ? "Capacitación, juntas de área, etc. -- para que ese día no se vea como libre."
-          : "Training, area meetings, etc. -- so that day doesn't just look like they're off."}
-      </p>
+      <p className="mb-2 text-xs text-muted">{lang === "es" ? "Capacitación, juntas de área, etc." : "Training, area meetings, etc."}</p>
       {activities.length > 0 && (
         <div className="card mb-2 divide-y divide-border">
           {activities.map((a) => {
