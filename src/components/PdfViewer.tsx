@@ -59,7 +59,16 @@ export default function PdfViewer({ src, lang }: { src: string; lang: Language }
   }, [src]);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-white/5">
+    // h-full, not flex-1/min-h-0 -- this div's immediate parent (the wrapper
+    // in AttachmentViewerLink) is a plain block, not itself display:flex, so
+    // flex-sizing classes here are no-ops: with them, this div silently grew
+    // to its full multi-page content height instead of being clipped to the
+    // wrapper's already-correctly-computed space, leaving every page past
+    // the first rendered but positioned off past the viewport edge with no
+    // way to scroll to it. h-full fills exactly the wrapper's real height
+    // (a percentage height resolves fine there since flex already gave the
+    // wrapper a definite one), and overflow-y-auto then genuinely engages.
+    <div className="h-full overflow-y-auto bg-white/5">
       {status === "loading" && <p className="p-6 text-center text-sm text-white/70">{lang === "es" ? "Cargando…" : "Loading…"}</p>}
       {status === "error" && (
         <p className="p-6 text-center text-sm text-white/70">

@@ -12,6 +12,7 @@ import { UNITS_EN, UNITS_ES, BATCH_SIZES, translateWasteUnit } from "@/lib/waste
 const REASON_LABEL: Record<string, { en: string; es: string }> = {
   SPOILED: { en: "Spoiled/expired", es: "Dañado/caducado" },
   OVERPREP: { en: "Over-prepped", es: "Sobre-preparado" },
+  UNDERPREP: { en: "Under-prepped", es: "Sub-preparado" },
   DROPPED: { en: "Dropped/contaminated", es: "Caído/contaminado" },
   QUALITY: { en: "Quality issue", es: "Problema de calidad" },
   OTHER: { en: "Other", es: "Otro" },
@@ -27,11 +28,8 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
   // whichever language it was logged in -- normalize to English before
   // matching it against BATCH_SIZES, which is keyed in English.
   const normalizedUnit = translateWasteUnit(entry.unit, "en") || entry.unit;
-  const isBatchUnit = normalizedUnit === "batch" || normalizedUnit === "party tray";
-  const matchedBatchIndex = BATCH_SIZES.findIndex((b) => b.unit === normalizedUnit && b.quantity === entry.quantity);
-  const initialBatchIndex = matchedBatchIndex !== -1 ? matchedBatchIndex : isBatchUnit ? BATCH_SIZES.findIndex((b) => b.unit === normalizedUnit) : 0;
+  const isBatchUnit = BATCH_SIZES.some((b) => b.unit === normalizedUnit);
   const [measureBy, setMeasureBy] = useState<"unit" | "batch">(isBatchUnit ? "batch" : "unit");
-  const [batchIndex, setBatchIndex] = useState(initialBatchIndex === -1 ? 0 : initialBatchIndex);
 
   return (
     <form
@@ -75,11 +73,11 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
           {lang === "es" ? "Tanda de cocina" : "Cooking Batch"}
         </button>
       </div>
-      {measureBy === "unit" ? (
-        <div className="grid grid-cols-2 gap-2">
-          <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
-            <input name="quantity" type="number" step="any" min="0" inputMode="decimal" defaultValue={entry.quantity} required className={inputClass} />
-          </Field>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
+          <input name="quantity" type="number" step="any" min="0" inputMode="decimal" defaultValue={entry.quantity} required className={inputClass} />
+        </Field>
+        {measureBy === "unit" ? (
           <Field label={lang === "es" ? "Unidad" : "Unit"}>
             <select name="unit" defaultValue={isBatchUnit ? units[0] : displayUnit} className={selectClass}>
               {units.map((u) => (
@@ -89,20 +87,18 @@ function EditWasteForm({ entry, lang, onDone }: { entry: WasteLogEntry; lang: La
               ))}
             </select>
           </Field>
-        </div>
-      ) : (
-        <Field label={lang === "es" ? "Tamaño de la tanda" : "Batch size"}>
-          <select value={batchIndex} onChange={(e) => setBatchIndex(Number(e.target.value))} className={selectClass}>
-            {BATCH_SIZES.map((b, i) => (
-              <option key={i} value={i}>
-                {lang === "es" ? b.labelEs : b.labelEn}
-              </option>
-            ))}
-          </select>
-          <input type="hidden" name="quantity" value={BATCH_SIZES[batchIndex].quantity} />
-          <input type="hidden" name="unit" value={BATCH_SIZES[batchIndex].unit} />
-        </Field>
-      )}
+        ) : (
+          <Field label={lang === "es" ? "Tamaño de la tanda" : "Batch size"}>
+            <select name="unit" defaultValue={isBatchUnit ? normalizedUnit : BATCH_SIZES[0].unit} className={selectClass}>
+              {BATCH_SIZES.map((b) => (
+                <option key={b.unit} value={b.unit}>
+                  {lang === "es" ? b.labelEs : b.labelEn}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </div>
       <Field label={lang === "es" ? "Motivo (opcional)" : "Reason (optional)"}>
         <select name="reason" defaultValue={entry.reason || ""} className={selectClass}>
           <option value="">{lang === "es" ? "Sin especificar" : "Unspecified"}</option>

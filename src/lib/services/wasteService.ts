@@ -5,7 +5,7 @@ import { SessionUser } from "../types";
 import { storeToday } from "../storeTime";
 import { weekStartOf } from "./recurrenceService";
 
-export type WasteReason = "SPOILED" | "OVERPREP" | "DROPPED" | "QUALITY" | "OTHER";
+export type WasteReason = "SPOILED" | "OVERPREP" | "UNDERPREP" | "DROPPED" | "QUALITY" | "OTHER";
 
 export interface WasteLogEntry {
   id: string;

@@ -11,6 +11,7 @@ import { UNITS_EN, UNITS_ES, BATCH_SIZES } from "@/lib/wasteUnits";
 const REASONS: Array<{ value: string; en: string; es: string }> = [
   { value: "SPOILED", en: "Spoiled/expired", es: "Dañado/caducado" },
   { value: "OVERPREP", en: "Over-prepped", es: "Sobre-preparado" },
+  { value: "UNDERPREP", en: "Under-prepped", es: "Sub-preparado" },
   { value: "DROPPED", en: "Dropped/contaminated", es: "Caído/contaminado" },
   { value: "QUALITY", en: "Quality issue", es: "Problema de calidad" },
   { value: "OTHER", en: "Other", es: "Otro" },
@@ -19,7 +20,6 @@ const REASONS: Array<{ value: string; en: string; es: string }> = [
 export default function WasteForm({ lang, defaultDate }: { lang: Language; defaultDate: string }) {
   const units = lang === "es" ? UNITS_ES : UNITS_EN;
   const [measureBy, setMeasureBy] = useState<"unit" | "batch">("unit");
-  const [batchIndex, setBatchIndex] = useState(0);
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
     "waste",
     quickAddWasteAction,
@@ -52,11 +52,11 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
           {lang === "es" ? "Tanda de cocina" : "Cooking Batch"}
         </button>
       </div>
-      {measureBy === "unit" ? (
-        <div className="grid grid-cols-2 gap-3">
-          <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
-            <input name="quantity" type="number" step="any" min="0" inputMode="decimal" required className={inputClass} />
-          </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={lang === "es" ? "Cantidad" : "Quantity"}>
+          <input name="quantity" type="number" step="any" min="0" inputMode="decimal" required defaultValue={1} className={inputClass} />
+        </Field>
+        {measureBy === "unit" ? (
           <Field label={lang === "es" ? "Unidad" : "Unit"}>
             <select name="unit" defaultValue={units[0]} className={selectClass}>
               {units.map((u) => (
@@ -66,20 +66,18 @@ export default function WasteForm({ lang, defaultDate }: { lang: Language; defau
               ))}
             </select>
           </Field>
-        </div>
-      ) : (
-        <Field label={lang === "es" ? "Tamaño de la tanda" : "Batch size"}>
-          <select value={batchIndex} onChange={(e) => setBatchIndex(Number(e.target.value))} className={selectClass}>
-            {BATCH_SIZES.map((b, i) => (
-              <option key={i} value={i}>
-                {lang === "es" ? b.labelEs : b.labelEn}
-              </option>
-            ))}
-          </select>
-          <input type="hidden" name="quantity" value={BATCH_SIZES[batchIndex].quantity} />
-          <input type="hidden" name="unit" value={BATCH_SIZES[batchIndex].unit} />
-        </Field>
-      )}
+        ) : (
+          <Field label={lang === "es" ? "Tamaño de la tanda" : "Batch size"}>
+            <select name="unit" defaultValue={BATCH_SIZES[0].unit} className={selectClass}>
+              {BATCH_SIZES.map((b) => (
+                <option key={b.unit} value={b.unit}>
+                  {lang === "es" ? b.labelEs : b.labelEn}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </div>
       <Field label={lang === "es" ? "Motivo (opcional)" : "Reason (optional)"}>
         <select name="reason" defaultValue="" className={selectClass}>
           <option value="">{lang === "es" ? "Sin especificar" : "Unspecified"}</option>

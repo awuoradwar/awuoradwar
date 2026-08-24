@@ -47,16 +47,18 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
     new Date(d + "T00:00:00Z").toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "numeric" });
   const fmtWhen = (d: string) => (d ? formatStoreDateTime(user.storeId, d, es ? "es-MX" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : "—");
 
-  const tiles: Array<{ label: string; value: number; tone: "ok" | "warning"; items: WeekItemRow[]; href?: (id: string) => string }> = [
+  const tiles: Array<{ label: string; value: number; tone: "ok" | "critical"; items: WeekItemRow[]; href?: (id: string) => string }> = [
     { label: es ? "Tareas completadas" : "Tasks completed", value: summary.tasksCompleted, tone: "ok", items: detail.tasksCompleted, href: (id) => `/task/${id}` },
     {
       // Still "still open" while the week's in progress -- there's time
       // left to finish it. Once the week has closed, anything left in this
       // tile genuinely is overdue, so the label should say that instead of
-      // reading like a normal, expected in-progress count.
+      // reading like a normal, expected in-progress count -- and, same as
+      // every other overdue/due-soon indicator in the app, read as urgent
+      // (red), not just a routine in-progress amber.
       label: isCurrentWeek ? (es ? "Tareas aún abiertas" : "Tasks still open") : es ? "Tareas atrasadas" : "Overdue",
       value: summary.tasksStillOpen,
-      tone: summary.tasksStillOpen > 0 ? "warning" : "ok",
+      tone: summary.tasksStillOpen > 0 ? "critical" : "ok",
       items: detail.tasksStillOpen,
       href: (id) => `/task/${id}`,
     },
@@ -122,7 +124,7 @@ export default async function WeeklySummaryPage({ searchParams }: PageProps<"/mo
           <details key={tile.label} className="card overflow-hidden">
             <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-3">
               <span className="text-sm font-medium">{tile.label}</span>
-              <span className={`shrink-0 text-lg font-bold ${tile.tone === "warning" ? "text-warning" : "text-ok"}`}>{tile.value}</span>
+              <span className={`shrink-0 text-lg font-bold ${tile.tone === "critical" ? "text-critical" : "text-ok"}`}>{tile.value}</span>
             </summary>
             {tile.items.length === 0 ? (
               <p className="border-t border-border p-3 text-center text-xs text-muted">
