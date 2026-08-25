@@ -14,6 +14,7 @@ export interface WeekTaskData {
   title: string;
   title_es: string | null;
   description: string | null;
+  description_es: string | null;
   source: string | null;
   status: string;
   owner_id: string | null;
@@ -43,6 +44,7 @@ export default function WeekTaskRow({
   const [supportId, setSupportId] = useState(task.support_ids ? (JSON.parse(task.support_ids)[0] ?? "") : "");
   const router = useRouter();
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
+  const description = lang === "es" && task.description_es ? task.description_es : task.description;
   const removable = task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyCancelled;
   const ownerColor = ownerId ? managerColors?.[ownerId] : undefined;
   const supportColor = supportId ? managerColors?.[supportId] : undefined;
@@ -65,7 +67,7 @@ export default function WeekTaskRow({
             {task.source === "recurring" ? (lang === "es" ? "Recurrente" : "Recurring") : lang === "es" ? "Agregada" : "Added"}
           </span>
         </div>
-        {task.description && <p className="mt-0.5 truncate text-xs text-muted">{task.description}</p>}
+        {description && <p className="mt-0.5 truncate text-xs text-muted">{description}</p>}
         <div className="mt-1 flex items-center gap-2">
           <select
             value={ownerId}

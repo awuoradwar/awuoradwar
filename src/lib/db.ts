@@ -72,6 +72,8 @@ function createConnection(): Database.Database {
   ensureColumn(db, "training_items", "phase", "phase TEXT NOT NULL DEFAULT 'SHIFT'");
   ensureColumn(db, "shift_notes", "title", "title TEXT");
   ensureColumn(db, "shift_notes", "sections_json", "sections_json TEXT");
+  ensureColumn(db, "tasks", "title_es", "title_es TEXT");
+  ensureColumn(db, "tasks", "description_es", "description_es TEXT");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);

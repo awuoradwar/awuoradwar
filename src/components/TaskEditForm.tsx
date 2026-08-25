@@ -11,7 +11,9 @@ import { t } from "@/lib/i18n";
 export default function TaskEditForm({
   taskId,
   title,
+  titleEs,
   description,
+  descriptionEs,
   dueDateLocal,
   dueTimeLocal,
   effort,
@@ -20,7 +22,9 @@ export default function TaskEditForm({
 }: {
   taskId: string;
   title: string;
+  titleEs: string | null;
   description: string | null;
+  descriptionEs: string | null;
   dueDateLocal: string | null;
   dueTimeLocal: string | null;
   effort: string;
@@ -69,8 +73,14 @@ export default function TaskEditForm({
         <Field label={t(lang, "field_title")}>
           <input name="title" defaultValue={title} required className={inputClass} />
         </Field>
+        <Field label={`${lang === "es" ? "Título en español" : "Spanish title"} (${lang === "es" ? "opcional" : "optional"})`}>
+          <input name="titleEs" defaultValue={titleEs || ""} className={inputClass} />
+        </Field>
         <Field label={t(lang, "field_description")}>
           <textarea name="description" defaultValue={description || ""} className={textareaClass} rows={3} />
+        </Field>
+        <Field label={`${lang === "es" ? "Descripción en español" : "Spanish description"} (${lang === "es" ? "opcional" : "optional"})`}>
+          <textarea name="descriptionEs" defaultValue={descriptionEs || ""} className={textareaClass} rows={3} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label={t(lang, "field_date")}>

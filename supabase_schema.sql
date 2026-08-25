@@ -214,7 +214,9 @@ create table tasks (
   store_id uuid not null references stores(id),
   template_id uuid references task_templates(id),
   title text not null,
+  title_es text, -- Spanish title, shown instead of title for es-language viewers when set -- takes precedence over the template's own title_es
   description text,
+  description_es text,
   area text,
   category text,
   owner_id uuid references users(id),

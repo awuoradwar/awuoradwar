@@ -19,6 +19,7 @@ export default function CompactTaskRow({ task, lang, managerColors, from }: { ta
   const router = useRouter();
 
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
+  const description = lang === "es" && task.description_es ? task.description_es : task.description;
 
   const canComplete = task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyDone;
 
@@ -26,7 +27,7 @@ export default function CompactTaskRow({ task, lang, managerColors, from }: { ta
     <div className="flex items-center gap-2 px-3 py-2">
       <Link href={from ? withFrom(`/task/${task.id}`, from) : `/task/${task.id}`} className="min-w-0 flex-1">
         <p className="truncate text-sm">{title}</p>
-        {task.description && <p className="truncate text-xs text-muted">{task.description}</p>}
+        {description && <p className="truncate text-xs text-muted">{description}</p>}
         <p className="truncate text-xs text-muted">
           {task.dueLabel && <span>⏰ {task.dueLabel} </span>}
           {task.area && <span>· {task.area} </span>}

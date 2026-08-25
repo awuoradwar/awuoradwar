@@ -221,7 +221,9 @@ CREATE TABLE IF NOT EXISTS tasks (
   store_id TEXT NOT NULL REFERENCES stores(id),
   template_id TEXT REFERENCES task_templates(id),
   title TEXT NOT NULL,
+  title_es TEXT, -- Spanish title, shown instead of title for es-language viewers when set -- takes precedence over the template's own title_es, since this is the more specific, task-level override
   description TEXT,
+  description_es TEXT,
   area TEXT,
   category TEXT,
   owner_id TEXT REFERENCES users(id),

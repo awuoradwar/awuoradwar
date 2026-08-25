@@ -76,6 +76,7 @@ export async function quickAddTaskAction(formData: FormData) {
   const user = await requireCurrentUser();
   const title = fd(formData, "title");
   if (!title) return { error: "Title is required." };
+  const titleEs = fd(formData, "titleEs");
 
   const dueTime = fd(formData, "dueTime");
 
@@ -90,10 +91,10 @@ export async function quickAddTaskAction(formData: FormData) {
     const id = newId();
     const config = { weekdays: weekdaysRaw.map(Number), dueTime: dueTime || undefined };
     db.prepare(
-      `INSERT INTO task_templates (id, store_id, title, description, area, category, recurrence_type, recurrence_config,
+      `INSERT INTO task_templates (id, store_id, title, title_es, description, area, category, recurrence_type, recurrence_config,
         default_owner_position, effort, verification_required, source, active, created_at)
-       VALUES (?, ?, ?, NULL, NULL, 'ROUTINE', 'WEEKLY', ?, NULL, ?, 0, 'manual', 1, ?)`
-    ).run(id, user.storeId, title, JSON.stringify(config), fd(formData, "effort") || "STANDARD", nowIso());
+       VALUES (?, ?, ?, ?, NULL, NULL, 'ROUTINE', 'WEEKLY', ?, NULL, ?, 0, 'manual', 1, ?)`
+    ).run(id, user.storeId, title, titleEs || null, JSON.stringify(config), fd(formData, "effort") || "STANDARD", nowIso());
     writeAudit({ entityType: "task_template", entityId: id, actor: user, action: "CREATED", newValue: { title } });
     refresh();
     return { ok: true };
@@ -105,6 +106,7 @@ export async function quickAddTaskAction(formData: FormData) {
   taskService.createTask({
     storeId: user.storeId,
     title,
+    titleEs: titleEs || undefined,
     scheduledFor,
     scheduledDate,
     dueAt: dueTime ? storeLocalIso(user.storeId, scheduledDate, dueTime) : null,

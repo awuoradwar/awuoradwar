@@ -44,6 +44,10 @@ export default function TaskForm({
         <input name="title" required className={inputClass} placeholder={lang === "es" ? "¿Qué hay que hacer?" : "What needs to happen?"} />
       </Field>
 
+      <Field label={`${lang === "es" ? "Título en español" : "Spanish title"} (${lang === "es" ? "opcional" : "optional"})`}>
+        <input name="titleEs" className={inputClass} placeholder={lang === "es" ? "Se muestra a quien vea la app en español" : "Shown to anyone viewing the app in Spanish"} />
+      </Field>
+
       {isGM && (
         <label className="flex items-center gap-2 text-sm font-medium">
           <input type="checkbox" name="recurring" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="h-4 w-4" />

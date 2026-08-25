@@ -29,15 +29,28 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const db = getDb();
   const task = db
     .prepare(
-      `SELECT t.*, u.name as owner_name, tt.title_es, tt.recurrence_config FROM tasks t
+      `SELECT t.*, u.name as owner_name,
+              COALESCE(t.title_es, tt.title_es) as title_es_display,
+              tt.recurrence_config
+       FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
        WHERE t.id = ?`
     )
-    .get(id) as (TaskRow & { owner_name: string | null; recurrence_config: string | null }) | undefined;
+    .get(id) as (TaskRow & { owner_name: string | null; recurrence_config: string | null; title_es_display: string | null }) | undefined;
   if (!task) notFound();
 
-  const title = user.language === "es" && task.title_es ? task.title_es : task.title;
+  // title_es_display falls back to the recurring template's translation
+  // when this instance has none of its own -- used for what's actually
+  // shown on the page. The edit form below gets the task's own (un-coalesced)
+  // title_es instead: pre-filling it with the template's translation would
+  // silently freeze a copy onto this one instance the moment the form is
+  // saved, even with no real edit, permanently decoupling it from any later
+  // fix made on the template itself. description_es has no template-level
+  // counterpart (templates don't collect a description to translate), so it
+  // needs no such fallback -- the task's own value is simply what's shown.
+  const title = user.language === "es" && task.title_es_display ? task.title_es_display : task.title;
+  const description = user.language === "es" && task.description_es ? task.description_es : task.description;
 
   // Opt-in per template (More > Templates > Edit schedule) for a task like
   // "Create and post schedule" -- since this store builds each week's
@@ -82,7 +95,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         <StatusBadge status={task.status} lang={user.language} />
         {task.due_at && <span className="text-xs text-muted">⏰ {fmt(task.due_at)}</span>}
       </div>
-      {task.description && <p className="mt-3 text-sm text-muted">{task.description}</p>}
+      {description && <p className="mt-3 text-sm text-muted">{description}</p>}
 
       {linkedWeekRange && (
         <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 p-3">
@@ -156,7 +169,9 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         <TaskEditForm
           taskId={task.id}
           title={task.title}
+          titleEs={task.title_es}
           description={task.description}
+          descriptionEs={task.description_es}
           dueDateLocal={dueDateLocal}
           dueTimeLocal={dueTimeLocal}
           effort={task.effort}

@@ -13,6 +13,7 @@ export interface TaskRow {
   title: string;
   title_es: string | null;
   description: string | null;
+  description_es: string | null;
   area: string | null;
   category: string | null;
   owner_id: string | null;
@@ -226,7 +227,9 @@ export function getOpenTasksForStore(storeId: string): TaskRow[] {
   const db = getDb();
   return db
     .prepare(
-      `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
+      `SELECT t.*, u.name as owner_name,
+              COALESCE(t.title_es, tt.title_es) as title_es
+       FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
        WHERE t.store_id = ? AND t.status IN ('OPEN','IN_PROGRESS')
@@ -245,7 +248,9 @@ export function getMyShiftTasks(storeId: string, todayStr: string): TaskRow[] {
   const { start, end } = storeDayRangeUtc(storeId, todayStr);
   return db
     .prepare(
-      `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
+      `SELECT t.*, u.name as owner_name,
+              COALESCE(t.title_es, tt.title_es) as title_es
+       FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
        WHERE t.store_id = ? AND (t.status IN ('OPEN','IN_PROGRESS') OR (t.status = 'COMPLETE' AND t.completed_at >= ? AND t.completed_at < ?))
@@ -264,7 +269,10 @@ export function getCompletedTasksToday(storeId: string, todayStr: string): Compl
   const { start, end } = storeDayRangeUtc(storeId, todayStr);
   return db
     .prepare(
-      `SELECT t.*, u.name as owner_name, tt.title_es, cu.name as completed_by_name FROM tasks t
+      `SELECT t.*, u.name as owner_name,
+              COALESCE(t.title_es, tt.title_es) as title_es,
+              cu.name as completed_by_name
+       FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
        LEFT JOIN users cu ON cu.id = t.completed_by
@@ -278,7 +286,9 @@ export function getWeekTasks(storeId: string, weekStart: string, weekEnd: string
   const db = getDb();
   return db
     .prepare(
-      `SELECT t.*, u.name as owner_name, tt.title_es FROM tasks t
+      `SELECT t.*, u.name as owner_name,
+              COALESCE(t.title_es, tt.title_es) as title_es
+       FROM tasks t
        LEFT JOIN users u ON u.id = t.owner_id
        LEFT JOIN task_templates tt ON tt.id = t.template_id
        WHERE t.store_id = ? AND t.scheduled_date BETWEEN ? AND ? AND t.status != 'CANCELLED'
@@ -290,6 +300,7 @@ export function getWeekTasks(storeId: string, weekStart: string, weekEnd: string
 export function createTask(params: {
   storeId: string;
   title: string;
+  titleEs?: string;
   description?: string;
   area?: string;
   category?: string;
@@ -309,6 +320,7 @@ export function createTask(params: {
 function insertTask(params: {
   storeId: string;
   title: string;
+  titleEs?: string;
   description?: string;
   area?: string;
   category?: string;
@@ -324,14 +336,15 @@ function insertTask(params: {
   const db = getDb();
   const id = newId();
   db.prepare(
-    `INSERT INTO tasks (id, store_id, title, description, area, category, owner_id, support_ids, due_at,
+    `INSERT INTO tasks (id, store_id, title, title_es, description, area, category, owner_id, support_ids, due_at,
       scheduled_for, scheduled_date, effort, priority, severity, status, verification_required, source,
       created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NORMAL', ?, 'OPEN', 0, 'manual', ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'NORMAL', ?, 'OPEN', 0, 'manual', ?, ?)`
   ).run(
     id,
     params.storeId,
     params.title,
+    params.titleEs || null,
     params.description || null,
     params.area || null,
     params.category || null,
@@ -361,7 +374,16 @@ function insertTask(params: {
  * manager may correct a mistake or update details after creation. */
 export function updateTask(
   taskId: string,
-  params: { title: string; description?: string | null; dueAt?: string | null; scheduledDate?: string | null; effort: string; severity: string },
+  params: {
+    title: string;
+    titleEs?: string | null;
+    description?: string | null;
+    descriptionEs?: string | null;
+    dueAt?: string | null;
+    scheduledDate?: string | null;
+    effort: string;
+    severity: string;
+  },
   actor: SessionUser
 ) {
   const db = getDb();
@@ -375,8 +397,20 @@ export function updateTask(
   // editing "the date" on the task actually moves it, matching what a manager
   // sees in the edit form (a single date field, not two).
   db.prepare(
-    `UPDATE tasks SET title = ?, description = ?, due_at = ?, scheduled_date = COALESCE(?, scheduled_date), effort = ?, severity = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`
-  ).run(params.title, params.description || null, params.dueAt || null, params.scheduledDate || null, params.effort, params.severity, actor.id, ts, taskId);
+    `UPDATE tasks SET title = ?, title_es = ?, description = ?, description_es = ?, due_at = ?, scheduled_date = COALESCE(?, scheduled_date), effort = ?, severity = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`
+  ).run(
+    params.title,
+    params.titleEs || null,
+    params.description || null,
+    params.descriptionEs || null,
+    params.dueAt || null,
+    params.scheduledDate || null,
+    params.effort,
+    params.severity,
+    actor.id,
+    ts,
+    taskId
+  );
   writeAudit({
     entityType: "task",
     entityId: taskId,
