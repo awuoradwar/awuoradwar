@@ -10,8 +10,11 @@ const ATTACHMENT_DIR = path.join(process.cwd(), "data", "private-uploads", "shif
 
 export interface NoteSection {
   topic: string;
+  topicEs: string;
   subtopic: string;
+  subtopicEs: string;
   bullets: string[];
+  bulletsEs: string[];
 }
 
 export interface NoteAttachment {
@@ -25,6 +28,7 @@ interface ShiftNoteRawRow {
   id: string;
   text: string;
   title: string | null;
+  title_es: string | null;
   sections_json: string | null;
   author_id: string | null;
   author_name: string | null;
@@ -35,6 +39,7 @@ export interface ShiftNote {
   id: string;
   text: string;
   title: string | null;
+  title_es: string | null;
   sections: NoteSection[];
   author_id: string | null;
   author_name: string | null;
@@ -59,7 +64,7 @@ function toShiftNote(row: ShiftNoteRawRow): ShiftNote {
   return { ...row, sections: parseSections(row.sections_json) };
 }
 
-const SELECT = `SELECT n.id, n.text, n.title, n.sections_json, n.author_id, u.name as author_name, n.created_at
+const SELECT = `SELECT n.id, n.text, n.title, n.title_es, n.sections_json, n.author_id, u.name as author_name, n.created_at
    FROM shift_notes n LEFT JOIN users u ON u.id = n.author_id`;
 
 /** Today's shift notes, most recent first -- the Quick Log "Note" form's
@@ -116,6 +121,7 @@ export interface CreateNoteParams {
   storeId: string;
   shiftId: string | null;
   title: string;
+  titleEs: string | null;
   text: string;
   sections: NoteSection[];
   authorId: string;
@@ -125,8 +131,8 @@ export interface CreateNoteParams {
 export function insertNote(params: CreateNoteParams, id: string, createdAt: string) {
   const db = getDb();
   db.prepare(
-    `INSERT INTO shift_notes (id, store_id, shift_id, author_id, text, title, sections_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, params.storeId, params.shiftId, params.authorId, params.text, params.title, JSON.stringify(params.sections), createdAt);
+    `INSERT INTO shift_notes (id, store_id, shift_id, author_id, text, title, title_es, sections_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, params.storeId, params.shiftId, params.authorId, params.text, params.title, params.titleEs, JSON.stringify(params.sections), createdAt);
   const insertAttachment = db.prepare(
     `INSERT INTO note_attachments (id, note_id, file_ref, original_name, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?)`
   );

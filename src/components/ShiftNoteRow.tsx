@@ -19,7 +19,7 @@ export default function ShiftNoteRow({
   timeLabel,
   from,
 }: {
-  note: { id: string; title: string | null; text: string; sections: NoteSection[]; author_name: string | null };
+  note: { id: string; title: string | null; title_es: string | null; text: string; sections: NoteSection[]; author_name: string | null };
   lang: Language;
   timeLabel: string;
   from?: string;
@@ -30,12 +30,14 @@ export default function ShiftNoteRow({
 
   if (optimisticallyDeleted) return null;
 
-  const heading = note.title || (note.text.length > 60 ? `${note.text.slice(0, 60)}…` : note.text);
+  const title = (lang === "es" && note.title_es) || note.title;
+  const heading = title || (note.text.length > 60 ? `${note.text.slice(0, 60)}…` : note.text);
   // A one-line hint of the actual content below the heading -- the first
   // topic (a title already stands on its own without one), or the note's
   // plain text for a legacy pre-title note (where the heading above is
   // already that same text, so no redundant preview needed there).
-  const preview = note.title ? note.sections[0]?.topic || null : null;
+  const firstTopic = lang === "es" ? note.sections[0]?.topicEs || note.sections[0]?.topic : note.sections[0]?.topic;
+  const preview = title ? firstTopic || null : null;
   const href = `/note/${note.id}`;
 
   return (

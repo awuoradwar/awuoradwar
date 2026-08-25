@@ -25,31 +25,38 @@ export default async function NoteDetailPage({ params, searchParams }: PageProps
     minute: "2-digit",
   });
   const backHref = resolveBackHref(sp.from, "/more/notes");
+  const isEs = user.language === "es";
+  const title = (isEs && note.title_es) || note.title;
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref={backHref} lang={user.language} title={note.title || (user.language === "es" ? "Nota" : "Note")} />
+      <PageHeader backHref={backHref} lang={user.language} title={title || (isEs ? "Nota" : "Note")} />
       <p className="mb-4 text-xs text-muted">
-        {note.author_name || (user.language === "es" ? "Desconocido" : "Unknown")} · {timeLabel}
+        {note.author_name || (isEs ? "Desconocido" : "Unknown")} · {timeLabel}
       </p>
 
       {note.text && <p className="mb-4 whitespace-pre-wrap text-sm text-foreground">{note.text}</p>}
 
       {note.sections.length > 0 && (
         <div className="mb-5 flex flex-col gap-4">
-          {note.sections.map((s, i) => (
-            <div key={i}>
-              {s.topic && <h2 className="text-sm font-bold text-foreground">{s.topic}</h2>}
-              {s.subtopic && <h3 className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-muted">{s.subtopic}</h3>}
-              {s.bullets.length > 0 && (
-                <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm text-foreground">
-                  {s.bullets.map((b, bi) => (
-                    <li key={bi}>{b}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+          {note.sections.map((s, i) => {
+            const topic = (isEs && s.topicEs) || s.topic;
+            const subtopic = (isEs && s.subtopicEs) || s.subtopic;
+            const bullets = isEs && s.bulletsEs?.some((b) => b) ? s.bullets.map((b, bi) => s.bulletsEs[bi] || b) : s.bullets;
+            return (
+              <div key={i}>
+                {topic && <h2 className="text-sm font-bold text-foreground">{topic}</h2>}
+                {subtopic && <h3 className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-muted">{subtopic}</h3>}
+                {bullets.length > 0 && (
+                  <ul className="mt-1.5 list-disc space-y-1 pl-5 text-sm text-foreground">
+                    {bullets.map((b, bi) => (
+                      <li key={bi}>{b}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

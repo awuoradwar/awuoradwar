@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireCurrentUser, getCurrentPicForStore } from "@/lib/auth";
 import * as taskService from "@/lib/services/taskService";
 import * as pushService from "@/lib/services/pushService";
+import { translateFields, resolveBilingualPair } from "@/lib/services/translationService";
 import { canDo } from "@/lib/permissions";
 import { storeToday, storeLocalIso } from "@/lib/storeTime";
 
@@ -64,15 +65,31 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
   const user = await requireCurrentUser();
   const title = String(formData.get("title") || "").trim();
   if (!title) return { error: "Title is required." };
+  const titleEsTyped = String(formData.get("titleEs") || "").trim() || null;
+  const description = String(formData.get("description") || "").trim() || null;
+  const descriptionEsTyped = String(formData.get("descriptionEs") || "").trim() || null;
   const dueDate = String(formData.get("dueDate") || "");
   const dueTime = String(formData.get("dueTime") || "");
+
+  // Auto-translate whichever side wasn't typed in manually -- a manager
+  // writing in English gets a Spanish version filled in for a Spanish
+  // speaker to read, and vice versa, without either of them re-typing
+  // anything. A manually-filled companion field is left untouched.
+  const toTranslate: Record<string, string> = {};
+  if (!titleEsTyped) toTranslate.title = title;
+  if (description && !descriptionEsTyped) toTranslate.description = description;
+  const translated = Object.keys(toTranslate).length > 0 ? await translateFields(toTranslate) : {};
+
+  const titlePair = resolveBilingualPair(translated?.title, title, titleEsTyped);
+  const descriptionPair = description ? resolveBilingualPair(translated?.description, description, descriptionEsTyped) : { primary: null, secondary: null };
+
   taskService.updateTask(
     taskId,
     {
-      title,
-      titleEs: String(formData.get("titleEs") || "") || null,
-      description: String(formData.get("description") || "") || null,
-      descriptionEs: String(formData.get("descriptionEs") || "") || null,
+      title: titlePair.primary,
+      titleEs: titlePair.secondary,
+      description: descriptionPair.primary,
+      descriptionEs: descriptionPair.secondary,
       dueAt: dueDate ? storeLocalIso(user.storeId, dueDate, dueTime || "00:00") : null,
       scheduledDate: dueDate || null,
       effort: String(formData.get("effort") || "STANDARD"),

@@ -20,6 +20,7 @@ import { WasteReason } from "@/lib/services/wasteService";
 import * as noteService from "@/lib/services/noteService";
 import { NoteSection } from "@/lib/services/noteService";
 import * as pushService from "@/lib/services/pushService";
+import { translateFields, resolveBilingualPair } from "@/lib/services/translationService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { canDo } from "@/lib/permissions";
 import { storeToday, storeLocalIso } from "@/lib/storeTime";
@@ -74,9 +75,17 @@ function scheduledDateForWhen(when: string, storeId: string, customDate?: string
 
 export async function quickAddTaskAction(formData: FormData) {
   const user = await requireCurrentUser();
-  const title = fd(formData, "title");
-  if (!title) return { error: "Title is required." };
-  const titleEs = fd(formData, "titleEs");
+  const titleTyped = fd(formData, "title");
+  if (!titleTyped) return { error: "Title is required." };
+  const titleEsTyped = fd(formData, "titleEs") || null;
+
+  // Auto-translate whichever side wasn't typed in manually -- lets a
+  // Spanish-speaking manager type a title in Spanish and have it show as
+  // English to an English-reading manager, and vice versa, without either
+  // of them typing it twice. Always resolves to (title=English,
+  // title_es=Spanish) regardless of which language was actually typed.
+  const translated = titleEsTyped ? {} : await translateFields({ title: titleTyped });
+  const { primary: title, secondary: titleEs } = resolveBilingualPair(translated?.title, titleTyped, titleEsTyped);
 
   const dueTime = fd(formData, "dueTime");
 
@@ -94,7 +103,7 @@ export async function quickAddTaskAction(formData: FormData) {
       `INSERT INTO task_templates (id, store_id, title, title_es, description, area, category, recurrence_type, recurrence_config,
         default_owner_position, effort, verification_required, source, active, created_at)
        VALUES (?, ?, ?, ?, NULL, NULL, 'ROUTINE', 'WEEKLY', ?, NULL, ?, 0, 'manual', 1, ?)`
-    ).run(id, user.storeId, title, titleEs || null, JSON.stringify(config), fd(formData, "effort") || "STANDARD", nowIso());
+    ).run(id, user.storeId, title, titleEs, JSON.stringify(config), fd(formData, "effort") || "STANDARD", nowIso());
     writeAudit({ entityType: "task_template", entityId: id, actor: user, action: "CREATED", newValue: { title } });
     refresh();
     return { ok: true };
@@ -394,21 +403,51 @@ function hasContent(s: NoteSection): boolean {
 export async function quickAddNoteAction(formData: FormData) {
   const user = await requireCurrentUser();
   const shift = getCurrentPicForStore(user.storeId);
-  const title = fd(formData, "title");
+  const titleTyped = fd(formData, "title");
   const text = fd(formData, "text");
-  if (!title) return { error: "Title is required." };
-  let sections: NoteSection[] = [];
+  if (!titleTyped) return { error: "Title is required." };
+  let typedSections: Array<{ topic: string; subtopic: string; bullets: string[] }> = [];
   try {
     const raw = fd(formData, "sectionsJson");
-    if (raw) sections = (JSON.parse(raw) as NoteSection[]).filter(hasContent);
+    if (raw) typedSections = (JSON.parse(raw) as Array<{ topic: string; subtopic: string; bullets: string[] }>).filter((s) => s.topic.trim() || s.subtopic.trim() || s.bullets.some((b) => b.trim()));
   } catch {
-    sections = [];
+    typedSections = [];
   }
-  if (!text && sections.length === 0) return { error: "Add at least a topic or a note." };
+  if (!text && typedSections.length === 0) return { error: "Add at least a topic or a note." };
+
+  // Auto-translate the title and every section's topic/subtopic/bullets in
+  // one batched call -- a chef writing entirely in Spanish gets an English
+  // version a GM can read, and vice versa, with nothing typed twice. Each
+  // field is translated independently and always resolves to
+  // (primary=English, *Es=Spanish), same convention as tasks.
+  const toTranslate: Record<string, string> = { title: titleTyped };
+  typedSections.forEach((s, i) => {
+    if (s.topic) toTranslate[`topic${i}`] = s.topic;
+    if (s.subtopic) toTranslate[`subtopic${i}`] = s.subtopic;
+    s.bullets.forEach((b, j) => {
+      if (b) toTranslate[`bullet${i}_${j}`] = b;
+    });
+  });
+  const translated = await translateFields(toTranslate);
+
+  const { primary: title, secondary: titleEs } = resolveBilingualPair(translated?.title, titleTyped, null);
+  const sections: NoteSection[] = typedSections.map((s, i) => {
+    const topicPair = resolveBilingualPair(translated?.[`topic${i}`], s.topic, null);
+    const subtopicPair = resolveBilingualPair(translated?.[`subtopic${i}`], s.subtopic, null);
+    const bullets: string[] = [];
+    const bulletsEs: string[] = [];
+    s.bullets.forEach((b, j) => {
+      const pair = resolveBilingualPair(translated?.[`bullet${i}_${j}`], b, null);
+      bullets.push(pair.primary);
+      bulletsEs.push(pair.secondary || "");
+    });
+    return { topic: topicPair.primary, topicEs: topicPair.secondary || "", subtopic: subtopicPair.primary, subtopicEs: subtopicPair.secondary || "", bullets, bulletsEs };
+  });
+
   const attachments = await storeNoteAttachments(user.storeId, formData);
   const id = newId();
   noteService.insertNote(
-    { storeId: user.storeId, shiftId: shift?.id || null, title, text, sections, authorId: user.id, attachments },
+    { storeId: user.storeId, shiftId: shift?.id || null, title, titleEs, text, sections, authorId: user.id, attachments },
     id,
     nowIso()
   );

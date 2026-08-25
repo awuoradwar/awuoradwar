@@ -612,7 +612,8 @@ create table shift_notes (
   author_id uuid references users(id),
   text text not null, -- legacy quick-note body; '' once a note uses title/sections instead
   title text,
-  sections_json text, -- JSON array of { topic, subtopic, bullets: string[] }
+  title_es text, -- auto-translated Spanish title -- see translationService.ts
+  sections_json text, -- JSON array of { topic, topicEs, subtopic, subtopicEs, bullets: string[], bulletsEs: string[] }
   created_at timestamptz not null default now()
 );
 

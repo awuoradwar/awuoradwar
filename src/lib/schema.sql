@@ -722,7 +722,8 @@ CREATE TABLE IF NOT EXISTS shift_notes (
   author_id TEXT REFERENCES users(id),
   text TEXT NOT NULL, -- legacy quick-note body; '' once a note uses title/sections instead
   title TEXT,
-  sections_json TEXT, -- JSON array of { topic, subtopic, bullets: string[] }, added via ensureColumn in db.ts
+  title_es TEXT, -- auto-translated Spanish title -- see translationService.ts
+  sections_json TEXT, -- JSON array of { topic, topicEs, subtopic, subtopicEs, bullets: string[], bulletsEs: string[] }, added via ensureColumn in db.ts
   created_at TEXT NOT NULL
 );
 
