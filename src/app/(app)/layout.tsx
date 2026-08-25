@@ -3,6 +3,7 @@ import { getCurrentUser, getCurrentPicForStore } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { ensureInstancesForWeek, weekStartOf } from "@/lib/services/recurrenceService";
 import { resetDueWeeklyCleaningTasks, resetDueDailyCleaningTasks } from "@/lib/services/cleaningService";
+import { backfillStoreTranslations } from "@/lib/services/translationService";
 import { storeToday } from "@/lib/storeTime";
 import BottomNav from "@/components/BottomNav";
 import TopBar from "@/components/TopBar";
@@ -17,6 +18,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ensureInstancesForWeek(user.storeId, weekStartOf(today));
   resetDueWeeklyCleaningTasks(user.storeId);
   resetDueDailyCleaningTasks(user.storeId);
+  // Catches up anything saved before auto-translation existed (or before an
+  // API key was configured) -- a no-op API-wise once everything's caught up,
+  // see backfillStoreTranslations' own comment. Never let a translation
+  // hiccup take down the whole app shell.
+  await backfillStoreTranslations(user.storeId).catch(() => {});
 
   const db = getDb();
   const store = db.prepare(`SELECT * FROM stores WHERE id = ?`).get(user.storeId) as { name: string } | undefined;

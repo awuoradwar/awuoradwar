@@ -6,13 +6,17 @@ import { canDo } from "@/lib/permissions";
 import { getDb } from "@/lib/db";
 import { newId, nowIso, writeAudit } from "@/lib/audit";
 import { activeTemplateTitleExists } from "@/lib/services/taskService";
+import { translateFields, resolveBilingualPair } from "@/lib/services/translationService";
 
 export async function createTemplateAction(formData: FormData) {
   const user = await requireCurrentUser();
   if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
   const db = getDb();
-  const title = String(formData.get("title") || "").trim();
-  if (!title) return { error: "Title is required." };
+  const titleTyped = String(formData.get("title") || "").trim();
+  if (!titleTyped) return { error: "Title is required." };
+  const titleEsTyped = String(formData.get("titleEs") || "").trim() || null;
+  const translated = titleEsTyped ? {} : await translateFields({ title: titleTyped });
+  const { primary: title, secondary: titleEs } = resolveBilingualPair(translated?.title, titleTyped, titleEsTyped);
   if (activeTemplateTitleExists(user.storeId, title)) {
     return { error: `A recurring task named "${title}" already exists. Edit that one instead of adding a duplicate.` };
   }
@@ -20,7 +24,6 @@ export async function createTemplateAction(formData: FormData) {
   const weekdaysRaw = formData.getAll("weekdays").map(String);
   const dueTime = String(formData.get("dueTime") || "") || undefined;
   const config = { weekdays: weekdaysRaw.map(Number), dueTime };
-  const titleEs = String(formData.get("titleEs") || "").trim() || null;
   const id = newId();
   db.prepare(
     `INSERT INTO task_templates (id, store_id, title, title_es, description, area, category, recurrence_type, recurrence_config,
@@ -50,9 +53,11 @@ export async function updateTemplateTitleAction(id: string, formData: FormData) 
   const user = await requireCurrentUser();
   if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
   const db = getDb();
-  const title = String(formData.get("title") || "").trim();
-  if (!title) return { error: "Title is required." };
-  const titleEs = String(formData.get("titleEs") || "").trim() || null;
+  const titleTyped = String(formData.get("title") || "").trim();
+  if (!titleTyped) return { error: "Title is required." };
+  const titleEsTyped = String(formData.get("titleEs") || "").trim() || null;
+  const translated = titleEsTyped ? {} : await translateFields({ title: titleTyped });
+  const { primary: title, secondary: titleEs } = resolveBilingualPair(translated?.title, titleTyped, titleEsTyped);
   db.prepare(`UPDATE task_templates SET title = ?, title_es = ? WHERE id = ?`).run(title, titleEs, id);
   writeAudit({ entityType: "task_template", entityId: id, actor: user, action: "EDITED", newValue: { title, title_es: titleEs } });
   revalidatePath("/more/templates");

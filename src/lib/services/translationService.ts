@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { getDb } from "../db";
 
 export interface FieldTranslation {
   lang: "en" | "es";
@@ -87,4 +88,63 @@ export function resolveBilingualPair(
   if (!translated) return { primary: primaryTyped, secondary: null };
   if (translated.lang === "es") return { primary: translated.translated, secondary: primaryTyped };
   return { primary: primaryTyped, secondary: translated.translated };
+}
+
+const BACKFILL_LIMIT = 25;
+
+/** Catches up anything that was saved before auto-translation existed (or
+ * before an API key was configured) -- active recurring templates, open
+ * one-off tasks, and notes whose title still has no Spanish counterpart.
+ * Cheap to call on every page load: when nothing is missing (the normal
+ * case) it's just three small SELECTs and no API call at all. When there IS
+ * something to catch up, everything found is translated in one shared
+ * call rather than one request per row. Safe to call with no API key --
+ * translateFields() returns null and this simply does nothing that trip. */
+export async function backfillStoreTranslations(storeId: string): Promise<void> {
+  const db = getDb();
+
+  const templates = db
+    .prepare(`SELECT id, title FROM task_templates WHERE store_id = ? AND active = 1 AND title_es IS NULL LIMIT ?`)
+    .all(storeId, BACKFILL_LIMIT) as Array<{ id: string; title: string }>;
+  const tasks = db
+    .prepare(
+      `SELECT id, title, description FROM tasks WHERE store_id = ? AND template_id IS NULL AND title_es IS NULL AND status IN ('OPEN','IN_PROGRESS') LIMIT ?`
+    )
+    .all(storeId, BACKFILL_LIMIT) as Array<{ id: string; title: string; description: string | null }>;
+  const notes = db
+    .prepare(`SELECT id, title FROM shift_notes WHERE store_id = ? AND title IS NOT NULL AND title_es IS NULL LIMIT ?`)
+    .all(storeId, BACKFILL_LIMIT) as Array<{ id: string; title: string }>;
+
+  if (templates.length === 0 && tasks.length === 0 && notes.length === 0) return;
+
+  const toTranslate: Record<string, string> = {};
+  templates.forEach((t) => (toTranslate[`tpl_${t.id}`] = t.title));
+  tasks.forEach((t) => {
+    toTranslate[`task_${t.id}`] = t.title;
+    if (t.description) toTranslate[`taskdesc_${t.id}`] = t.description;
+  });
+  notes.forEach((n) => (toTranslate[`note_${n.id}`] = n.title));
+
+  const translated = await translateFields(toTranslate);
+  if (!translated) return;
+
+  const updateTemplate = db.prepare(`UPDATE task_templates SET title_es = ? WHERE id = ? AND title_es IS NULL`);
+  const updateTask = db.prepare(`UPDATE tasks SET title_es = ? WHERE id = ? AND title_es IS NULL`);
+  const updateTaskDesc = db.prepare(`UPDATE tasks SET description_es = ? WHERE id = ? AND description_es IS NULL`);
+  const updateNote = db.prepare(`UPDATE shift_notes SET title_es = ? WHERE id = ? AND title_es IS NULL`);
+
+  for (const t of templates) {
+    const entry = translated[`tpl_${t.id}`];
+    if (entry) updateTemplate.run(entry.lang === "es" ? t.title : entry.translated, t.id);
+  }
+  for (const t of tasks) {
+    const entry = translated[`task_${t.id}`];
+    if (entry) updateTask.run(entry.lang === "es" ? t.title : entry.translated, t.id);
+    const descEntry = translated[`taskdesc_${t.id}`];
+    if (descEntry) updateTaskDesc.run(descEntry.lang === "es" ? t.description : descEntry.translated, t.id);
+  }
+  for (const n of notes) {
+    const entry = translated[`note_${n.id}`];
+    if (entry) updateNote.run(entry.lang === "es" ? n.title : entry.translated, n.id);
+  }
 }
