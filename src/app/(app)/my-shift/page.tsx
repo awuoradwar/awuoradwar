@@ -247,6 +247,10 @@ export default async function MyShiftPage() {
   // which renders in the server process's own timezone (UTC in
   // production), not the store's, silently showing the wrong due time.
   const dueLabelFor = (dueAt: string | null) => (dueAt ? formatStoreDateTime(user.storeId, dueAt, locale, { hour: "numeric", minute: "2-digit" }) : null);
+  // Last stretch of the store's day (store-local, not the server's) -- open
+  // tasks in NOW/TODAY flip red here so they don't quietly slip into
+  // tomorrow unnoticed. 21 = 9pm, three hours' warning before midnight.
+  const endOfDayUrgent = storeLocalHour(user.storeId) >= 21;
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
@@ -332,6 +336,7 @@ export default async function MyShiftPage() {
                   task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids) }}
                   managerColors={managerColors}
                   from="/my-shift"
+                  endOfDayUrgent={endOfDayUrgent}
                 />
               ))}
             </div>

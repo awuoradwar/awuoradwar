@@ -32,23 +32,46 @@ export interface TaskCardData {
   verification_required: number;
 }
 
-export default function TaskCard({ task, lang, managerColors, from }: { task: TaskCardData; lang: Language; managerColors?: Record<string, ManagerColor>; from?: string }) {
+export default function TaskCard({
+  task,
+  lang,
+  managerColors,
+  from,
+  endOfDayUrgent,
+}: {
+  task: TaskCardData;
+  lang: Language;
+  managerColors?: Record<string, ManagerColor>;
+  from?: string;
+  /** The store is heading toward close/midnight and this task is still open --
+   * flip it red so it doesn't quietly roll into tomorrow unnoticed. */
+  endOfDayUrgent?: boolean;
+}) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyDone, setOptimisticallyDone] = useState(false);
   const router = useRouter();
 
   const title = lang === "es" && task.title_es ? task.title_es : task.title;
   const description = lang === "es" && task.description_es ? task.description_es : task.description;
+  const isOpen = task.status !== "COMPLETE" && task.status !== "CANCELLED" && !optimisticallyDone;
+  const urgent = endOfDayUrgent && isOpen;
 
   return (
-    <div className="card flex items-start gap-3 p-3">
+    <div className={`card flex items-start gap-3 p-3 ${urgent ? "border-critical/50" : ""}`}>
       <div className="min-w-0 flex-1">
         <Link href={from ? withFrom(`/task/${task.id}`, from) : `/task/${task.id}`} className="block">
           <p className="truncate text-sm font-semibold">{title}</p>
         </Link>
         {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-          {task.dueLabel && <span>⏰ {task.dueLabel}</span>}
+          {task.dueLabel && (
+            <span className={urgent ? "font-semibold text-critical" : ""}>
+              ⏰ {task.dueLabel}
+            </span>
+          )}
+          {urgent && (
+            <span className="font-semibold text-critical">· {lang === "es" ? "Cierra pronto" : "Closing soon"}</span>
+          )}
           {task.area && <span>· {task.area}</span>}
           {task.owner_name && (
             <span>
