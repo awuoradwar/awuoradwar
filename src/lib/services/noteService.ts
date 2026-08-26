@@ -141,6 +141,39 @@ export function insertNote(params: CreateNoteParams, id: string, createdAt: stri
   }
 }
 
+export interface UpdateNoteParams {
+  title: string;
+  titleEs: string | null;
+  sections: NoteSection[];
+  /** The note's own date/time -- editable, same field getTodayNotes/history
+   * group and sort by, so fixing it here is really "moving the note," not
+   * just cosmetic. text is deliberately left untouched: the edit form has
+   * no field for it, and overwriting it would silently blank out a
+   * legacy pre-title note's only content. */
+  createdAt: string;
+  newAttachments: Array<{ fileRef: string; originalName: string; contentType: string }>;
+}
+
+/** Returns false (and touches nothing) if the note doesn't belong to this
+ * store -- same store-scoping every other note operation enforces. */
+export function updateNote(id: string, storeId: string, params: UpdateNoteParams, actor: SessionUser): boolean {
+  const db = getDb();
+  const result = db
+    .prepare(`UPDATE shift_notes SET title = ?, title_es = ?, sections_json = ?, created_at = ? WHERE id = ? AND store_id = ?`)
+    .run(params.title, params.titleEs, JSON.stringify(params.sections), params.createdAt, id, storeId);
+  if (result.changes === 0) return false;
+  if (params.newAttachments.length > 0) {
+    const insertAttachment = db.prepare(
+      `INSERT INTO note_attachments (id, note_id, file_ref, original_name, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    for (const a of params.newAttachments) {
+      insertAttachment.run(`${id}-${a.fileRef}`, id, a.fileRef, a.originalName, a.contentType, params.createdAt);
+    }
+  }
+  writeAudit({ entityType: "shift_note", entityId: id, actor, action: "EDITED" });
+  return true;
+}
+
 export async function deleteShiftNote(id: string, storeId: string, actor: SessionUser) {
   const db = getDb();
   const attachments = db.prepare(`SELECT file_ref FROM note_attachments WHERE note_id = ?`).all(id) as Array<{ file_ref: string }>;

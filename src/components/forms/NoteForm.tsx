@@ -14,6 +14,15 @@ interface SectionDraft {
 
 const EMPTY_SECTION: SectionDraft = { topic: "", subtopic: "", bulletsText: "" };
 
+/** "YYYY-MM-DDTHH:MM" for right now, in whoever's holding the phone's own
+ * local time -- same assumption the rest of the app makes that the device's
+ * clock matches the store's, since the person typing is standing in it. */
+function nowLocalInputValue(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function NoteForm({ lang }: { lang: Language }) {
   const [sections, setSections] = useState<SectionDraft[]>([{ ...EMPTY_SECTION }]);
   const { onSubmit, pending, error, status } = useQuickAddSubmit(
@@ -45,6 +54,10 @@ export default function NoteForm({ lang }: { lang: Language }) {
           className={inputClass}
           placeholder={lang === "es" ? "ej. Reunión regional" : "e.g. Regional meeting"}
         />
+      </Field>
+
+      <Field label={lang === "es" ? "Fecha y hora" : "Date & time"}>
+        <input name="notedAt" type="datetime-local" defaultValue={nowLocalInputValue()} required className={inputClass} />
       </Field>
 
       {sections.map((s, i) => (

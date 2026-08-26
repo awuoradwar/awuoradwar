@@ -400,26 +400,25 @@ function hasContent(s: NoteSection): boolean {
   return !!(s.topic.trim() || s.subtopic.trim() || s.bullets.some((b) => b.trim()));
 }
 
-export async function quickAddNoteAction(formData: FormData) {
-  const user = await requireCurrentUser();
-  const shift = getCurrentPicForStore(user.storeId);
-  const titleTyped = fd(formData, "title");
-  const text = fd(formData, "text");
-  if (!titleTyped) return { error: "Title is required." };
-  let typedSections: Array<{ topic: string; subtopic: string; bullets: string[] }> = [];
+function parseTypedSections(formData: FormData): Array<{ topic: string; subtopic: string; bullets: string[] }> {
   try {
     const raw = fd(formData, "sectionsJson");
-    if (raw) typedSections = (JSON.parse(raw) as Array<{ topic: string; subtopic: string; bullets: string[] }>).filter((s) => s.topic.trim() || s.subtopic.trim() || s.bullets.some((b) => b.trim()));
+    if (!raw) return [];
+    return (JSON.parse(raw) as Array<{ topic: string; subtopic: string; bullets: string[] }>).filter(
+      (s) => s.topic.trim() || s.subtopic.trim() || s.bullets.some((b) => b.trim())
+    );
   } catch {
-    typedSections = [];
+    return [];
   }
-  if (!text && typedSections.length === 0) return { error: "Add at least a topic or a note." };
+}
 
-  // Auto-translate the title and every section's topic/subtopic/bullets in
-  // one batched call -- a chef writing entirely in Spanish gets an English
-  // version a GM can read, and vice versa, with nothing typed twice. Each
-  // field is translated independently and always resolves to
-  // (primary=English, *Es=Spanish), same convention as tasks.
+/** Auto-translates a note's title and every section's topic/subtopic/bullets
+ * in one batched call -- a chef writing entirely in Spanish gets an English
+ * version a GM can read, and vice versa, with nothing typed twice. Each
+ * field is translated independently and always resolves to
+ * (primary=English, *Es=Spanish), same convention as tasks. Shared between
+ * create and edit so both go through the exact same resolution logic. */
+async function translateNoteContent(titleTyped: string, typedSections: Array<{ topic: string; subtopic: string; bullets: string[] }>) {
   const toTranslate: Record<string, string> = { title: titleTyped };
   typedSections.forEach((s, i) => {
     if (s.topic) toTranslate[`topic${i}`] = s.topic;
@@ -443,15 +442,56 @@ export async function quickAddNoteAction(formData: FormData) {
     });
     return { topic: topicPair.primary, topicEs: topicPair.secondary || "", subtopic: subtopicPair.primary, subtopicEs: subtopicPair.secondary || "", bullets, bulletsEs };
   });
+  return { title, titleEs, sections };
+}
+
+/** notedAt is a datetime-local value ("YYYY-MM-DDTHH:MM") from the form --
+ * the date/time the note is FOR, picked by whoever's writing it (e.g.
+ * logging today's notes from a meeting that already happened, or dating an
+ * entry for a meeting that hasn't happened yet), not necessarily the exact
+ * instant they happened to type it. Falls back to right now if left blank. */
+function resolveNotedAt(user: { storeId: string }, formData: FormData): string {
+  const notedAtLocal = fd(formData, "notedAt");
+  return notedAtLocal ? storeLocalIso(user.storeId, notedAtLocal.slice(0, 10), notedAtLocal.slice(11, 16)) : nowIso();
+}
+
+export async function quickAddNoteAction(formData: FormData) {
+  const user = await requireCurrentUser();
+  const shift = getCurrentPicForStore(user.storeId);
+  const titleTyped = fd(formData, "title");
+  const text = fd(formData, "text");
+  if (!titleTyped) return { error: "Title is required." };
+  const typedSections = parseTypedSections(formData);
+  if (!text && typedSections.length === 0) return { error: "Add at least a topic or a note." };
+
+  const { title, titleEs, sections } = await translateNoteContent(titleTyped, typedSections);
+  const createdAt = resolveNotedAt(user, formData);
 
   const attachments = await storeNoteAttachments(user.storeId, formData);
   const id = newId();
   noteService.insertNote(
     { storeId: user.storeId, shiftId: shift?.id || null, title, titleEs, text, sections, authorId: user.id, attachments },
     id,
-    nowIso()
+    createdAt
   );
   writeAudit({ entityType: "shift_note", entityId: id, actor: user, action: "CREATED" });
   refresh();
+  return { ok: true };
+}
+
+export async function updateNoteAction(noteId: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const titleTyped = fd(formData, "title");
+  if (!titleTyped) return { error: "Title is required." };
+  const typedSections = parseTypedSections(formData);
+
+  const { title, titleEs, sections } = await translateNoteContent(titleTyped, typedSections);
+  const createdAt = resolveNotedAt(user, formData);
+  const newAttachments = await storeNoteAttachments(user.storeId, formData);
+
+  const ok = noteService.updateNote(noteId, user.storeId, { title, titleEs, sections, createdAt, newAttachments }, user);
+  if (!ok) return { error: "Note not found." };
+  refresh();
+  revalidatePath(`/note/${noteId}`);
   return { ok: true };
 }
