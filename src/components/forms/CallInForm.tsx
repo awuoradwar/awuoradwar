@@ -52,6 +52,9 @@ export default function CallInForm({ lang }: { lang: Language }) {
       <Field label={lang === "es" ? "Cubre" : "Covering person"}>
         <input name="coveringPerson" className={inputClass} placeholder={lang === "es" ? "Opcional" : "Optional"} />
       </Field>
+      <Field label={lang === "es" ? "Nota (opcional)" : "Note (optional)"}>
+        <input name="note" className={inputClass} />
+      </Field>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Registrar" : "Record"} />
     </form>
   );
