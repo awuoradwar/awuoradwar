@@ -98,6 +98,23 @@ export function FileField({
   );
 }
 
+/** Live preview of a "one per line" textarea as the actual bulleted list it
+ * becomes once saved -- typing "Talk to BOH" and only seeing that flat line
+ * back, with no bullet, gave no sense of the finished note until after
+ * saving. Renders nothing when there's no non-blank line yet, so an empty
+ * section doesn't show a hint of an empty list. */
+export function BulletPreview({ text }: { text: string }) {
+  const bullets = text.split("\n").map((b) => b.trim()).filter(Boolean);
+  if (bullets.length === 0) return null;
+  return (
+    <ul className="list-disc space-y-0.5 rounded-lg bg-card-subtle px-3 py-2 pl-7 text-sm text-foreground">
+      {bullets.map((b, i) => (
+        <li key={i}>{b}</li>
+      ))}
+    </ul>
+  );
+}
+
 export function SubmitBar({
   pending,
   error,

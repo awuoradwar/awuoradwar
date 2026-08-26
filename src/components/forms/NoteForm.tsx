@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { quickAddNoteAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
-import { Field, inputClass, textareaClass, FileField, SubmitBar } from "./FormShell";
+import { Field, inputClass, textareaClass, FileField, SubmitBar, BulletPreview } from "./FormShell";
 import { Language } from "@/lib/types";
 
 interface SectionDraft {
@@ -99,6 +99,7 @@ export default function NoteForm({ lang }: { lang: Language }) {
               className={textareaClass}
             />
           </Field>
+          <BulletPreview text={s.bulletsText} />
         </div>
       ))}
       <button

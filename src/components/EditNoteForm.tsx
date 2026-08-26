@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateNoteAction } from "@/app/actions/quickAddActions";
-import { Field, inputClass, textareaClass, FileField, btnPrimary, btnNeutral } from "./forms/FormShell";
+import { Field, inputClass, textareaClass, FileField, BulletPreview, btnPrimary, btnNeutral } from "./forms/FormShell";
 import { Language } from "@/lib/types";
 import type { NoteSection } from "@/lib/services/noteService";
 
@@ -105,6 +105,7 @@ export default function EditNoteForm({
           <Field label={`${lang === "es" ? "Puntos" : "Bullet points"} (${lang === "es" ? "uno por línea" : "one per line"})`}>
             <textarea value={s.bulletsText} onChange={(e) => updateSection(i, { bulletsText: e.target.value })} rows={3} className={textareaClass} />
           </Field>
+          <BulletPreview text={s.bulletsText} />
         </div>
       ))}
       <button

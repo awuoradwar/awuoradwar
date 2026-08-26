@@ -45,7 +45,11 @@ export default function NoteDetailBody({
         attachmentCount={attachments.length}
         lang={lang}
         onDone={() => {
-          setEditing(false);
+          // Same "drop back to where you'd expect" behavior as saving a new
+          // note -- back to wherever this note was opened from (Notes
+          // history, most of the time) rather than sitting on the detail
+          // page waiting for a manual back tap.
+          router.push(backHref);
           router.refresh();
         }}
         onCancel={() => setEditing(false)}
