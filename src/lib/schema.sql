@@ -297,6 +297,7 @@ CREATE TABLE IF NOT EXISTS cleaning_tasks (
   completed_at TEXT,
   verified_by TEXT REFERENCES users(id),
   verified_at TEXT,
+  last_due_date TEXT, -- store-local YYYY-MM-DD this task's current open occurrence became due; drives missed-occurrence detection on the next reset
   created_at TEXT NOT NULL
 );
 

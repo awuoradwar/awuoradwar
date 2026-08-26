@@ -10,11 +10,16 @@ export default function AssignAreaOwnerControl({
   ownerId,
   managers,
   lang,
+  stopClickPropagation,
 }: {
   areaId: string;
   ownerId: string | null;
   managers: Array<{ id: string; name: string }>;
   lang: Language;
+  /** Set when this renders inside a <summary> -- without it, using the
+   * dropdown also toggles the parent <details> open/closed, since a click
+   * anywhere in <summary> triggers its native toggle. */
+  stopClickPropagation?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   // Being a controlled <select> bound straight to the server prop, without
@@ -30,6 +35,7 @@ export default function AssignAreaOwnerControl({
     <select
       value={displayOwnerId}
       disabled={pending}
+      onClick={stopClickPropagation ? (e) => e.stopPropagation() : undefined}
       onChange={(e) => {
         const next = e.target.value;
         startTransition(async () => {

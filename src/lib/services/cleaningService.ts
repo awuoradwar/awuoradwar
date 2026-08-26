@@ -285,6 +285,15 @@ function resetChecklistItemsForTasks(taskIds: string[]) {
   db.prepare(`UPDATE cleaning_task_items SET done = 0, associate_name = NULL WHERE cleaning_task_id IN (${placeholders})`).run(...taskIds);
 }
 
+/** Snapshots a task's checklist items + photos into an audit event's
+ * new_value at completion time (see completeCleaningTask) -- once a reset
+ * wipes the live columns, this snapshot is the only place a later history
+ * view can still show what actually happened. Reused here to give a MISSED
+ * event the same shape (minus items, since nothing was ever checked off). */
+function snapshotChecklistItems(cleaningTaskId: string) {
+  return getChecklistItems(cleaningTaskId).map((i) => ({ text: i.text, done: !!i.done, associate_name: i.associate_name }));
+}
+
 export function resetDueWeeklyCleaningTasks(storeId: string) {
   const db = getDb();
   const todayStr = storeToday(storeId);
@@ -292,30 +301,57 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
   // getDay() reads it back in the server process's own local timezone,
   // silently computing the wrong weekday whenever that's not UTC.
   const todayWeekday = new Date(todayStr + "T00:00:00Z").getUTCDay();
-  // completed_at is a UTC timestamp -- comparing it against store-local
-  // midnight requires the real timezone conversion, not a bare "Z" suffix
-  // (which would be off by the store's UTC offset).
-  const weekStartIso = storeDayRangeUtc(storeId, weekStartOf(todayStr)).start;
+  const weekStartStr = weekStartOf(todayStr);
 
-  const dueIds = db
+  // Every WEEKLY task due today that hasn't been accounted for yet this week
+  // -- whether it was completed (needs a fresh reset) or never touched at
+  // all (its whole occurrence went by unfulfilled -- a miss).
+  const dueTasks = db
     .prepare(
-      `SELECT ct.id FROM cleaning_tasks ct
+      `SELECT ct.id, ct.status, ct.last_due_date, ct.title
+       FROM cleaning_tasks ct
        JOIN cleaning_areas a ON a.id = ct.area_id
        WHERE a.store_id = ? AND ct.frequency = 'WEEKLY' AND ct.weekday = ?
-         AND ct.status IN ('COMPLETED','VERIFIED')
-         AND (ct.completed_at IS NULL OR ct.completed_at < ?)`
+         AND (ct.last_due_date IS NULL OR ct.last_due_date < ?)`
     )
-    .all(storeId, todayWeekday, weekStartIso) as Array<{ id: string }>;
-  if (dueIds.length === 0) return;
-  const ids = dueIds.map((r) => r.id);
-  const placeholders = ids.map(() => "?").join(",");
-  db.prepare(
-    `UPDATE cleaning_tasks
-     SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
-         photo_before_url = NULL, photo_after_url = NULL
-     WHERE id IN (${placeholders})`
-  ).run(...ids);
-  resetChecklistItemsForTasks(ids);
+    .all(storeId, todayWeekday, weekStartStr) as Array<{ id: string; status: string; last_due_date: string | null; title: string }>;
+  if (dueTasks.length === 0) return;
+
+  const doneIds = dueTasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").map((t) => t.id);
+  // Only a task that's been through at least one prior due-check (a real
+  // last_due_date, not NULL) can be considered missed -- a task seeing its
+  // very first check has nothing earlier to have missed yet.
+  const missedTasks = dueTasks.filter((t) => t.status !== "COMPLETED" && t.status !== "VERIFIED" && t.last_due_date);
+  const firstSeenIds = dueTasks.filter((t) => t.status !== "COMPLETED" && t.status !== "VERIFIED" && !t.last_due_date).map((t) => t.id);
+
+  if (doneIds.length > 0) {
+    const placeholders = doneIds.map(() => "?").join(",");
+    db.prepare(
+      `UPDATE cleaning_tasks
+       SET status = 'ASSIGNED', associate_name = NULL, completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
+           photo_before_url = NULL, photo_after_url = NULL, last_due_date = ?
+       WHERE id IN (${placeholders})`
+    ).run(todayStr, ...doneIds);
+    resetChecklistItemsForTasks(doneIds);
+  }
+
+  for (const task of missedTasks) {
+    writeAudit({ entityType: "cleaning_task", entityId: task.id, actor: null, action: "MISSED", newValue: { title: task.title } });
+  }
+  if (missedTasks.length > 0) {
+    const missedIds = missedTasks.map((t) => t.id);
+    const placeholders = missedIds.map(() => "?").join(",");
+    // Same fresh-start treatment as a completed task rolling into its next
+    // occurrence -- whoever it was (partially) assigned to last week
+    // shouldn't carry over into this week's unrelated instance, same as the
+    // "done" branch above.
+    db.prepare(`UPDATE cleaning_tasks SET associate_name = NULL, last_due_date = ? WHERE id IN (${placeholders})`).run(todayStr, ...missedIds);
+    resetChecklistItemsForTasks(missedIds);
+  }
+  if (firstSeenIds.length > 0) {
+    const placeholders = firstSeenIds.map(() => "?").join(",");
+    db.prepare(`UPDATE cleaning_tasks SET last_due_date = ? WHERE id IN (${placeholders})`).run(todayStr, ...firstSeenIds);
+  }
 }
 
 /**
@@ -343,7 +379,7 @@ export function resetDueDailyCleaningTasks(storeId: string) {
   const placeholders = ids.map(() => "?").join(",");
   db.prepare(
     `UPDATE cleaning_tasks
-     SET status = 'ASSIGNED', completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
+     SET status = 'ASSIGNED', associate_name = NULL, completed_by = NULL, completed_at = NULL, verified_by = NULL, verified_at = NULL,
          photo_before_url = NULL, photo_after_url = NULL
      WHERE id IN (${placeholders})`
   ).run(...ids);
@@ -352,26 +388,32 @@ export function resetDueDailyCleaningTasks(storeId: string) {
 
 export function completeCleaningTask(id: string, actor: SessionUser, afterPhotoUrl?: string | null) {
   const db = getDb();
-  const task = db.prepare(`SELECT photo_required, photo_after_url, associate_name FROM cleaning_tasks WHERE id = ?`).get(id) as
-    | { photo_required: number; photo_after_url: string | null; associate_name: string | null }
+  const task = db.prepare(`SELECT photo_required, photo_before_url, photo_after_url, associate_name FROM cleaning_tasks WHERE id = ?`).get(id) as
+    | { photo_required: number; photo_before_url: string | null; photo_after_url: string | null; associate_name: string | null }
     | undefined;
   if (task?.photo_required && !task.photo_after_url && !afterPhotoUrl) {
     throw new Error("PHOTO_REQUIRED: This cleaning task requires an after photo before it can be marked complete.");
   }
   const ts = nowIso();
+  const finalAfterUrl = afterPhotoUrl || task?.photo_after_url || null;
   db.prepare(
     `UPDATE cleaning_tasks SET status = 'COMPLETED', completed_by = ?, completed_at = ?, photo_after_url = COALESCE(?, photo_after_url) WHERE id = ?`
   ).run(actor.id, ts, afterPhotoUrl || null, id);
-  // Snapshot the associate assigned at the moment of completion -- the live
-  // associate_name column gets wiped by the next daily/weekly reset, so a
-  // later "who was assigned" view (Weekly Summary) needs its own copy here
-  // rather than reading the (by-then-cleared) live column.
+  // Snapshot everything a later history detail view would need -- the live
+  // associate_name/photo columns and the checklist items all get wiped by
+  // the next daily/weekly reset, so this copy is the only place any of it
+  // survives once that happens.
   writeAudit({
     entityType: "cleaning_task",
     entityId: id,
     actor,
     action: "COMPLETED",
-    newValue: { associate_name: task?.associate_name ?? null, ...(afterPhotoUrl ? { photo_after_url: afterPhotoUrl } : {}) },
+    newValue: {
+      associate_name: task?.associate_name ?? null,
+      photo_before_url: task?.photo_before_url ?? null,
+      photo_after_url: finalAfterUrl,
+      checklist_items: snapshotChecklistItems(id),
+    },
   });
 }
 
@@ -388,9 +430,22 @@ export function attachCleaningPhoto(id: string, kind: "before" | "after", photoU
 export function verifyCleaningTask(id: string, actor: SessionUser) {
   const db = getDb();
   const ts = nowIso();
-  const task = db.prepare(`SELECT associate_name FROM cleaning_tasks WHERE id = ?`).get(id) as { associate_name: string | null } | undefined;
+  const task = db.prepare(`SELECT associate_name, photo_before_url, photo_after_url FROM cleaning_tasks WHERE id = ?`).get(id) as
+    | { associate_name: string | null; photo_before_url: string | null; photo_after_url: string | null }
+    | undefined;
   db.prepare(`UPDATE cleaning_tasks SET status = 'VERIFIED', verified_by = ?, verified_at = ? WHERE id = ?`).run(actor.id, ts, id);
-  writeAudit({ entityType: "cleaning_task", entityId: id, actor, action: "VERIFIED", newValue: { associate_name: task?.associate_name ?? null } });
+  writeAudit({
+    entityType: "cleaning_task",
+    entityId: id,
+    actor,
+    action: "VERIFIED",
+    newValue: {
+      associate_name: task?.associate_name ?? null,
+      photo_before_url: task?.photo_before_url ?? null,
+      photo_after_url: task?.photo_after_url ?? null,
+      checklist_items: snapshotChecklistItems(id),
+    },
+  });
 }
 
 /** Scoped to storeId so one store can never fetch another's photo. */
@@ -406,41 +461,98 @@ export function getPhotoRefForTask(taskId: string, storeId: string, kind: "befor
     .get(taskId, storeId) as { photo_url: string } | undefined;
 }
 
+/** Resolves a before/after photo attached to a past (possibly since-reset)
+ * completion, scoped to storeId via the audit event's own task/area join --
+ * the live cleaning_tasks row's photo columns get wiped by the next reset,
+ * but the file itself is never deleted from disk, so the audit event's own
+ * snapshot is still a valid pointer to it. */
+export function getHistoryPhotoRef(auditEventId: string, storeId: string, kind: "before" | "after"): { photo_url: string } | undefined {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT ae.new_value FROM audit_events ae
+       JOIN cleaning_tasks ct ON ct.id = ae.entity_id
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       WHERE ae.id = ? AND a.store_id = ? AND ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED','VERIFIED')`
+    )
+    .get(auditEventId, storeId) as { new_value: string | null } | undefined;
+  if (!row) return undefined;
+  const snapshot = parseHistorySnapshot(row.new_value);
+  const url = kind === "before" ? snapshot.photo_before_url : snapshot.photo_after_url;
+  return url ? { photo_url: url } : undefined;
+}
+
+export interface CleaningHistorySnapshot {
+  associate_name: string | null;
+  photo_before_url: string | null;
+  photo_after_url: string | null;
+  checklist_items: Array<{ text: string; done: boolean; associate_name: string | null }>;
+}
+
 export interface CleaningHistoryEntry {
   id: string;
+  taskId: string;
   title: string;
   title_es: string | null;
   area_name: string;
   area_name_es: string | null;
   associate_name: string | null;
+  /** COMPLETED | VERIFIED | MISSED */
   action: string;
   by_name: string | null;
   at: string;
+  snapshot: CleaningHistorySnapshot;
 }
 
-/** Full history of WEEKLY cleaning-task completions, oldest state never
- * lost -- resetDueWeeklyCleaningTasks wipes each task's own completed_at/
- * completed_by columns the moment its weekday comes back around (so the
- * live chart always shows this week's fresh state), but every completion
- * still wrote an audit_events row at the time, which nothing ever touches
- * again. This reads from that trail instead of the live (reset) columns --
- * the only place a manager can see what actually happened in past weeks. */
+function parseHistorySnapshot(rawNewValue: string | null): CleaningHistorySnapshot {
+  try {
+    const parsed = rawNewValue
+      ? (JSON.parse(rawNewValue) as {
+          associate_name?: string | null;
+          photo_before_url?: string | null;
+          photo_after_url?: string | null;
+          checklist_items?: Array<{ text: string; done: boolean; associate_name: string | null }>;
+        })
+      : {};
+    return {
+      associate_name: parsed.associate_name ?? null,
+      photo_before_url: parsed.photo_before_url ?? null,
+      photo_after_url: parsed.photo_after_url ?? null,
+      checklist_items: parsed.checklist_items ?? [],
+    };
+  } catch {
+    return { associate_name: null, photo_before_url: null, photo_after_url: null, checklist_items: [] };
+  }
+}
+
+/** Full history of WEEKLY cleaning-task completions -- AND misses --
+ * oldest state never lost. resetDueWeeklyCleaningTasks wipes each task's
+ * own completed_at/completed_by/associate_name columns the moment its
+ * weekday comes back around (so the live chart always shows this week's
+ * fresh state), but every completion (and every detected miss) still wrote
+ * an audit_events row at the time, which nothing ever touches again. This
+ * reads from that trail instead of the live (reset) columns -- the only
+ * place a manager can see what actually happened in past weeks, including
+ * the full checklist/photo snapshot for COMPLETED/VERIFIED entries. Misses
+ * only exist from the point this tracking shipped forward -- there's no way
+ * to know about gaps from before that. */
 export function getWeeklyCleaningHistory(storeId: string, limit = 200): CleaningHistoryEntry[] {
   const db = getDb();
   const rows = db
     .prepare(
-      `SELECT ae.id, ct.title, ct.title_es, a.name as area_name, a.name_es as area_name_es,
+      `SELECT ae.id, ct.id as task_id, ct.title, ct.title_es, a.name as area_name, a.name_es as area_name_es,
               ae.action, ae.new_value, ae.created_at as at, u.name as by_name
        FROM audit_events ae
        JOIN cleaning_tasks ct ON ct.id = ae.entity_id
        JOIN cleaning_areas a ON a.id = ct.area_id
        LEFT JOIN users u ON u.id = ae.actor_id
-       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED', 'VERIFIED')
+       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED', 'VERIFIED', 'MISSED')
          AND a.store_id = ? AND ct.frequency = 'WEEKLY'
        ORDER BY ae.created_at DESC LIMIT ?`
     )
     .all(storeId, limit) as Array<{
     id: string;
+    task_id: string;
     title: string;
     title_es: string | null;
     area_name: string;
@@ -451,24 +563,46 @@ export function getWeeklyCleaningHistory(storeId: string, limit = 200): Cleaning
     by_name: string | null;
   }>;
   return rows.map((row) => {
-    let associateName: string | null = null;
-    try {
-      associateName = row.new_value ? (JSON.parse(row.new_value) as { associate_name?: string | null }).associate_name ?? null : null;
-    } catch {
-      associateName = null;
-    }
+    const snapshot = parseHistorySnapshot(row.new_value);
     return {
       id: row.id,
+      taskId: row.task_id,
       title: row.title,
       title_es: row.title_es,
       area_name: row.area_name,
       area_name_es: row.area_name_es,
-      associate_name: associateName,
+      associate_name: snapshot.associate_name,
       action: row.action,
       by_name: row.by_name,
       at: row.at,
+      snapshot,
     };
   });
+}
+
+/** Completed+verified vs. missed weekly occurrences over the last `days` --
+ * the "how are we actually doing" number to show above the history list.
+ * Only reflects data since missed-tracking shipped, same caveat as the
+ * history itself. */
+export function getWeeklyCleaningCompletionRate(storeId: string, days = 28): { completed: number; missed: number; rate: number | null } {
+  const db = getDb();
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const row = db
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN ae.action IN ('COMPLETED','VERIFIED') THEN 1 ELSE 0 END) as completed,
+         SUM(CASE WHEN ae.action = 'MISSED' THEN 1 ELSE 0 END) as missed
+       FROM audit_events ae
+       JOIN cleaning_tasks ct ON ct.id = ae.entity_id
+       JOIN cleaning_areas a ON a.id = ct.area_id
+       WHERE ae.entity_type = 'cleaning_task' AND ae.action IN ('COMPLETED', 'MISSED')
+         AND a.store_id = ? AND ct.frequency = 'WEEKLY' AND ae.created_at >= ?`
+    )
+    .get(storeId, since) as { completed: number | null; missed: number | null };
+  const completed = row.completed || 0;
+  const missed = row.missed || 0;
+  const total = completed + missed;
+  return { completed, missed, rate: total > 0 ? completed / total : null };
 }
 
 export function reopenCleaningTask(id: string, actor: SessionUser) {

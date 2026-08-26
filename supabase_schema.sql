@@ -284,6 +284,7 @@ create table cleaning_tasks (
   completed_at timestamptz,
   verified_by uuid references users(id),
   verified_at timestamptz,
+  last_due_date text, -- store-local YYYY-MM-DD this task's current open occurrence became due; drives missed-occurrence detection on the next reset
   created_at timestamptz not null default now()
 );
 
