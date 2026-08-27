@@ -3,7 +3,8 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateTemplateScheduleAction } from "@/app/actions/templateActions";
-import { Field, inputClass, selectClass } from "./forms/FormShell";
+import { Field, selectClass } from "./forms/FormShell";
+import DueTimesField from "./forms/DueTimesField";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -19,7 +20,8 @@ const WEEKDAYS = [
 
 export interface RecurrenceConfig {
   weekdays?: number[];
-  dueTime?: string;
+  dueTimes?: string[];
+  dueTime?: string; // legacy single-due-time shape, see dueTimes
   linkScheduleRequests?: boolean;
 }
 
@@ -70,8 +72,8 @@ export default function TemplateScheduleEditor({
             </label>
           ))}
         </div>
-        <Field label={lang === "es" ? "Hora límite" : "Due time"}>
-          <input name="dueTime" type="time" defaultValue={config.dueTime || ""} className={inputClass} />
+        <Field label={lang === "es" ? "Hora(s) límite" : "Due time(s)"}>
+          <DueTimesField name="dueTime" lang={lang} defaultValues={config.dueTimes && config.dueTimes.length > 0 ? config.dueTimes : config.dueTime ? [config.dueTime] : undefined} />
         </Field>
         <label className="flex items-start gap-2 text-xs">
           <input type="checkbox" name="linkScheduleRequests" defaultChecked={!!config.linkScheduleRequests} className="mt-0.5 h-4 w-4" />

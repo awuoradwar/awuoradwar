@@ -33,11 +33,18 @@ function scheduleSummary(tpl: TemplateRow, lang: Language): string {
   if (config.weekdays?.length) {
     parts.push(config.weekdays.map((d: number) => WEEKDAY_LABEL[d]?.[lang] ?? d).join("/"));
   }
-  if (config.dueTime) {
-    const [h, m] = config.dueTime.split(":").map(Number);
-    const period = h >= 12 ? "PM" : "AM";
-    const h12 = h % 12 || 12;
-    parts.push(`${h12}:${String(m).padStart(2, "0")} ${period}`);
+  const dueTimes: string[] = config.dueTimes?.length ? config.dueTimes : config.dueTime ? [config.dueTime] : [];
+  if (dueTimes.length > 0) {
+    parts.push(
+      dueTimes
+        .map((t) => {
+          const [h, m] = t.split(":").map(Number);
+          const period = h >= 12 ? "PM" : "AM";
+          const h12 = h % 12 || 12;
+          return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+        })
+        .join(", ")
+    );
   }
   return parts.join(" · ");
 }

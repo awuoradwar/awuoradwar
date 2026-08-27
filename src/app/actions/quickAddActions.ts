@@ -87,8 +87,6 @@ export async function quickAddTaskAction(formData: FormData) {
   const translated = titleEsTyped ? {} : await translateFields({ title: titleTyped });
   const { primary: title, secondary: titleEs } = resolveBilingualPair(translated?.title, titleTyped, titleEsTyped);
 
-  const dueTime = fd(formData, "dueTime");
-
   if (fd(formData, "recurring") === "on") {
     if (!canDo(user, "templates.manage")) throw new Error("FORBIDDEN");
     const weekdaysRaw = formData.getAll("weekdays").map(String);
@@ -98,7 +96,15 @@ export async function quickAddTaskAction(formData: FormData) {
     }
     const db = getDb();
     const id = newId();
-    const config = { weekdays: weekdaysRaw.map(Number), dueTime: dueTime || undefined };
+    // Every "dueTime" input in the form -- DueTimesField renders one per
+    // due time the manager added, all sharing this same name, so a task
+    // checked several times a day (e.g. a temp log) generates one instance
+    // per time. See recurrenceService.ts's dueTimes handling.
+    const dueTimesRaw = formData
+      .getAll("dueTime")
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+    const config = { weekdays: weekdaysRaw.map(Number), dueTimes: dueTimesRaw.length > 0 ? dueTimesRaw : undefined };
     db.prepare(
       `INSERT INTO task_templates (id, store_id, title, title_es, description, area, category, recurrence_type, recurrence_config,
         default_owner_position, effort, verification_required, source, active, created_at)
@@ -109,6 +115,7 @@ export async function quickAddTaskAction(formData: FormData) {
     return { ok: true };
   }
 
+  const dueTime = fd(formData, "dueTime");
   const scheduledFor = fd(formData, "scheduledFor") || "TODAY";
   if (scheduledFor === "CUSTOM" && !fd(formData, "customDate")) return { error: "Date is required." };
   const scheduledDate = scheduledDateForWhen(scheduledFor, user.storeId, fd(formData, "customDate"));

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTemplateAction } from "@/app/actions/templateActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
+import DueTimesField from "./forms/DueTimesField";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 
@@ -64,8 +65,8 @@ export default function TemplateForm({ lang }: { lang: Language }) {
           </label>
         ))}
       </div>
-      <Field label={lang === "es" ? "Hora límite" : "Due time"}>
-        <input name="dueTime" type="time" className={inputClass} />
+      <Field label={lang === "es" ? "Hora(s) límite" : "Due time(s)"}>
+        <DueTimesField name="dueTime" lang={lang} />
       </Field>
       <Field label={lang === "es" ? "Esfuerzo" : "Effort"}>
         <select name="effort" defaultValue="STANDARD" className={selectClass}>

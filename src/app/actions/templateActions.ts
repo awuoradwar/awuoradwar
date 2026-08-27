@@ -22,8 +22,11 @@ export async function createTemplateAction(formData: FormData) {
   }
   const recurrenceType = String(formData.get("recurrenceType") || "WEEKLY");
   const weekdaysRaw = formData.getAll("weekdays").map(String);
-  const dueTime = String(formData.get("dueTime") || "") || undefined;
-  const config = { weekdays: weekdaysRaw.map(Number), dueTime };
+  const dueTimesRaw = formData
+    .getAll("dueTime")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+  const config = { weekdays: weekdaysRaw.map(Number), dueTimes: dueTimesRaw.length > 0 ? dueTimesRaw : undefined };
   const id = newId();
   db.prepare(
     `INSERT INTO task_templates (id, store_id, title, title_es, description, area, category, recurrence_type, recurrence_config,
@@ -88,13 +91,22 @@ export async function updateTemplateScheduleAction(id: string, formData: FormDat
   const db = getDb();
   const recurrenceType = String(formData.get("recurrenceType") || "WEEKLY");
   const weekdaysRaw = formData.getAll("weekdays").map(String);
-  const dueTime = String(formData.get("dueTime") || "") || undefined;
+  const dueTimesRaw = formData
+    .getAll("dueTime")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
   const existing = db.prepare(`SELECT recurrence_config FROM task_templates WHERE id = ?`).get(id) as
     | { recurrence_config: string | null }
     | undefined;
   const prevConfig = existing?.recurrence_config ? JSON.parse(existing.recurrence_config) : {};
   const linkScheduleRequests = formData.get("linkScheduleRequests") === "on";
-  const config = { ...prevConfig, weekdays: weekdaysRaw.map(Number), dueTime, linkScheduleRequests };
+  const config = {
+    ...prevConfig,
+    weekdays: weekdaysRaw.map(Number),
+    dueTimes: dueTimesRaw.length > 0 ? dueTimesRaw : undefined,
+    dueTime: undefined, // superseded by dueTimes -- drop the legacy singular key on any re-save
+    linkScheduleRequests,
+  };
   db.prepare(`UPDATE task_templates SET recurrence_type = ?, recurrence_config = ? WHERE id = ?`).run(
     recurrenceType,
     JSON.stringify(config),

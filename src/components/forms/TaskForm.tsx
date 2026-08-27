@@ -5,6 +5,7 @@ import { quickAddTaskAction } from "@/app/actions/quickAddActions";
 import { useQuickAddSubmit } from "./useQuickAddSubmit";
 import { Field, inputClass, selectClass, SubmitBar } from "./FormShell";
 import DateField from "./DateField";
+import DueTimesField from "./DueTimesField";
 import { Language } from "@/lib/types";
 
 const WEEKDAYS: Array<{ value: number; en: string; es: string }> = [
@@ -100,8 +101,8 @@ export default function TaskForm({
         </Field>
       )}
 
-      <Field label={lang === "es" ? "Hora de vencimiento (opcional)" : "Due time (optional)"}>
-        <input type="time" name="dueTime" className={inputClass} />
+      <Field label={recurring ? (lang === "es" ? "Hora(s) de vencimiento (opcional)" : "Due time(s) (optional)") : (lang === "es" ? "Hora de vencimiento (opcional)" : "Due time (optional)")}>
+        {recurring ? <DueTimesField name="dueTime" lang={lang} /> : <input type="time" name="dueTime" className={inputClass} />}
       </Field>
 
       {!recurring && (
