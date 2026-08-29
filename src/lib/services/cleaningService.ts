@@ -161,6 +161,16 @@ export function getAreasWithProgress(storeId: string) {
     )
     .all(storeId) as Array<{ id: string; name: string; name_es: string | null; category: string; owner_id: string | null; owner_name: string | null }>;
 
+  // A WEEKLY task only actually resets on its own due weekday (see
+  // resetDueWeeklyCleaningTasks) -- until that day comes back around, a
+  // task due later this week still carries last week's COMPLETED/VERIFIED
+  // status in the database, unchanged. Showing that live would read as
+  // "already done" for a chore nobody's touched yet this week. This is a
+  // display-only correction -- it doesn't touch the row, so the real reset
+  // (and the missed-occurrence check riding on it) still fires normally
+  // when that task's day actually arrives.
+  const weekStartIso = storeDayRangeUtc(storeId, weekStartOf(storeToday(storeId))).start;
+
   return areas.map((area) => {
     const rawTasks = db
       .prepare(`SELECT * FROM cleaning_tasks WHERE area_id = ? ORDER BY created_at ASC`)
@@ -177,8 +187,29 @@ export function getAreasWithProgress(storeId: string) {
       photo_required: number;
       photo_before_url: string | null;
       photo_after_url: string | null;
+      completed_at: string | null;
     }>;
-    const tasks = rawTasks.map((task) => ({ ...task, checklistItems: ensureChecklistItems(task.id, task.description) }));
+    const tasks = rawTasks.map((task) => {
+      const staleWeeklyCompletion =
+        task.frequency === "WEEKLY" &&
+        (task.status === "COMPLETED" || task.status === "VERIFIED") &&
+        (!task.completed_at || task.completed_at < weekStartIso);
+      const checklistItems = ensureChecklistItems(task.id, task.description);
+      if (!staleWeeklyCompletion) return { ...task, checklistItems };
+      // Same correction applied to everything else the live reset would
+      // eventually clear (see resetChecklistItemsForTasks) -- otherwise a
+      // task now correctly shown as "not done this week" would still name
+      // last week's associate and show last week's checklist checked off,
+      // which is exactly as confusing as the stale status was.
+      return {
+        ...task,
+        status: "ASSIGNED",
+        associate_name: null,
+        photo_before_url: null,
+        photo_after_url: null,
+        checklistItems: checklistItems.map((item) => ({ ...item, done: 0, associate_name: null })),
+      };
+    });
     const done = tasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").length;
     return { ...area, tasks, done, total: tasks.length };
   });
