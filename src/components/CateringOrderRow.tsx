@@ -113,53 +113,46 @@ export default function CateringOrderRow({ order, lang }: { order: CateringOrder
 
   return (
     <div className="card flex flex-col gap-2 p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            {order.number_of_people ? `${order.number_of_people} ${lang === "es" ? "personas" : "people"}` : lang === "es" ? "Catering" : "Catering"}
-            {order.customer_name ? ` · ${order.customer_name}` : ""}
+      <div>
+        <p className="text-sm font-medium">
+          {order.number_of_people ? `${order.number_of_people} ${lang === "es" ? "personas" : "people"}` : lang === "es" ? "Catering" : "Catering"}
+          {order.customer_name ? ` · ${order.customer_name}` : ""}
+        </p>
+        <p className="text-sm text-muted">
+          {order.pickup_time ? `${lang === "es" ? "Recoge" : "Pickup"} ${order.pickup_time}` : lang === "es" ? "Sin hora fijada" : "No time set"}
+          {" · "}
+          {cateringChannelLabel(order.channel, lang)}
+        </p>
+        {order.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{order.notes}</p>}
+        {order.completed_by_name && order.status !== "OPEN" && (
+          <p className="mt-1 text-xs text-muted">
+            {order.status === "CANCELLED" ? (lang === "es" ? "Cancelado por" : "Cancelled by") : lang === "es" ? "Completado por" : "Completed by"}{" "}
+            {order.completed_by_name}
           </p>
-          <p className="text-sm text-muted">
-            {order.pickup_time ? `${lang === "es" ? "Recoge" : "Pickup"} ${order.pickup_time}` : lang === "es" ? "Sin hora fijada" : "No time set"}
-            {" · "}
-            {cateringChannelLabel(order.channel, lang)}
-          </p>
-          {order.notes && (
-            <details className="mt-1">
-              <summary className="cursor-pointer text-sm text-accent">{lang === "es" ? "Ver notas" : "View notes"}</summary>
-              <p className="mt-1 text-sm text-muted">{order.notes}</p>
-            </details>
-          )}
-          {order.completed_by_name && order.status !== "OPEN" && (
-            <p className="mt-1 text-xs text-muted">
-              {order.status === "CANCELLED" ? (lang === "es" ? "Cancelado por" : "Cancelled by") : lang === "es" ? "Completado por" : "Completed by"}{" "}
-              {order.completed_by_name}
-            </p>
-          )}
-          <div className="mt-1">
-            <StatusBadge status={order.status} lang={lang} />
-          </div>
+        )}
+        <div className="mt-1">
+          <StatusBadge status={order.status} lang={lang} />
         </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-          {order.status === "OPEN" && (
-            <>
-              <button disabled={pending} onClick={() => run(() => completeCateringOrderAction(order.id))} className={btnPrimary}>
-                {t(lang, "action_complete")}
-              </button>
-              <button disabled={pending} onClick={() => run(() => cancelCateringOrderAction(order.id))} className={btnDanger}>
-                {lang === "es" ? "Cancelar" : "Cancel"}
-              </button>
-            </>
-          )}
-          {order.status !== "OPEN" && (
-            <button disabled={pending} onClick={() => run(() => reopenCateringOrderAction(order.id))} className={btnNeutral}>
-              {lang === "es" ? "Reabrir" : "Reopen"}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+        {order.status === "OPEN" && (
+          <>
+            <button disabled={pending} onClick={() => run(() => completeCateringOrderAction(order.id))} className={btnPrimary}>
+              {t(lang, "action_complete")}
             </button>
-          )}
-          <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
-            ✎ {lang === "es" ? "Editar" : "Edit"}
+            <button disabled={pending} onClick={() => run(() => cancelCateringOrderAction(order.id))} className={btnDanger}>
+              {lang === "es" ? "Cancelar" : "Cancel"}
+            </button>
+          </>
+        )}
+        {order.status !== "OPEN" && (
+          <button disabled={pending} onClick={() => run(() => reopenCateringOrderAction(order.id))} className={btnNeutral}>
+            {lang === "es" ? "Reabrir" : "Reopen"}
           </button>
-        </div>
+        )}
+        <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
+          ✎ {lang === "es" ? "Editar" : "Edit"}
+        </button>
       </div>
     </div>
   );
