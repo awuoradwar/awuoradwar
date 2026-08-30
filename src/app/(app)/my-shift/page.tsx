@@ -168,7 +168,13 @@ export default async function MyShiftPage() {
   const unresolvedForDisplay = summary.unresolved.filter((u) => u.kind !== "task" && u.kind !== "cleaning");
   const todayWeekday = new Date(today + "T00:00:00Z").getUTCDay();
   const cleaningToday = getCleaningTasksDueToday(user.storeId, todayWeekday);
-  const cateringToday = getCateringDueOn(user.storeId, today);
+  // OPEN only -- This Shift is "what needs attention right now," not a
+  // record of everything that happened today (that's what Catering's own
+  // History, grouped by week, is for). Unlike Cleaning Today, which stays
+  // visible once done so a manager can see the day's cleaning status at a
+  // glance, a completed catering order has nothing left to do and should
+  // drop out of this feed the moment it's marked done.
+  const cateringToday = getCateringDueOn(user.storeId, today).filter((o) => o.status === "OPEN");
   const borrowedDueToday = getOpenBorrowedItemsDueOn(user.storeId, today);
   const borrowedDueTodayIds = new Set(borrowedDueToday.map((b) => b.id));
   // A call-in/late/no-show -- or an issue, borrowed item, or meal
