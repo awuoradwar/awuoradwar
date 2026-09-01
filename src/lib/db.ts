@@ -76,6 +76,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "tasks", "description_es", "description_es TEXT");
   ensureColumn(db, "shift_notes", "title_es", "title_es TEXT");
   ensureColumn(db, "cleaning_tasks", "last_due_date", "last_due_date TEXT");
+  ensureColumn(db, "shift_notes", "remind_day_before", "remind_day_before INTEGER NOT NULL DEFAULT 0");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);

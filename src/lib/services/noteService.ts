@@ -30,6 +30,7 @@ interface ShiftNoteRawRow {
   title: string | null;
   title_es: string | null;
   sections_json: string | null;
+  remind_day_before: number;
   author_id: string | null;
   author_name: string | null;
   created_at: string;
@@ -41,6 +42,7 @@ export interface ShiftNote {
   title: string | null;
   title_es: string | null;
   sections: NoteSection[];
+  remind_day_before: number;
   author_id: string | null;
   author_name: string | null;
   created_at: string;
@@ -64,23 +66,41 @@ function toShiftNote(row: ShiftNoteRawRow): ShiftNote {
   return { ...row, sections: parseSections(row.sections_json) };
 }
 
-const SELECT = `SELECT n.id, n.text, n.title, n.title_es, n.sections_json, n.author_id, u.name as author_name, n.created_at
+const SELECT = `SELECT n.id, n.text, n.title, n.title_es, n.sections_json, n.remind_day_before, n.author_id, u.name as author_name, n.created_at
    FROM shift_notes n LEFT JOIN users u ON u.id = n.author_id`;
 
-/** Today's shift notes, most recent first -- the Quick Log "Note" form's
- * whole point is a manager sharing something with whoever else is on
- * (a meeting reminder, a heads-up), so this is scoped to what a manager
- * checking the app today would actually want to see, not a full unbounded
- * history (that lives at More > Notes instead). Older notes stay in the
- * table (never deleted except by an admin data reset) but simply age out
- * of this view. */
-export function getTodayNotes(storeId: string, todayStr: string): ShiftNote[] {
+export interface ShiftNoteWithPreview extends ShiftNote {
+  /** True when this note is actually dated for tomorrow and only showing
+   * today as its "remind the day before" preview -- lets the UI say so
+   * instead of implying it happened today. */
+  isPreview: boolean;
+}
+
+/** Today's shift notes, most recent first, plus (at the end) any note dated
+ * for tomorrow that opted into showing up a day early -- the Quick Log
+ * "Note" form's whole point is a manager sharing something with whoever
+ * else is on (a meeting reminder, a heads-up), so this is scoped to what a
+ * manager checking the app today would actually want to see, not a full
+ * unbounded history (that lives at More > Notes instead). Older notes stay
+ * in the table (never deleted except by an admin data reset) but simply
+ * age out of this view. */
+export function getTodayNotes(storeId: string, todayStr: string): ShiftNoteWithPreview[] {
   const db = getDb();
   const { start, end } = storeDayRangeUtc(storeId, todayStr);
-  const rows = db
+  const todays = db
     .prepare(`${SELECT} WHERE n.store_id = ? AND n.created_at >= ? AND n.created_at < ? ORDER BY n.created_at DESC`)
     .all(storeId, start, end) as ShiftNoteRawRow[];
-  return rows.map(toShiftNote);
+
+  const tomorrowStr = new Date(new Date(todayStr + "T00:00:00Z").getTime() + 86400000).toISOString().slice(0, 10);
+  const { start: tStart, end: tEnd } = storeDayRangeUtc(storeId, tomorrowStr);
+  const previews = db
+    .prepare(`${SELECT} WHERE n.store_id = ? AND n.remind_day_before = 1 AND n.created_at >= ? AND n.created_at < ? ORDER BY n.created_at ASC`)
+    .all(storeId, tStart, tEnd) as ShiftNoteRawRow[];
+
+  return [
+    ...todays.map((r) => ({ ...toShiftNote(r), isPreview: false })),
+    ...previews.map((r) => ({ ...toShiftNote(r), isPreview: true })),
+  ];
 }
 
 /** Full history for the More > Notes list -- unbounded, same shape as every
@@ -124,6 +144,7 @@ export interface CreateNoteParams {
   titleEs: string | null;
   text: string;
   sections: NoteSection[];
+  remindDayBefore: boolean;
   authorId: string;
   attachments: Array<{ fileRef: string; originalName: string; contentType: string }>;
 }
@@ -131,8 +152,19 @@ export interface CreateNoteParams {
 export function insertNote(params: CreateNoteParams, id: string, createdAt: string) {
   const db = getDb();
   db.prepare(
-    `INSERT INTO shift_notes (id, store_id, shift_id, author_id, text, title, title_es, sections_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, params.storeId, params.shiftId, params.authorId, params.text, params.title, params.titleEs, JSON.stringify(params.sections), createdAt);
+    `INSERT INTO shift_notes (id, store_id, shift_id, author_id, text, title, title_es, sections_json, remind_day_before, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    id,
+    params.storeId,
+    params.shiftId,
+    params.authorId,
+    params.text,
+    params.title,
+    params.titleEs,
+    JSON.stringify(params.sections),
+    params.remindDayBefore ? 1 : 0,
+    createdAt
+  );
   const insertAttachment = db.prepare(
     `INSERT INTO note_attachments (id, note_id, file_ref, original_name, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?)`
   );
@@ -145,6 +177,7 @@ export interface UpdateNoteParams {
   title: string;
   titleEs: string | null;
   sections: NoteSection[];
+  remindDayBefore: boolean;
   /** The note's own date/time -- editable, same field getTodayNotes/history
    * group and sort by, so fixing it here is really "moving the note," not
    * just cosmetic. text is deliberately left untouched: the edit form has
@@ -159,8 +192,8 @@ export interface UpdateNoteParams {
 export function updateNote(id: string, storeId: string, params: UpdateNoteParams, actor: SessionUser): boolean {
   const db = getDb();
   const result = db
-    .prepare(`UPDATE shift_notes SET title = ?, title_es = ?, sections_json = ?, created_at = ? WHERE id = ? AND store_id = ?`)
-    .run(params.title, params.titleEs, JSON.stringify(params.sections), params.createdAt, id, storeId);
+    .prepare(`UPDATE shift_notes SET title = ?, title_es = ?, sections_json = ?, remind_day_before = ?, created_at = ? WHERE id = ? AND store_id = ?`)
+    .run(params.title, params.titleEs, JSON.stringify(params.sections), params.remindDayBefore ? 1 : 0, params.createdAt, id, storeId);
   if (result.changes === 0) return false;
   if (params.newAttachments.length > 0) {
     const insertAttachment = db.prepare(

@@ -40,6 +40,7 @@ export default async function NoteDetailPage({ params, searchParams }: PageProps
         text={note.text}
         sections={note.sections}
         attachments={note.attachments}
+        remindDayBefore={!!note.remind_day_before}
         lang={user.language}
         backHref={backHref}
       />

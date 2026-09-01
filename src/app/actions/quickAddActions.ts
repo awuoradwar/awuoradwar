@@ -473,11 +473,12 @@ export async function quickAddNoteAction(formData: FormData) {
 
   const { title, titleEs, sections } = await translateNoteContent(titleTyped, typedSections);
   const createdAt = resolveNotedAt(user, formData);
+  const remindDayBefore = fd(formData, "remindDayBefore") === "on";
 
   const attachments = await storeNoteAttachments(user.storeId, formData);
   const id = newId();
   noteService.insertNote(
-    { storeId: user.storeId, shiftId: shift?.id || null, title, titleEs, text, sections, authorId: user.id, attachments },
+    { storeId: user.storeId, shiftId: shift?.id || null, title, titleEs, text, sections, remindDayBefore, authorId: user.id, attachments },
     id,
     createdAt
   );
@@ -494,9 +495,10 @@ export async function updateNoteAction(noteId: string, formData: FormData) {
 
   const { title, titleEs, sections } = await translateNoteContent(titleTyped, typedSections);
   const createdAt = resolveNotedAt(user, formData);
+  const remindDayBefore = fd(formData, "remindDayBefore") === "on";
   const newAttachments = await storeNoteAttachments(user.storeId, formData);
 
-  const ok = noteService.updateNote(noteId, user.storeId, { title, titleEs, sections, createdAt, newAttachments }, user);
+  const ok = noteService.updateNote(noteId, user.storeId, { title, titleEs, sections, remindDayBefore, createdAt, newAttachments }, user);
   if (!ok) return { error: "Note not found." };
   refresh();
   revalidatePath(`/note/${noteId}`);

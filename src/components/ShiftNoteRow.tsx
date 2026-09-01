@@ -18,11 +18,15 @@ export default function ShiftNoteRow({
   lang,
   timeLabel,
   from,
+  isPreview,
 }: {
   note: { id: string; title: string | null; title_es: string | null; text: string; sections: NoteSection[]; author_name: string | null };
   lang: Language;
   timeLabel: string;
   from?: string;
+  /** True when this note is actually dated for tomorrow and is only
+   * showing today as its "remind the day before" preview. */
+  isPreview?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [optimisticallyDeleted, setOptimisticallyDeleted] = useState(false);
@@ -43,7 +47,14 @@ export default function ShiftNoteRow({
   return (
     <div className="flex items-start justify-between gap-2 p-3 text-sm">
       <Link href={from ? withFrom(href, from) : href} className="min-w-0 flex-1">
-        <p className="truncate font-medium text-foreground">{heading}</p>
+        <p className="truncate font-medium text-foreground">
+          {heading}
+          {isPreview && (
+            <span className="ml-1.5 rounded-full bg-accent/10 px-1.5 py-0.5 align-middle text-xs font-semibold text-accent">
+              {lang === "es" ? "Mañana" : "Tomorrow"}
+            </span>
+          )}
+        </p>
         {preview && <p className="truncate text-xs text-muted">{preview}</p>}
         <p className="mt-0.5 text-xs text-muted">
           {note.author_name || (lang === "es" ? "Desconocido" : "Unknown")} · {timeLabel}

@@ -17,6 +17,7 @@ export default function NoteDetailBody({
   text,
   sections,
   attachments,
+  remindDayBefore,
   lang,
   backHref,
 }: {
@@ -27,6 +28,7 @@ export default function NoteDetailBody({
   text: string;
   sections: NoteSection[];
   attachments: NoteAttachment[];
+  remindDayBefore: boolean;
   lang: Language;
   backHref: string;
 }) {
@@ -43,6 +45,7 @@ export default function NoteDetailBody({
         notedAtLocal={notedAtLocal}
         sections={sections}
         attachmentCount={attachments.length}
+        remindDayBefore={remindDayBefore}
         lang={lang}
         onDone={() => {
           // Same "drop back to where you'd expect" behavior as saving a new

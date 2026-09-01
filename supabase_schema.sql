@@ -625,6 +625,7 @@ create table shift_notes (
   title text,
   title_es text, -- auto-translated Spanish title -- see translationService.ts
   sections_json text, -- JSON array of { topic, topicEs, subtopic, subtopicEs, bullets: string[], bulletsEs: string[] }
+  remind_day_before boolean not null default false, -- when set, this note also shows in Today's Notes the calendar day before its own date
   created_at timestamptz not null default now()
 );
 

@@ -45,6 +45,7 @@ export default async function HandoffPage() {
                   lang={user.language}
                   timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
                   from="/handoff"
+                  isPreview={note.isPreview}
                 />
               </div>
             ))}

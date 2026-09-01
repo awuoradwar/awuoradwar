@@ -283,6 +283,7 @@ export default async function MyShiftPage() {
                   lang={user.language}
                   timeLabel={formatStoreDateTime(user.storeId, note.created_at, locale, { hour: "numeric", minute: "2-digit" })}
                   from="/my-shift"
+                  isPreview={note.isPreview}
                 />
               </div>
             ))}

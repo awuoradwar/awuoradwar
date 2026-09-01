@@ -60,6 +60,18 @@ export default function NoteForm({ lang }: { lang: Language }) {
         <input name="notedAt" type="datetime-local" defaultValue={nowLocalInputValue()} required className={inputClass} />
       </Field>
 
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" name="remindDayBefore" className="mt-0.5 h-4 w-4" />
+        <span>
+          {lang === "es" ? "Mostrar también un día antes" : "Also show this the day before"}
+          <span className="block text-xs text-muted">
+            {lang === "es"
+              ? "Para algo como las notas de una reunión de área -- aparece en Notas de Hoy la fecha de arriba y también el día anterior."
+              : "For something like area meeting notes -- shows up in Today's Notes on the date above and the day before it too."}
+          </span>
+        </span>
+      </label>
+
       {sections.map((s, i) => (
         <div key={i} className="flex flex-col gap-2 rounded-xl border border-border p-3">
           <div className="flex items-center justify-between">

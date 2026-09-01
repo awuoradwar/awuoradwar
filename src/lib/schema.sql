@@ -739,6 +739,7 @@ CREATE TABLE IF NOT EXISTS shift_notes (
   title TEXT,
   title_es TEXT, -- auto-translated Spanish title -- see translationService.ts
   sections_json TEXT, -- JSON array of { topic, topicEs, subtopic, subtopicEs, bullets: string[], bulletsEs: string[] }, added via ensureColumn in db.ts
+  remind_day_before INTEGER NOT NULL DEFAULT 0, -- when set, this note also shows in Today's Notes the calendar day before its own date (e.g. an upcoming area meeting's notes, so tomorrow's meeting isn't a surprise)
   created_at TEXT NOT NULL
 );
 
