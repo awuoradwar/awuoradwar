@@ -2,8 +2,19 @@
 -- A near-identical Postgres+RLS version lives in supabase_schema.sql for production deployment.
 -- All primary keys are UUID text. All timestamps are ISO-8601 UTC strings set server-side.
 
+-- A franchise/multi-unit group above stores. Optional: every store belongs
+-- to exactly one org (backfilled to a default one in db.ts for anything
+-- created before this existed), but nothing about single-store operation
+-- depends on it -- it only matters once a second store joins the same org.
+CREATE TABLE IF NOT EXISTS franchise_orgs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS stores (
   id TEXT PRIMARY KEY,
+  org_id TEXT REFERENCES franchise_orgs(id),
   name TEXT NOT NULL,
   timezone TEXT NOT NULL DEFAULT 'America/Chicago',
   language_default TEXT NOT NULL DEFAULT 'en',
@@ -40,6 +51,18 @@ CREATE TABLE IF NOT EXISTS store_memberships (
   effective_start TEXT,
   effective_end TEXT,
   active INTEGER NOT NULL DEFAULT 1
+);
+
+-- A user who oversees a whole franchise org rather than (or in addition to)
+-- running one store day-to-day -- e.g. an owner who wants the rollup view
+-- across every store without being a store_membership at each one.
+CREATE TABLE IF NOT EXISTS org_memberships (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  org_id TEXT NOT NULL REFERENCES franchise_orgs(id),
+  role TEXT NOT NULL, -- OWNER (only role today)
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS shifts (

@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 // Local/dev persistence layer. Table shapes mirror supabase_schema.sql exactly
 // so this module can be swapped for a Postgres/Supabase client later without
@@ -77,12 +78,34 @@ function createConnection(): Database.Database {
   ensureColumn(db, "shift_notes", "title_es", "title_es TEXT");
   ensureColumn(db, "cleaning_tasks", "last_due_date", "last_due_date TEXT");
   ensureColumn(db, "shift_notes", "remind_day_before", "remind_day_before INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "stores", "org_id", "org_id TEXT REFERENCES franchise_orgs(id)");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
   unassignStaleAutoAssignedTasks(db);
   splitWeeklyOpsSummaries(db);
+  backfillDefaultFranchiseOrg(db);
   return db;
+}
+
+/** Every store needs an org_id once franchise_orgs exists, even a store that
+ * was created back when there was no concept of one. Groups every org-less
+ * store into a single default org (named after the first one alphabetically,
+ * since that's the only store that exists for most installs) rather than
+ * leaving org_id NULL -- a rollup view across "every store in my org" would
+ * otherwise silently miss pre-existing stores. One-time, idempotent: a
+ * no-op once every store already has an org_id. */
+function backfillDefaultFranchiseOrg(db: Database.Database) {
+  const orgless = db.prepare(`SELECT id, name FROM stores WHERE org_id IS NULL ORDER BY name`).all() as Array<{ id: string; name: string }>;
+  if (orgless.length === 0) return;
+  let org = db.prepare(`SELECT id FROM franchise_orgs ORDER BY created_at ASC LIMIT 1`).get() as { id: string } | undefined;
+  if (!org) {
+    const id = randomUUID();
+    db.prepare(`INSERT INTO franchise_orgs (id, name, created_at) VALUES (?, ?, ?)`).run(id, `${orgless[0].name} Group`, new Date().toISOString());
+    org = { id };
+  }
+  const placeholders = orgless.map(() => "?").join(",");
+  db.prepare(`UPDATE stores SET org_id = ? WHERE id IN (${placeholders})`).run(org.id, ...orgless.map((s) => s.id));
 }
 
 /** Recurring task instances used to auto-resolve their owner from the

@@ -24,8 +24,19 @@
 
 create extension if not exists "pgcrypto";
 
+-- A franchise/multi-unit group above stores. Every store belongs to exactly
+-- one org; single-store operation never depends on it -- it only matters
+-- once a second store joins the same org (rollup views, an org-level owner
+-- role in org_memberships below).
+create table franchise_orgs (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
 create table stores (
   id uuid primary key default gen_random_uuid(),
+  org_id uuid references franchise_orgs(id),
   name text not null,
   timezone text not null default 'America/Chicago',
   language_default text not null default 'en',
@@ -63,6 +74,18 @@ create table store_memberships (
   effective_start date,
   effective_end date,
   active boolean not null default true
+);
+
+-- A user who oversees a whole franchise org rather than (or in addition to)
+-- running one store day-to-day -- e.g. an owner who wants the rollup view
+-- across every store without a store_membership at each one.
+create table org_memberships (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  org_id uuid not null references franchise_orgs(id),
+  role text not null check (role in ('OWNER')),
+  active boolean not null default true,
+  created_at timestamptz not null default now()
 );
 
 create table shifts (
@@ -684,6 +707,17 @@ returns boolean language sql stable as $$
   );
 $$;
 
+-- True for a store_membership at that store OR an org_membership on the
+-- org that store belongs to -- an org-level owner can see every store in
+-- their org without a row in store_memberships at each one.
+create or replace function is_org_member(target_org uuid)
+returns boolean language sql stable as $$
+  select exists (
+    select 1 from org_memberships m
+    where m.org_id = target_org and m.user_id = auth.uid() and m.active
+  );
+$$;
+
 create or replace function is_store_gm(target_store uuid)
 returns boolean language sql stable as $$
   select exists (
@@ -693,6 +727,8 @@ returns boolean language sql stable as $$
   );
 $$;
 
+alter table franchise_orgs enable row level security;
+alter table org_memberships enable row level security;
 alter table stores enable row level security;
 alter table users enable row level security;
 alter table store_memberships enable row level security;
@@ -736,8 +772,16 @@ alter table training_sessions enable row level security;
 alter table inventory_items enable row level security;
 alter table maintenance_items enable row level security;
 
+-- Org-scoped: visible to an org-level owner, or to anyone who's a member of
+-- a store inside that org (so a store manager can at least see their own
+-- org's name/rollup, even without an org_membership row of their own).
+create policy org_member_all on franchise_orgs for select using (
+  is_org_member(id) or exists (select 1 from stores s where s.org_id = franchise_orgs.id and is_store_member(s.id))
+);
+create policy org_member_all on org_memberships for select using (is_org_member(org_id));
+
 -- Store-scoped tables: member read/write.
-create policy store_member_all on stores for select using (is_store_member(id));
+create policy store_member_all on stores for select using (is_store_member(id) or (org_id is not null and is_org_member(org_id)));
 create policy store_member_all on shifts for all using (is_store_member(store_id));
 create policy store_member_all on task_templates for select using (is_store_member(store_id));
 create policy gm_manage_templates on task_templates for insert with check (is_store_gm(store_id));
