@@ -266,6 +266,20 @@ CREATE TABLE IF NOT EXISTS task_events (
   created_at TEXT NOT NULL
 );
 
+-- Manager-written notes on a task -- e.g. why a task is still open ("waiting
+-- on a part," "covering another shift"). Append-only, separate from the
+-- task's own description (the task's definition, set at creation) and from
+-- audit_events (system-generated log entries), same "explains itself, in
+-- its own words, after the fact" role attendance_followups plays for
+-- attendance events.
+CREATE TABLE IF NOT EXISTS task_notes (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES tasks(id),
+  note TEXT NOT NULL,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS cleaning_areas (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),

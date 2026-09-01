@@ -1,7 +1,7 @@
 import "server-only";
 import { getDb } from "../db";
 import { storeDayRangeUtc, storeToday, storeLocalHour } from "../storeTime";
-import { windowForHour } from "./taskService";
+import { windowForHour, taskIdsWithNotes } from "./taskService";
 import { getScheduledManagerNames } from "./scheduleService";
 import { Language } from "../types";
 
@@ -137,6 +137,9 @@ export interface WeekItemRow {
    * week-level framing (which only says "this task's week has closed"), this
    * flags an individual item as actually late as of right now, even mid-week. */
   isOverdue?: boolean;
+  /** Has at least one manager-written note (task_notes) explaining itself --
+   * a still-open task worth a glance even without opening it. */
+  hasNote?: boolean;
 }
 
 /** The actual items behind each Weekly Summary stat tile, using the exact
@@ -213,6 +216,7 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
     .all(storeId, weekStartTs, dayEnd) as Array<{ id: string; description: string; category: string; at: string }>;
 
   const today = storeToday(storeId);
+  const openTaskIdsWithNotes = taskIdsWithNotes(tasksStillOpen.map((t) => t.id));
   return {
     tasksCompleted: tasksCompleted.map((t) => ({ id: t.id, title: t.title, subtitle: t.by_name, at: t.at } satisfies WeekItemRow)),
     tasksStillOpen: tasksStillOpen.map((t) => {
@@ -229,7 +233,7 @@ export function getWeekDetail(storeId: string, weekStart: string, weekEnd: strin
         const names = getScheduledManagerNames(storeId, t.scheduled_date, window);
         subtitle = names.length > 0 ? names.join(", ") : null;
       }
-      return { id: t.id, title: t.title, subtitle, at: t.at || "", isOverdue } satisfies WeekItemRow;
+      return { id: t.id, title: t.title, subtitle, at: t.at || "", isOverdue, hasNote: openTaskIdsWithNotes.has(t.id) } satisfies WeekItemRow;
     }),
     cleaningCompletions: cleaningCompletions.map((c) => {
       // The live associate_name gets wiped by the next daily/weekly reset,

@@ -11,10 +11,11 @@ import { scheduleRequestTypeLabel } from "@/lib/scheduleRequestLabels";
 import StatusBadge from "@/components/StatusBadge";
 import TaskDetailActions from "@/components/TaskDetailActions";
 import TaskEditForm from "@/components/TaskEditForm";
+import TaskNotes from "@/components/TaskNotes";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
 import { resolveBackHref } from "@/lib/backHref";
-import { TaskRow } from "@/lib/services/taskService";
+import { TaskRow, getTaskNotes } from "@/lib/services/taskService";
 
 function addDaysStr(dateStr: string, days: number): string {
   return new Date(new Date(dateStr + "T00:00:00Z").getTime() + days * 86400000).toISOString().slice(0, 10);
@@ -79,6 +80,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const last = lastUpdatedBy("task", id) as { actor_name: string | null; created_at: string } | undefined;
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
+  const notes = getTaskNotes(id).map((n) => ({ ...n, formattedAt: fmt(n.created_at) }));
   // Local wall-clock split for the edit form's separate date/time inputs --
   // slicing task.due_at's raw UTC digits directly (as this used to) shows
   // the UTC hour as if it were already store-local, which silently drifted
@@ -179,6 +181,8 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
           lang={user.language}
         />
       )}
+
+      <TaskNotes taskId={task.id} notes={notes} lang={user.language} />
 
       <ActivityLog entityType="task" entityId={id} storeId={user.storeId} lang={user.language} />
     </div>

@@ -555,3 +555,42 @@ export function activeTemplateTitleExists(storeId: string, title: string): boole
     .get(storeId, title.trim());
   return !!row;
 }
+
+export interface TaskNote {
+  id: string;
+  note: string;
+  created_by_name: string | null;
+  created_at: string;
+}
+
+/** Newest first -- same reading order as every other history/notes list in
+ * the app. */
+export function getTaskNotes(taskId: string): TaskNote[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT tn.id, tn.note, u.name as created_by_name, tn.created_at
+       FROM task_notes tn LEFT JOIN users u ON u.id = tn.created_by
+       WHERE tn.task_id = ? ORDER BY tn.created_at DESC`
+    )
+    .all(taskId) as TaskNote[];
+}
+
+export function addTaskNote(taskId: string, note: string, actor: SessionUser): string {
+  const db = getDb();
+  const id = newId();
+  db.prepare(`INSERT INTO task_notes (id, task_id, note, created_by, created_at) VALUES (?, ?, ?, ?, ?)`).run(id, taskId, note, actor.id, nowIso());
+  writeAudit({ entityType: "task", entityId: taskId, actor, action: "EDITED", newValue: { note } });
+  return id;
+}
+
+/** Which of these task ids have at least one note -- used to flag a task in
+ * a list (e.g. Weekly Summary's Still Open tile) without loading every
+ * note's full text just to know whether one exists. */
+export function taskIdsWithNotes(taskIds: string[]): Set<string> {
+  if (taskIds.length === 0) return new Set();
+  const db = getDb();
+  const placeholders = taskIds.map(() => "?").join(",");
+  const rows = db.prepare(`SELECT DISTINCT task_id FROM task_notes WHERE task_id IN (${placeholders})`).all(...taskIds) as Array<{ task_id: string }>;
+  return new Set(rows.map((r) => r.task_id));
+}

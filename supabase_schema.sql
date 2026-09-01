@@ -253,6 +253,16 @@ create table task_events (
   created_at timestamptz not null default now()
 );
 
+-- Manager-written notes on a task -- e.g. why a task is still open. Append-
+-- only, separate from the task's own description and from audit_events.
+create table task_notes (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references tasks(id),
+  note text not null,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
 create table cleaning_areas (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references stores(id),
@@ -689,6 +699,7 @@ alter table shifts enable row level security;
 alter table task_templates enable row level security;
 alter table tasks enable row level security;
 alter table task_events enable row level security;
+alter table task_notes enable row level security;
 alter table cleaning_areas enable row level security;
 alter table cleaning_tasks enable row level security;
 alter table attendance_events enable row level security;
@@ -732,6 +743,9 @@ create policy gm_manage_templates on task_templates for insert with check (is_st
 create policy gm_update_templates on task_templates for update using (is_store_gm(store_id));
 create policy store_member_all on tasks for all using (is_store_member(store_id));
 create policy store_member_read on task_events for select using (
+  exists (select 1 from tasks t where t.id = task_id and is_store_member(t.store_id))
+);
+create policy store_member_all on task_notes for all using (
   exists (select 1 from tasks t where t.id = task_id and is_store_member(t.store_id))
 );
 create policy store_member_all on cleaning_areas for all using (is_store_member(store_id));

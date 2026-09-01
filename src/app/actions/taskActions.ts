@@ -102,6 +102,16 @@ export async function updateTaskAction(taskId: string, formData: FormData) {
   return { ok: true };
 }
 
+export async function addTaskNoteAction(taskId: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const note = String(formData.get("note") || "").trim();
+  if (!note) return { error: "Note can't be empty." };
+  taskService.addTaskNote(taskId, note, user);
+  revalidatePath(`/task/${taskId}`);
+  revalidatePath("/more/weekly-summary");
+  return { ok: true };
+}
+
 export async function createTaskAction(formData: FormData) {
   const user = await requireCurrentUser();
   const title = String(formData.get("title") || "").trim();
