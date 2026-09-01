@@ -5,6 +5,7 @@ import { SessionUser } from "../types";
 import { storeToday, storeDayRangeUtc } from "../storeTime";
 import { weekStartOf } from "./recurrenceService";
 import { WEEKLY_CLEANING_ROTATION } from "../weeklyCleaningRotation";
+import * as pushService from "./pushService";
 
 export function deleteCleaningTask(taskId: string, actor: SessionUser) {
   const db = getDb();
@@ -325,6 +326,31 @@ function snapshotChecklistItems(cleaningTaskId: string) {
   return getChecklistItems(cleaningTaskId).map((i) => ({ text: i.text, done: !!i.done, associate_name: i.associate_name }));
 }
 
+/** A weekly task missing this many occurrences in a row (with no completion
+ * in between) is a real pattern, not a one-off -- worth pushing to the store
+ * instead of only showing up quietly in Cleaning History. */
+const TREND_ALERT_MISSED_STREAK = 3;
+
+/** Counts MISSED audit events immediately preceding the one just written for
+ * this task, stopping at the first COMPLETED/VERIFIED (or running out of
+ * history) -- i.e. "how many weeks in a row has this gone unfulfilled." */
+function consecutiveMissedWeeks(taskId: string): number {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT action FROM audit_events
+       WHERE entity_type = 'cleaning_task' AND entity_id = ? AND action IN ('MISSED', 'COMPLETED', 'VERIFIED')
+       ORDER BY created_at DESC`
+    )
+    .all(taskId) as Array<{ action: string }>;
+  let streak = 0;
+  for (const row of rows) {
+    if (row.action !== "MISSED") break;
+    streak++;
+  }
+  return streak;
+}
+
 export function resetDueWeeklyCleaningTasks(storeId: string) {
   const db = getDb();
   const todayStr = storeToday(storeId);
@@ -339,13 +365,13 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
   // all (its whole occurrence went by unfulfilled -- a miss).
   const dueTasks = db
     .prepare(
-      `SELECT ct.id, ct.status, ct.last_due_date, ct.title
+      `SELECT ct.id, ct.status, ct.last_due_date, ct.title, a.name as area_name
        FROM cleaning_tasks ct
        JOIN cleaning_areas a ON a.id = ct.area_id
        WHERE a.store_id = ? AND ct.frequency = 'WEEKLY' AND ct.weekday = ?
          AND (ct.last_due_date IS NULL OR ct.last_due_date < ?)`
     )
-    .all(storeId, todayWeekday, weekStartStr) as Array<{ id: string; status: string; last_due_date: string | null; title: string }>;
+    .all(storeId, todayWeekday, weekStartStr) as Array<{ id: string; status: string; last_due_date: string | null; title: string; area_name: string }>;
   if (dueTasks.length === 0) return;
 
   const doneIds = dueTasks.filter((t) => t.status === "COMPLETED" || t.status === "VERIFIED").map((t) => t.id);
@@ -368,6 +394,18 @@ export function resetDueWeeklyCleaningTasks(storeId: string) {
 
   for (const task of missedTasks) {
     writeAudit({ entityType: "cleaning_task", entityId: task.id, actor: null, action: "MISSED", newValue: { title: task.title } });
+    // Fires once, the week the streak first reaches the threshold -- not
+    // again every week after, so it reads as "heads up, this is a pattern"
+    // rather than a nag that never stops.
+    if (consecutiveMissedWeeks(task.id) === TREND_ALERT_MISSED_STREAK) {
+      pushService
+        .sendPushToStore(storeId, {
+          title: "🧹 Cleaning trend",
+          body: `${task.title} (${task.area_name}) has been missed ${TREND_ALERT_MISSED_STREAK} weeks in a row.`,
+          url: "/more/cleaning",
+        })
+        .catch(() => {});
+    }
   }
   if (missedTasks.length > 0) {
     const missedIds = missedTasks.map((t) => t.id);
