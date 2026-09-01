@@ -360,11 +360,7 @@ export async function quickAddIssueAction(formData: FormData) {
   refresh();
   if (severity === "CRITICAL") {
     pushService
-      .sendPushToStore(
-        user.storeId,
-        { title: "🔴 Critical work order", body: description, url: "/more/work-orders" },
-        user.id
-      )
+      .sendPushToStore(user.storeId, { title: "🔴 Critical work order", body: description, url: "/more/work-orders" })
       .catch(() => {});
   }
   return { ok: true };

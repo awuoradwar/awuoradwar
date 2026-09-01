@@ -17,7 +17,7 @@ export async function generateHandoffAction() {
   const id = handoffService.generateHandoff(user.storeId, shift.id, shift.pic_user_id || user.id, user);
   refresh();
   pushService
-    .sendPushToStore(user.storeId, { title: "Handoff ready", body: "A new shift handoff is ready to review.", url: "/handoff" }, user.id)
+    .sendPushToStore(user.storeId, { title: "Handoff ready", body: "A new shift handoff is ready to review.", url: "/handoff" })
     .catch(() => {});
   return id;
 }

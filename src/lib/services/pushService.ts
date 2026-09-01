@@ -67,7 +67,11 @@ async function deliver(subs: Array<{ endpoint: string; p256dh: string; auth: str
         );
       } catch (err) {
         const statusCode = (err as { statusCode?: number }).statusCode;
-        if (statusCode === 404 || statusCode === 410) removeSubscription(sub.endpoint);
+        if (statusCode === 404 || statusCode === 410) {
+          removeSubscription(sub.endpoint);
+        } else {
+          console.error("push send failed", statusCode, err);
+        }
       }
     })
   );

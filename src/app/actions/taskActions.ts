@@ -134,7 +134,7 @@ export async function createTaskAction(formData: FormData) {
   refresh();
   if (severity === "CRITICAL") {
     const payload = { title: "🔴 Critical task", body: title, url: "/my-shift" };
-    const send = ownerId ? pushService.sendPushToUser(ownerId, payload) : pushService.sendPushToStore(user.storeId, payload, user.id);
+    const send = ownerId ? pushService.sendPushToUser(ownerId, payload) : pushService.sendPushToStore(user.storeId, payload);
     send.catch(() => {});
   }
   return { ok: true };
