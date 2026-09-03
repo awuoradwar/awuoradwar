@@ -14,6 +14,7 @@ import {
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import { btnPrimary, btnOk, btnNeutral, btnDanger } from "./forms/FormShell";
+import HandoffNotePrompt from "./HandoffNotePrompt";
 
 export default function TaskDetailActions({
   taskId,
@@ -24,6 +25,7 @@ export default function TaskDetailActions({
   templateId,
   canManageSeries,
   currentSupportId,
+  handoffPrompt,
 }: {
   taskId: string;
   lang: Language;
@@ -33,11 +35,14 @@ export default function TaskDetailActions({
   templateId?: string | null;
   canManageSeries?: boolean;
   currentSupportId?: string | null;
+  /** Set when completing should first ask for a note to hand forward. */
+  handoffPrompt?: { targetTitle: string } | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [reassignTo, setReassignTo] = useState("");
   const [supportPick, setSupportPick] = useState(currentSupportId || "");
   const [confirmingSeries, setConfirmingSeries] = useState(false);
+  const [askingNote, setAskingNote] = useState(false);
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const [optimisticallyVerified, setOptimisticallyVerified] = useState(false);
   const router = useRouter();
@@ -68,14 +73,28 @@ export default function TaskDetailActions({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
-        {openish && (
+        {openish && !askingNote && (
           <button
             disabled={pending}
-            onClick={() => runStatus("COMPLETE", () => completeTaskAction(taskId))}
+            onClick={() => (handoffPrompt ? setAskingNote(true) : runStatus("COMPLETE", () => completeTaskAction(taskId)))}
             className={btnPrimary}
           >
             {t(lang, "action_complete")}
           </button>
+        )}
+        {openish && askingNote && handoffPrompt && (
+          <div className="basis-full">
+            <HandoffNotePrompt
+              targetTitle={handoffPrompt.targetTitle}
+              lang={lang}
+              pending={pending}
+              onConfirm={(note) => {
+                setAskingNote(false);
+                runStatus("COMPLETE", () => completeTaskAction(taskId, note));
+              }}
+              onCancel={() => setAskingNote(false)}
+            />
+          </div>
         )}
         {verificationRequired && effectiveStatus === "COMPLETE" && !optimisticallyVerified && (
           <button

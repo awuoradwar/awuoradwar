@@ -23,6 +23,9 @@ export interface RecurrenceConfig {
   dueTimes?: string[];
   dueTime?: string; // legacy single-due-time shape, see dueTimes
   linkScheduleRequests?: boolean;
+  /** Completing an instance of this template asks for a short note that
+   * then shows in red on the next instance of this other template. */
+  handoffToTemplateId?: string;
 }
 
 export default function TemplateScheduleEditor({
@@ -30,11 +33,14 @@ export default function TemplateScheduleEditor({
   recurrenceType,
   config,
   lang,
+  otherTemplates,
 }: {
   id: string;
   recurrenceType: string;
   config: RecurrenceConfig;
   lang: Language;
+  /** Every other active template at this store, for the hand-off picker. */
+  otherTemplates: Array<{ id: string; title: string }>;
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -88,6 +94,21 @@ export default function TemplateScheduleEditor({
             </span>
           </span>
         </label>
+        <Field label={lang === "es" ? "Al completar, pedir una nota para…" : "When completed, ask for a note to show on…"}>
+          <select name="handoffToTemplateId" defaultValue={config.handoffToTemplateId || ""} className={selectClass}>
+            <option value="">{lang === "es" ? "— Ninguna —" : "— None —"}</option>
+            {otherTemplates.map((tpl) => (
+              <option key={tpl.id} value={tpl.id}>
+                {tpl.title}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-muted">
+            {lang === "es"
+              ? "Ej.: en \"Pedir cambio a Loomis\" elige \"Entrega de cambio Loomis\" -- al completar el pedido se pide la cantidad, y aparece en rojo en la entrega."
+              : "e.g. on \"Place Loomis change order\" pick \"Loomis change delivery\" -- completing the order asks for the amount, and it shows in red on the delivery."}
+          </span>
+        </Field>
         <button
           type="submit"
           disabled={pending}

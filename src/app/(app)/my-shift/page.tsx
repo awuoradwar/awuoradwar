@@ -1,7 +1,16 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getMyShiftTasks, getCompletedTasksToday, computeSection, isBlocked, Section, windowForHour } from "@/lib/services/taskService";
+import {
+  getMyShiftTasks,
+  getCompletedTasksToday,
+  computeSection,
+  isBlocked,
+  Section,
+  windowForHour,
+  handoffPromptsForTasks,
+  incomingHandoffsForTasks,
+} from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
@@ -257,6 +266,15 @@ export default async function MyShiftPage() {
   // tasks in NOW/TODAY flip red here so they don't quietly slip into
   // tomorrow unnoticed. 21 = 9pm, three hours' warning before midnight.
   const endOfDayUrgent = storeLocalHour(user.storeId) >= 21;
+  // Linked-task hand-off notes (e.g. Loomis order amount -> delivery task):
+  // which rows should ask for a note on Complete, and which rows have one
+  // to show in red. One templates query for the whole list.
+  const handoffPrompts = handoffPromptsForTasks(user.storeId, tasks);
+  const incomingHandoffs = incomingHandoffsForTasks(user.storeId, tasks);
+  const handoffOf = (task: { id: string }) => ({
+    handoffPrompt: handoffPrompts.get(task.id) ?? null,
+    incomingHandoff: incomingHandoffs.get(task.id) ?? null,
+  });
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
@@ -340,7 +358,7 @@ export default async function MyShiftPage() {
                 <TaskCard
                   key={task.id}
                   lang={user.language}
-                  task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids) }}
+                  task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids), ...handoffOf(task) }}
                   managerColors={managerColors}
                   from="/my-shift"
                   endOfDayUrgent={endOfDayUrgent}
@@ -398,7 +416,7 @@ export default async function MyShiftPage() {
                       <CompactTaskRow
                         key={task.id}
                         lang={user.language}
-                        task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids) }}
+                        task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids), ...handoffOf(task) }}
                         managerColors={managerColors}
                         from="/my-shift"
                       />

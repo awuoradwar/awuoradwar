@@ -36,6 +36,100 @@ export interface TaskRow {
   completed_at: string | null;
   cancel_reason: string | null;
   checklist_role: string | null;
+  handoff_note: string | null;
+}
+
+/** This task's template asks for a note at completion that flows to
+ * another template's next instance (e.g. the change amount ordered on
+ * "Place Loomis change order" -> shown on "Loomis change delivery"). */
+export interface HandoffPrompt {
+  targetTitle: string;
+}
+
+/** A note handed to this task from an upstream task completed earlier. */
+export interface IncomingHandoff {
+  note: string;
+  fromTitle: string;
+  completedAt: string;
+}
+
+interface TemplateLinkRow {
+  id: string;
+  title: string;
+  recurrence_config: string | null;
+}
+
+function templateHandoffLinks(storeId: string): { byId: Map<string, TemplateLinkRow>; targetOf: Map<string, string> } {
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT id, title, recurrence_config FROM task_templates WHERE store_id = ? AND active = 1`)
+    .all(storeId) as TemplateLinkRow[];
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const targetOf = new Map<string, string>(); // source template id -> target template id
+  for (const r of rows) {
+    if (!r.recurrence_config) continue;
+    try {
+      const target = (JSON.parse(r.recurrence_config) as { handoffToTemplateId?: string }).handoffToTemplateId;
+      if (target && target !== r.id && byId.has(target)) targetOf.set(r.id, target);
+    } catch {
+      // malformed config -- treat as no link rather than breaking the page
+    }
+  }
+  return { byId, targetOf };
+}
+
+/** For each task whose template hands a note forward: the title of where
+ * that note will show up, so the Complete button can ask for it. One
+ * templates query for the whole list, not one per row. */
+export function handoffPromptsForTasks(storeId: string, tasks: Array<Pick<TaskRow, "id" | "template_id">>): Map<string, HandoffPrompt> {
+  const out = new Map<string, HandoffPrompt>();
+  if (!tasks.some((t) => t.template_id)) return out;
+  const { byId, targetOf } = templateHandoffLinks(storeId);
+  for (const t of tasks) {
+    if (!t.template_id) continue;
+    const targetId = targetOf.get(t.template_id);
+    if (!targetId) continue;
+    out.set(t.id, { targetTitle: byId.get(targetId)!.title });
+  }
+  return out;
+}
+
+/** For each task that is the *target* of a handoff link: the most recent
+ * note left on an upstream completion in the week leading up to it. Looks
+ * back 7 days from the task's scheduled date so a weekly Wed -> Fri pair
+ * matches its own week's note and never last week's. */
+export function incomingHandoffsForTasks(
+  storeId: string,
+  tasks: Array<Pick<TaskRow, "id" | "template_id" | "scheduled_date">>
+): Map<string, IncomingHandoff> {
+  const out = new Map<string, IncomingHandoff>();
+  if (!tasks.some((t) => t.template_id && t.scheduled_date)) return out;
+  const { byId, targetOf } = templateHandoffLinks(storeId);
+  if (targetOf.size === 0) return out;
+  // target template id -> source template ids feeding it
+  const sourcesOf = new Map<string, string[]>();
+  for (const [source, target] of targetOf) (sourcesOf.get(target) ?? sourcesOf.set(target, []).get(target)!).push(source);
+
+  const db = getDb();
+  for (const t of tasks) {
+    if (!t.template_id || !t.scheduled_date) continue;
+    const sources = sourcesOf.get(t.template_id);
+    if (!sources) continue;
+    const { end } = storeDayRangeUtc(storeId, t.scheduled_date);
+    const windowStart = new Date(new Date(t.scheduled_date + "T00:00:00Z").getTime() - 7 * 86400000).toISOString();
+    const placeholders = sources.map(() => "?").join(",");
+    const row = db
+      .prepare(
+        `SELECT handoff_note, template_id, completed_at FROM tasks
+         WHERE store_id = ? AND status = 'COMPLETE' AND handoff_note IS NOT NULL AND handoff_note != ''
+           AND template_id IN (${placeholders}) AND completed_at >= ? AND completed_at < ?
+         ORDER BY completed_at DESC LIMIT 1`
+      )
+      .get(storeId, ...sources, windowStart, end) as { handoff_note: string; template_id: string; completed_at: string } | undefined;
+    if (!row) continue;
+    out.set(t.id, { note: row.handoff_note, fromTitle: byId.get(row.template_id)?.title ?? "", completedAt: row.completed_at });
+  }
+  return out;
 }
 
 export interface ChecklistSummary {
@@ -421,15 +515,18 @@ export function updateTask(
   });
 }
 
-export function completeTask(taskId: string, actor: SessionUser, picId: string | null) {
+export function completeTask(taskId: string, actor: SessionUser, picId: string | null, handoffNote: string | null = null) {
   const db = getDb();
   const task = db.prepare(`SELECT * FROM tasks WHERE id = ?`).get(taskId) as TaskRow | undefined;
   if (!task) throw new Error("Task not found");
   if (isBlocked(task)) throw new Error("BLOCKED: dependency not yet complete");
   const ts = nowIso();
+  // COALESCE keeps a note already on the row if this completion didn't
+  // supply one (e.g. a re-complete after reopen) -- never blanks it out.
   db.prepare(
-    `UPDATE tasks SET status = 'COMPLETE', completed_by = ?, completed_at = ?, last_edited_by = ?, last_edited_at = ? WHERE id = ?`
-  ).run(actor.id, ts, actor.id, ts, taskId);
+    `UPDATE tasks SET status = 'COMPLETE', completed_by = ?, completed_at = ?, last_edited_by = ?, last_edited_at = ?,
+       handoff_note = COALESCE(?, handoff_note) WHERE id = ?`
+  ).run(actor.id, ts, actor.id, ts, handoffNote, taskId);
   writeAudit({
     entityType: "task",
     entityId: taskId,
@@ -437,7 +534,7 @@ export function completeTask(taskId: string, actor: SessionUser, picId: string |
     picId,
     action: "COMPLETED",
     oldValue: { status: task.status },
-    newValue: { status: "COMPLETE" },
+    newValue: handoffNote ? { status: "COMPLETE", handoff_note: handoffNote } : { status: "COMPLETE" },
   });
 }
 

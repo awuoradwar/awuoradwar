@@ -15,7 +15,7 @@ import TaskNotes from "@/components/TaskNotes";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
 import { resolveBackHref } from "@/lib/backHref";
-import { TaskRow, getTaskNotes } from "@/lib/services/taskService";
+import { TaskRow, getTaskNotes, handoffPromptsForTasks, incomingHandoffsForTasks } from "@/lib/services/taskService";
 
 function addDaysStr(dateStr: string, days: number): string {
   return new Date(new Date(dateStr + "T00:00:00Z").getTime() + days * 86400000).toISOString().slice(0, 10);
@@ -81,6 +81,10 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
   const locale = user.language === "es" ? "es-MX" : "en-US";
   const fmt = (iso: string) => formatStoreDateTime(user.storeId, iso, locale);
   const notes = getTaskNotes(id).map((n) => ({ ...n, formattedAt: fmt(n.created_at) }));
+  // Linked-task hand-off: does completing this one ask for a note, and is
+  // there a note from an upstream task to show here in red?
+  const handoffPrompt = handoffPromptsForTasks(user.storeId, [task]).get(task.id) ?? null;
+  const incomingHandoff = incomingHandoffsForTasks(user.storeId, [task]).get(task.id) ?? null;
   // Local wall-clock split for the edit form's separate date/time inputs --
   // slicing task.due_at's raw UTC digits directly (as this used to) shows
   // the UTC hour as if it were already store-local, which silently drifted
@@ -97,6 +101,19 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
         <StatusBadge status={task.status} lang={user.language} />
         {task.due_at && <span className="text-xs text-muted">⏰ {fmt(task.due_at)}</span>}
       </div>
+      {incomingHandoff && (
+        <div className="mt-3 rounded-xl border border-critical/40 bg-critical/5 p-3">
+          <p className="text-lg font-bold text-critical">🔴 {incomingHandoff.note}</p>
+          <p className="mt-0.5 text-xs text-muted">
+            {user.language === "es" ? "De" : "From"} {incomingHandoff.fromTitle} · {fmt(incomingHandoff.completedAt)}
+          </p>
+        </div>
+      )}
+      {task.handoff_note && task.status === "COMPLETE" && (
+        <p className="mt-3 text-sm text-muted">
+          {user.language === "es" ? "Nota enviada" : "Note handed forward"}: <span className="font-semibold text-foreground">{task.handoff_note}</span>
+        </p>
+      )}
       {description && <p className="mt-3 text-sm text-muted">{description}</p>}
 
       {linkedWeekRange && (
@@ -164,6 +181,7 @@ export default async function TaskDetailPage({ params, searchParams }: PageProps
           templateId={task.template_id}
           canManageSeries={canDo(user, "templates.manage")}
           currentSupportId={supportId}
+          handoffPrompt={handoffPrompt}
         />
       </div>
 

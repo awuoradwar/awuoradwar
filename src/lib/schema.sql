@@ -229,7 +229,7 @@ CREATE TABLE IF NOT EXISTS task_templates (
   area TEXT,
   category TEXT, -- ROUTINE | DEADLINE | MEETING | INVENTORY | TRUCK | LOOMIS | CLEANING
   recurrence_type TEXT NOT NULL, -- DAILY | WEEKDAYS | WEEKLY | BIWEEKLY | MONTHLY | ONE_TIME | CUSTOM
-  recurrence_config TEXT, -- JSON: {weekdays:[1,3], dueTime:'11:00', dependsOnTemplateId, conditional}
+  recurrence_config TEXT, -- JSON: {weekdays:[1,3], dueTimes:['11:00'], dependsOnTemplateTitle, conditional, linkScheduleRequests, handoffToTemplateId}
   default_owner_position TEXT, -- GM | MANAGER | null
   effort TEXT NOT NULL DEFAULT 'STANDARD', -- QUICK | STANDARD | MAJOR
   verification_required INTEGER NOT NULL DEFAULT 0,
@@ -275,7 +275,14 @@ CREATE TABLE IF NOT EXISTS tasks (
   completed_at TEXT,
   cancel_reason TEXT,
   last_edited_by TEXT REFERENCES users(id),
-  last_edited_at TEXT
+  last_edited_at TEXT,
+  -- A short note captured at completion time, meant for a *different*,
+  -- later task -- e.g. how much change was ordered on "Place Loomis change
+  -- order", shown in red on that week's "Loomis change delivery". Which
+  -- task it flows to is configured on the template
+  -- (recurrence_config.handoffToTemplateId); this column only holds what
+  -- was typed.
+  handoff_note TEXT
 );
 
 CREATE TABLE IF NOT EXISTS task_events (

@@ -262,7 +262,10 @@ create table tasks (
   completed_at timestamptz,
   cancel_reason text,
   last_edited_by uuid references users(id),
-  last_edited_at timestamptz
+  last_edited_at timestamptz,
+  -- Note captured at completion for a later, linked task (see
+  -- recurrence_config.handoffToTemplateId on task_templates).
+  handoff_note text
 );
 
 create table task_events (

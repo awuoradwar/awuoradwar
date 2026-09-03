@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { getWeekTasks } from "@/lib/services/taskService";
+import { getWeekTasks, incomingHandoffsForTasks } from "@/lib/services/taskService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { getWeekManagerSchedule, getWeekManagerActivities } from "@/lib/services/scheduleService";
 import WeekAddTaskForm from "@/components/WeekAddTaskForm";
@@ -41,6 +41,9 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
   const nextWeekStart = new Date(startDate.getTime() + 7 * 86400000).toISOString().slice(0, 10);
 
   const tasks = getWeekTasks(user.storeId, start, end);
+  // Notes handed forward from an upstream task (e.g. Loomis order amount),
+  // shown in red on the row they're for.
+  const incomingHandoffs = incomingHandoffsForTasks(user.storeId, tasks);
   const db = getDb();
   const managers = db
     .prepare(`SELECT id, name, position FROM users WHERE active = 1 AND position != 'ASSOCIATE' ORDER BY name`)
@@ -220,7 +223,14 @@ export default async function WeekPage({ searchParams }: PageProps<"/week">) {
           ) : (
             <div className="divide-y divide-border border-t border-border">
               {dayTasks.map((t) => (
-                <WeekTaskRow key={t.id} task={t} managers={managers} lang={user.language} managerColors={Object.fromEntries(managerColors)} from="/week" />
+                <WeekTaskRow
+                  key={t.id}
+                  task={{ ...t, incomingHandoff: incomingHandoffs.get(t.id) ?? null }}
+                  managers={managers}
+                  lang={user.language}
+                  managerColors={Object.fromEntries(managerColors)}
+                  from="/week"
+                />
               ))}
             </div>
           )}

@@ -100,12 +100,17 @@ export async function updateTemplateScheduleAction(id: string, formData: FormDat
     | undefined;
   const prevConfig = existing?.recurrence_config ? JSON.parse(existing.recurrence_config) : {};
   const linkScheduleRequests = formData.get("linkScheduleRequests") === "on";
+  // Which other template a completion note flows to; empty = no link. Never
+  // let a template point at itself.
+  const handoffRaw = String(formData.get("handoffToTemplateId") || "").trim();
+  const handoffToTemplateId = handoffRaw && handoffRaw !== id ? handoffRaw : undefined;
   const config = {
     ...prevConfig,
     weekdays: weekdaysRaw.map(Number),
     dueTimes: dueTimesRaw.length > 0 ? dueTimesRaw : undefined,
     dueTime: undefined, // superseded by dueTimes -- drop the legacy singular key on any re-save
     linkScheduleRequests,
+    handoffToTemplateId,
   };
   db.prepare(`UPDATE task_templates SET recurrence_type = ?, recurrence_config = ? WHERE id = ?`).run(
     recurrenceType,

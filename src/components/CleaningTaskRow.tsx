@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   completeCleaningAction,
@@ -207,31 +207,47 @@ function ChecklistItemAssociateEditor({ itemId, associateName, lang }: { itemId:
 /** One line of a task's checklist -- its own done/not-done state and its
  * own associate, independent of the task's overall Complete button. */
 function ChecklistItemRow({ item, lang }: { item: ChecklistItemData; lang: Language }) {
-  const [pending, startTransition] = useTransition();
-  const [optimisticDone, setOptimisticDone] = useState(!!item.done);
+  const [, startTransition] = useTransition();
+  // Local state is the source of truth for what's drawn, and it only ever
+  // moves on a tap or when the server's value actually changes underneath
+  // us. The old version fell back to the stale prop the instant the
+  // transition ended -- before the refresh had delivered the new value --
+  // so every tap visibly snapped back for a beat and read as "didn't take."
+  const [done, setDone] = useState(!!item.done);
+  useEffect(() => setDone(!!item.done), [item.done]);
   const router = useRouter();
-  const done = pending ? optimisticDone : !!item.done;
 
   return (
-    <div className="flex items-center gap-2 py-1">
+    <div className="flex items-center gap-1">
+      {/* The whole text is the tap target (min 44px tall), not just the
+          20px box -- that box was the "hard to press" part. Not disabled
+          while saving either: a second tap just toggles again, and the
+          state machine above stays honest. */}
       <button
         type="button"
-        disabled={pending}
         onClick={() => {
           const next = !done;
-          setOptimisticDone(next);
+          setDone(next);
           startTransition(async () => {
-            await toggleChecklistItemDoneAction(item.id, next);
+            try {
+              await toggleChecklistItemDoneAction(item.id, next);
+            } catch {
+              setDone(!next);
+            }
             router.refresh();
           });
         }}
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 text-xs font-bold disabled:opacity-50 ${
-          done ? "border-ok bg-ok text-white" : "border-border text-transparent"
-        }`}
+        className="flex min-h-11 min-w-0 flex-1 items-center gap-3 py-1.5 text-left active:opacity-70"
       >
-        ✓
+        <span
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-sm font-bold transition-colors ${
+            done ? "border-ok bg-ok text-white" : "border-muted/60 bg-card text-transparent"
+          }`}
+        >
+          ✓
+        </span>
+        <span className={`text-sm ${done ? "text-muted line-through" : ""}`}>{item.text}</span>
       </button>
-      <span className={`flex-1 text-sm ${done ? "text-muted line-through" : ""}`}>{item.text}</span>
       <ChecklistItemAssociateEditor itemId={item.id} associateName={item.associate_name} lang={lang} />
     </div>
   );

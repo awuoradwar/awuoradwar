@@ -14,10 +14,11 @@ function refresh() {
   revalidatePath("/handoff");
 }
 
-export async function completeTaskAction(taskId: string) {
+export async function completeTaskAction(taskId: string, handoffNote?: string) {
   const user = await requireCurrentUser();
   const shift = getCurrentPicForStore(user.storeId);
-  taskService.completeTask(taskId, user, shift?.pic_user_id ?? null);
+  const note = handoffNote?.trim() || null;
+  taskService.completeTask(taskId, user, shift?.pic_user_id ?? null, note);
   refresh();
 }
 

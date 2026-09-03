@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { reassignTaskAction, setTaskSupportAction, cancelTaskAction } from "@/app/actions/taskActions";
 import { Language } from "@/lib/types";
 import StatusBadge from "./StatusBadge";
+import { IncomingHandoffLine } from "./TaskCard";
 import { ManagerColor } from "@/lib/managerColor";
 import { withFrom } from "@/lib/backHref";
 
@@ -20,6 +21,8 @@ export interface WeekTaskData {
   owner_id: string | null;
   owner_name: string | null;
   support_ids: string | null;
+  /** A note handed to this task from an upstream one -- shown in red. */
+  incomingHandoff?: { note: string; fromTitle: string } | null;
 }
 
 /** Week view row: click the title for full detail, or assign/remove right here
@@ -67,6 +70,7 @@ export default function WeekTaskRow({
             {task.source === "recurring" ? (lang === "es" ? "Recurrente" : "Recurring") : lang === "es" ? "Agregada" : "Added"}
           </span>
         </div>
+        <IncomingHandoffLine handoff={task.incomingHandoff} lang={lang} />
         {description && <p className="mt-0.5 truncate text-xs text-muted">{description}</p>}
         <div className="mt-1 flex items-center gap-2">
           <select

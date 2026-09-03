@@ -27,7 +27,7 @@ const WEEKDAY_LABEL: Record<number, { en: string; es: string }> = {
   6: { en: "Sat", es: "Sáb" },
 };
 
-function scheduleSummary(tpl: TemplateRow, lang: Language): string {
+function scheduleSummary(tpl: TemplateRow, lang: Language, titleById: Map<string, string>): string {
   const config = tpl.recurrence_config ? JSON.parse(tpl.recurrence_config) : {};
   const parts = [tpl.recurrence_type];
   if (config.weekdays?.length) {
@@ -45,6 +45,9 @@ function scheduleSummary(tpl: TemplateRow, lang: Language): string {
         })
         .join(", ")
     );
+  }
+  if (config.handoffToTemplateId && titleById.has(config.handoffToTemplateId)) {
+    parts.push(`${lang === "es" ? "nota →" : "note →"} ${titleById.get(config.handoffToTemplateId)}`);
   }
   return parts.join(" · ");
 }
@@ -69,6 +72,8 @@ export default async function TemplatesManager({ user }: { user: SessionUser }) 
     .prepare(`SELECT id, title, title_es, category, recurrence_type, recurrence_config, effort, active FROM task_templates WHERE store_id = ? ORDER BY category, title`)
     .all(user.storeId) as TemplateRow[];
   const canManage = canDo(user, "templates.manage");
+  const titleById = new Map(templates.map((t) => [t.id, t.title]));
+  const activeTemplates = templates.filter((t) => t.active).map((t) => ({ id: t.id, title: t.title }));
 
   return (
     <div className="flex flex-col gap-5">
@@ -93,7 +98,7 @@ export default async function TemplatesManager({ user }: { user: SessionUser }) 
                   <div className="min-w-0">
                     <p className="truncate font-medium">{user.language === "es" && tpl.title_es ? tpl.title_es : tpl.title}</p>
                     <p className="text-xs text-muted">
-                      {scheduleSummary(tpl, user.language)} · {tpl.effort}
+                      {scheduleSummary(tpl, user.language, titleById)} · {tpl.effort}
                     </p>
                   </div>
                   {canManage ? (
@@ -110,6 +115,7 @@ export default async function TemplatesManager({ user }: { user: SessionUser }) 
                       recurrenceType={tpl.recurrence_type}
                       config={tpl.recurrence_config ? JSON.parse(tpl.recurrence_config) : {}}
                       lang={user.language}
+                      otherTemplates={activeTemplates.filter((t) => t.id !== tpl.id)}
                     />
                   </>
                 )}
