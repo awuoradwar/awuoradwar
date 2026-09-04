@@ -88,10 +88,28 @@ export function ensureChecklistItems(cleaningTaskId: string, description: string
   return getChecklistItems(cleaningTaskId);
 }
 
+/** Keeps the parent task's own associate_name in sync with whoever's
+ * actually assigned across its checklist items, so a manager who assigns
+ * per-item never has to separately re-type the same names on the task as a
+ * whole. Dedupes and preserves checklist order (not assignment order) so
+ * repeated saves land on the same string instead of reshuffling it. Once a
+ * task has checklist items, this -- not the task-level editor -- is what
+ * actually drives associate_name. */
+function syncTaskAssociateFromItems(cleaningTaskId: string, actor: SessionUser) {
+  const items = getChecklistItems(cleaningTaskId);
+  const names = [...new Set(items.map((i) => i.associate_name).filter((n): n is string => !!n && n.trim() !== ""))];
+  const joined = names.length ? names.join("/") : null;
+  const db = getDb();
+  db.prepare(`UPDATE cleaning_tasks SET associate_name = ? WHERE id = ?`).run(joined, cleaningTaskId);
+  writeAudit({ entityType: "cleaning_task", entityId: cleaningTaskId, actor, action: "ASSIGNED", newValue: { associate_name: joined } });
+}
+
 export function setChecklistItemAssociate(itemId: string, associateName: string | null, actor: SessionUser) {
   const db = getDb();
+  const item = db.prepare(`SELECT cleaning_task_id FROM cleaning_task_items WHERE id = ?`).get(itemId) as { cleaning_task_id: string } | undefined;
   db.prepare(`UPDATE cleaning_task_items SET associate_name = ? WHERE id = ?`).run(associateName, itemId);
   writeAudit({ entityType: "cleaning_task_item", entityId: itemId, actor, action: "ASSIGNED", newValue: { associate_name: associateName } });
+  if (item) syncTaskAssociateFromItems(item.cleaning_task_id, actor);
 }
 
 export function toggleChecklistItemDone(itemId: string, done: boolean, actor: SessionUser) {

@@ -364,7 +364,13 @@ export default function CleaningTaskRow({ task, lang }: { task: CleaningTaskData
           <p className="truncate text-base font-semibold">{title}</p>
           <div className="flex flex-wrap items-center gap-x-1 text-sm text-muted">
             {dueDay && <span>{lang === "es" ? "Vence" : "Due"}: {dueDay} ·</span>}
-            <AssociateEditor taskId={task.id} associateName={task.associate_name} lang={lang} />
+            {task.checklistItems && task.checklistItems.length > 0 ? (
+              <span title={lang === "es" ? "Se asigna por artículo abajo" : "Assigned per checklist item below"}>
+                {task.associate_name || (lang === "es" ? "Sin asignar" : "Unassigned")}
+              </span>
+            ) : (
+              <AssociateEditor taskId={task.id} associateName={task.associate_name} lang={lang} />
+            )}
             {task.photo_required ? <span>· 📷 {t(lang, "cleaning_photo_required")}</span> : null}
           </div>
           {task.checklistItems && task.checklistItems.length > 0 ? (
