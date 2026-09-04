@@ -39,6 +39,10 @@ export default function CateringForm({ lang, defaultDueDate }: { lang: Language;
       <Field label={`${t(lang, "field_notes")} (${lang === "es" ? "opcional" : "optional"})`}>
         <textarea name="notes" rows={2} className={textareaClass} placeholder={lang === "es" ? "Artículos especiales, alérgenos, instrucciones de entrega..." : "Special items, allergens, delivery instructions..."} />
       </Field>
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" name="paid" className="h-5 w-5 accent-accent" />
+        {t(lang, "field_paid")}
+      </label>
       <SubmitBar pending={pending} error={error} status={status} lang={lang} label={lang === "es" ? "Guardar" : "Save"} />
     </form>
   );

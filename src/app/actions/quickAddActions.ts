@@ -275,6 +275,7 @@ export async function quickAddCateringAction(formData: FormData) {
     numberOfPeople: numberOfPeopleRaw ? Number(numberOfPeopleRaw) : null,
     channel: (fd(formData, "channel") || "PHONE") as CateringChannel,
     notes: fd(formData, "notes") || null,
+    paid: fd(formData, "paid") === "on",
     actor: user,
     idempotencyKey: fd(formData, "idempotencyKey") || undefined,
   });

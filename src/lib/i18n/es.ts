@@ -42,6 +42,8 @@ const es: Record<DictKeys, string> = {
   status_return_pending: "Devolución/Transferencia Pendiente",
   status_resolved: "Resuelto",
   status_overdue: "Vencido",
+  status_paid: "Pagado",
+  status_unpaid: "No Pagado",
   status_due_soon: "Vence Pronto",
 
   action_complete: "Completar",
@@ -180,6 +182,9 @@ const es: Record<DictKeys, string> = {
   field_number_of_people: "Número de Personas",
   field_channel: "Canal",
   field_customer_name: "Nombre del Cliente",
+  field_paid: "Pagado",
+  action_mark_paid: "Marcar Pagado",
+  action_mark_unpaid: "Marcar No Pagado",
 
   waste_title: "Registro de Merma",
   waste_add: "+ Registrar artículo desperdiciado",

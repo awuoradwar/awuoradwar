@@ -16,6 +16,7 @@ export interface CateringOrder {
   number_of_people: number | null;
   channel: CateringChannel;
   notes: string | null;
+  paid: number;
   status: "OPEN" | "COMPLETED" | "CANCELLED";
   owner_id: string | null;
   completed_by: string | null;
@@ -35,6 +36,7 @@ interface CreateCateringParams {
   numberOfPeople: number | null;
   channel: CateringChannel;
   notes?: string | null;
+  paid?: boolean;
   actor: SessionUser;
   idempotencyKey?: string;
 }
@@ -48,8 +50,8 @@ function insertCateringOrder(params: CreateCateringParams) {
   const id = newId();
   const dueAt = params.pickupTime ? storeLocalIso(params.storeId, params.dueDate, params.pickupTime) : null;
   db.prepare(
-    `INSERT INTO catering_orders (id, store_id, due_date, pickup_time, due_at, customer_name, number_of_people, channel, notes, status, owner_id, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?)`
+    `INSERT INTO catering_orders (id, store_id, due_date, pickup_time, due_at, customer_name, number_of_people, channel, notes, paid, status, owner_id, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?)`
   ).run(
     id,
     params.storeId,
@@ -60,6 +62,7 @@ function insertCateringOrder(params: CreateCateringParams) {
     params.numberOfPeople,
     params.channel,
     params.notes || null,
+    params.paid ? 1 : 0,
     params.actor.id,
     params.actor.id,
     nowIso()
@@ -84,15 +87,26 @@ export function updateCateringOrder(
     numberOfPeople: number | null;
     channel: CateringChannel;
     notes: string | null;
+    paid: boolean;
   },
   actor: SessionUser
 ) {
   const db = getDb();
   const dueAt = params.pickupTime ? storeLocalIso(storeId, params.dueDate, params.pickupTime) : null;
   db.prepare(
-    `UPDATE catering_orders SET due_date = ?, pickup_time = ?, due_at = ?, customer_name = ?, number_of_people = ?, channel = ?, notes = ? WHERE id = ?`
-  ).run(params.dueDate, params.pickupTime, dueAt, params.customerName, params.numberOfPeople, params.channel, params.notes, id);
+    `UPDATE catering_orders SET due_date = ?, pickup_time = ?, due_at = ?, customer_name = ?, number_of_people = ?, channel = ?, notes = ?, paid = ? WHERE id = ?`
+  ).run(params.dueDate, params.pickupTime, dueAt, params.customerName, params.numberOfPeople, params.channel, params.notes, params.paid ? 1 : 0, id);
   writeAudit({ entityType: "catering_order", entityId: id, actor, action: "EDITED", newValue: params });
+}
+
+/** Paid status is intentionally independent of OPEN/COMPLETED/CANCELLED --
+ * a catering order can be picked up (COMPLETED) with payment still owed, or
+ * paid in advance while still OPEN -- so this is its own one-tap toggle
+ * rather than folded into the completion flow. */
+export function setCateringPaid(id: string, paid: boolean, actor: SessionUser) {
+  const db = getDb();
+  db.prepare(`UPDATE catering_orders SET paid = ? WHERE id = ?`).run(paid ? 1 : 0, id);
+  writeAudit({ entityType: "catering_order", entityId: id, actor, action: "EDITED", newValue: { paid } });
 }
 
 export function completeCateringOrder(id: string, actor: SessionUser) {

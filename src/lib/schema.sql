@@ -446,6 +446,7 @@ CREATE TABLE IF NOT EXISTS catering_orders (
   number_of_people INTEGER,
   channel TEXT NOT NULL DEFAULT 'PHONE', -- OLO | EZCATERING | IN_STORE | PHONE
   notes TEXT,
+  paid INTEGER NOT NULL DEFAULT 0, -- 0/1, independent of status -- an order can be OPEN and already paid, or COMPLETED and still owed
   status TEXT NOT NULL DEFAULT 'OPEN', -- OPEN | COMPLETED | CANCELLED
   owner_id TEXT REFERENCES users(id),
   completed_by TEXT REFERENCES users(id),

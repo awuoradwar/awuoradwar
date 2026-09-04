@@ -182,6 +182,7 @@ export async function updateCateringOrderAction(formData: FormData) {
       numberOfPeople: numberOfPeopleRaw ? Number(numberOfPeopleRaw) : null,
       channel: (String(formData.get("channel") || "PHONE") as CateringChannel),
       notes: String(formData.get("notes") || "").trim() || null,
+      paid: formData.get("paid") === "on",
     },
     user
   );
@@ -192,6 +193,12 @@ export async function updateCateringOrderAction(formData: FormData) {
 export async function completeCateringOrderAction(id: string) {
   const user = await requireCurrentUser();
   cateringService.completeCateringOrder(id, user);
+  refresh();
+}
+
+export async function setCateringPaidAction(id: string, paid: boolean) {
+  const user = await requireCurrentUser();
+  cateringService.setCateringPaid(id, paid, user);
   refresh();
 }
 

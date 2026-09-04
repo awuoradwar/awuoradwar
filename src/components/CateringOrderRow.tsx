@@ -7,6 +7,7 @@ import {
   completeCateringOrderAction,
   cancelCateringOrderAction,
   reopenCateringOrderAction,
+  setCateringPaidAction,
 } from "@/app/actions/operationsActions";
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
@@ -23,6 +24,7 @@ export interface CateringOrderData {
   number_of_people: number | null;
   channel: string;
   notes: string | null;
+  paid: number;
   status: string;
   completed_by_name?: string | null;
 }
@@ -78,6 +80,10 @@ function EditCateringForm({ order, lang, onDone }: { order: CateringOrderData; l
       <Field label={t(lang, "field_notes")}>
         <textarea name="notes" rows={2} defaultValue={order.notes || ""} className={textareaClass} />
       </Field>
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input type="checkbox" name="paid" defaultChecked={!!order.paid} className="h-5 w-5 accent-accent" />
+        {t(lang, "field_paid")}
+      </label>
       {error && <p className="text-sm text-critical">{error}</p>}
       <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className="tap-target rounded-full bg-accent px-4 text-sm font-semibold text-accent-foreground disabled:opacity-50">
@@ -91,7 +97,21 @@ function EditCateringForm({ order, lang, onDone }: { order: CateringOrderData; l
   );
 }
 
-export default function CateringOrderRow({ order, lang }: { order: CateringOrderData; lang: Language }) {
+export default function CateringOrderRow({
+  order,
+  lang,
+  emphasized,
+}: {
+  order: CateringOrderData;
+  lang: Language;
+  /** Bolder treatment for an order due THIS shift -- bigger headline, a
+   * higher-contrast box around the item notes, and a heavier card border --
+   * so the pickup time, item codes, and paid status can't get missed or
+   * misread in the moment they actually matter. Only meant for My Shift's
+   * "This Shift" section; the Catering page and history stay at the
+   * ordinary row weight. */
+  emphasized?: boolean;
+}) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const router = useRouter();
@@ -112,26 +132,32 @@ export default function CateringOrderRow({ order, lang }: { order: CateringOrder
   }
 
   return (
-    <div className="card flex flex-col gap-2 p-3">
+    <div className={`card flex flex-col gap-2 p-3 ${emphasized ? "border-2 border-accent" : ""}`}>
       <div>
-        <p className="text-sm font-medium">
+        <p className={emphasized ? "text-base font-bold" : "text-sm font-medium"}>
           {order.number_of_people ? `${order.number_of_people} ${lang === "es" ? "personas" : "people"}` : lang === "es" ? "Catering" : "Catering"}
           {order.customer_name ? ` · ${order.customer_name}` : ""}
         </p>
-        <p className="text-sm text-muted">
+        <p className={emphasized ? "text-sm font-semibold text-foreground" : "text-sm text-muted"}>
           {order.pickup_time ? `${lang === "es" ? "Recoge" : "Pickup"} ${order.pickup_time}` : lang === "es" ? "Sin hora fijada" : "No time set"}
           {" · "}
           {cateringChannelLabel(order.channel, lang)}
         </p>
-        {order.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{order.notes}</p>}
+        {order.notes &&
+          (emphasized ? (
+            <p className="mt-1.5 whitespace-pre-wrap rounded-lg bg-card-subtle px-2.5 py-2 text-sm font-medium text-foreground">{order.notes}</p>
+          ) : (
+            <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{order.notes}</p>
+          ))}
         {order.completed_by_name && order.status !== "OPEN" && (
           <p className="mt-1 text-xs text-muted">
             {order.status === "CANCELLED" ? (lang === "es" ? "Cancelado por" : "Cancelled by") : lang === "es" ? "Completado por" : "Completed by"}{" "}
             {order.completed_by_name}
           </p>
         )}
-        <div className="mt-1">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <StatusBadge status={order.status} lang={lang} />
+          <StatusBadge status={order.paid ? "PAID" : "UNPAID"} lang={lang} />
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
@@ -150,6 +176,9 @@ export default function CateringOrderRow({ order, lang }: { order: CateringOrder
             {lang === "es" ? "Reabrir" : "Reopen"}
           </button>
         )}
+        <button disabled={pending} onClick={() => run(() => setCateringPaidAction(order.id, !order.paid))} className={btnOutline}>
+          {t(lang, order.paid ? "action_mark_unpaid" : "action_mark_paid")}
+        </button>
         <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
           ✎ {lang === "es" ? "Editar" : "Edit"}
         </button>

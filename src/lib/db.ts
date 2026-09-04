@@ -80,6 +80,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "shift_notes", "remind_day_before", "remind_day_before INTEGER NOT NULL DEFAULT 0");
   ensureColumn(db, "stores", "org_id", "org_id TEXT REFERENCES franchise_orgs(id)");
   ensureColumn(db, "tasks", "handoff_note", "handoff_note TEXT");
+  ensureColumn(db, "catering_orders", "paid", "paid INTEGER NOT NULL DEFAULT 0");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);

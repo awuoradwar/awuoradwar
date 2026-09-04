@@ -41,6 +41,8 @@ const en = {
   status_resolved: "Resolved",
   status_overdue: "Overdue",
   status_due_soon: "Due Soon",
+  status_paid: "Paid",
+  status_unpaid: "Not Paid",
 
   action_complete: "Complete",
   action_verify: "Verify",
@@ -178,6 +180,9 @@ const en = {
   field_number_of_people: "Number of People",
   field_channel: "Channel",
   field_customer_name: "Customer Name",
+  field_paid: "Paid",
+  action_mark_paid: "Mark Paid",
+  action_mark_unpaid: "Mark Not Paid",
 
   waste_title: "Waste Log",
   waste_add: "+ Log wasted item",

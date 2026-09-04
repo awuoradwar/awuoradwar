@@ -27,6 +27,8 @@ const STYLES: Record<string, string> = {
   // just "in progress" -- same red as OVERDUE rather than the amber used
   // for ordinary pending/waiting states, so it actually draws the eye.
   DUE_SOON: "bg-critical/10 text-critical",
+  PAID: "bg-ok/10 text-ok",
+  UNPAID: "bg-critical/10 text-critical",
 };
 
 const KEY_MAP: Record<string, string> = {
@@ -50,6 +52,8 @@ const KEY_MAP: Record<string, string> = {
   RESOLVED: "status_resolved",
   OVERDUE: "status_overdue",
   DUE_SOON: "status_due_soon",
+  PAID: "status_paid",
+  UNPAID: "status_unpaid",
 };
 
 export default function StatusBadge({ status, lang }: { status: string; lang: Language }) {
