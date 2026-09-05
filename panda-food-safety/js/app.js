@@ -248,17 +248,30 @@ function renderAlreadySubmittedScreen(store, docId, data) {
 
 // ---------- Screen 2: checklist ----------
 
-function itemIsComplete(answer) {
+// Most items only need a photo+note when they fail ("No"). A few items
+// (flagged `alwaysPhoto` in checklist-data.js) need a documentation
+// photo every time they're checked, pass or fail — those still need the
+// standard photo+note when they fail, but ALSO need a photo (no note) to
+// count as complete when they pass. #9 additionally needs a distinct
+// "action plan" field on top of the standard photo+note when it fails.
+function itemIsComplete(item, answer) {
   if (!answer || !answer.value) return false;
-  if (answer.value !== "no") return true;
-  return Boolean(answer.photoUrl && answer.note && answer.note.trim());
+  if (answer.value === "na") return true;
+  if (answer.value === "yes") {
+    return item.alwaysPhoto ? Boolean(answer.photoUrl) : true;
+  }
+  // "no"
+  if (!answer.photoUrl || !answer.note || !answer.note.trim()) return false;
+  if (item.requiresActionPlan && !(answer.actionPlan && answer.actionPlan.trim())) return false;
+  return true;
 }
 
 function renderItemRow(item) {
   const answer = session.answers[item.id];
   const value = answer?.value || null;
   const isNo = value === "no";
-  const complete = itemIsComplete(answer);
+  const showFollowup = isNo || (value === "yes" && item.alwaysPhoto);
+  const complete = itemIsComplete(item, answer);
   return `
     <div class="item-row ${isNo ? "flagged" : ""} ${complete ? "complete" : ""}" id="item-${item.id}">
       <div class="item-text"><span class="item-number">${item.id}.</span>${escapeHtml(tf(item))}</div>
@@ -267,25 +280,38 @@ function renderItemRow(item) {
         <button class="sel-no ${value === "no" ? "selected" : ""}" data-item="${item.id}" data-value="no">${t("no")}</button>
         <button class="sel-na ${value === "na" ? "selected" : ""}" data-item="${item.id}" data-value="na">${t("na")}</button>
       </div>
-      ${isNo ? renderFlaggedFollowup(item, answer) : ""}
+      ${showFollowup ? renderFollowup(item, answer, isNo) : ""}
     </div>`;
 }
 
-function renderFlaggedFollowup(item, answer) {
+function renderFollowup(item, answer, isFail) {
   const photoUrl = answer?.photoUrl || "";
   const note = answer?.note || "";
+  const actionPlan = answer?.actionPlan || "";
   return `
     <div class="flagged-followup">
-      <div class="photo-required-label">📷 ${t("photoRequiredLabel")}</div>
+      <div class="photo-required-label">📷 ${isFail ? t("photoRequiredLabel") : t("photoProofLabel")}</div>
       ${photoUrl ? `<img class="photo-preview" src="${photoUrl}" alt="" />` : `<div id="upload-status-${item.id}"></div>`}
       <label class="file-btn btn btn-secondary btn-sm">
         <span class="photo-btn-label-${item.id}">${photoUrl ? t("retakePhoto") : t("takePhoto")}</span>
         <input type="file" accept="image/*" capture="environment" class="photo-input" data-item="${item.id}" />
       </label>
-      <div>
+      ${
+        isFail
+          ? `<div>
         <label>${t("noteLabel")}</label>
         <textarea class="note-input" data-item="${item.id}" placeholder="${escapeHtml(t("notePlaceholder"))}">${escapeHtml(note)}</textarea>
-      </div>
+      </div>`
+          : ""
+      }
+      ${
+        isFail && item.requiresActionPlan
+          ? `<div>
+        <label>${t("actionPlanLabel")}</label>
+        <textarea class="action-plan-input" data-item="${item.id}" placeholder="${escapeHtml(t("actionPlanPlaceholder"))}">${escapeHtml(actionPlan)}</textarea>
+      </div>`
+          : ""
+      }
     </div>`;
 }
 
@@ -293,7 +319,7 @@ function computeProgress() {
   const total = CHECKLIST_TOTAL_ITEMS;
   let done = 0;
   for (const item of CHECKLIST_ITEMS_FLAT) {
-    if (itemIsComplete(session.answers[item.id])) done++;
+    if (itemIsComplete(item, session.answers[item.id])) done++;
   }
   return { done, total };
 }
@@ -349,6 +375,8 @@ function renderChecklistScreen() {
   body_.addEventListener("input", (e) => {
     const ta = e.target.closest("textarea.note-input");
     if (ta) onNoteInput(Number(ta.dataset.item), ta.value);
+    const ap = e.target.closest("textarea.action-plan-input");
+    if (ap) onActionPlanInput(Number(ap.dataset.item), ap.value);
   });
   root.querySelector("#additional-notes").addEventListener("input", (e) => {
     session.additionalNotes = e.target.value;
@@ -409,9 +437,20 @@ function onValueClick(itemId, value) {
 function onNoteInput(itemId, value) {
   session.answers[itemId] = { ...(session.answers[itemId] || {}), note: value };
   scheduleSave(`item-${itemId}-note`, { [`answers.${itemId}.note`]: value });
+  refreshItemCompleteClass(itemId);
+}
+
+function onActionPlanInput(itemId, value) {
+  session.answers[itemId] = { ...(session.answers[itemId] || {}), actionPlan: value };
+  scheduleSave(`item-${itemId}-actionplan`, { [`answers.${itemId}.actionPlan`]: value });
+  refreshItemCompleteClass(itemId);
+}
+
+function refreshItemCompleteClass(itemId) {
   refreshProgressUI();
+  const item = CHECKLIST_ITEMS_FLAT.find((it) => it.id === itemId);
   const el = document.getElementById(`item-${itemId}`);
-  if (el) el.classList.toggle("complete", itemIsComplete(session.answers[itemId]));
+  if (item && el) el.classList.toggle("complete", itemIsComplete(item, session.answers[itemId]));
 }
 
 async function onPhotoSelected(itemId, file) {

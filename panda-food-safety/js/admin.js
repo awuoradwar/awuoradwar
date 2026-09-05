@@ -331,10 +331,26 @@ function renderDetailModal(record) {
                   <div><strong>${t("itemNumber", { n: it.id })}</strong>: ${escapeHtml(tf(it))}</div>
                   ${a.photoUrl ? `<img class="photo-preview" src="${a.photoUrl}" alt="" />` : ""}
                   ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
+                  ${a.actionPlan ? `<div><strong>${t("actionPlanLabel")}:</strong> ${escapeHtml(a.actionPlan)}</div>` : ""}
                 </div>`;
               })
               .join("")
       }
+      ${(() => {
+        const proof = CHECKLIST_ITEMS_FLAT.filter((it) => it.alwaysPhoto && record.answers?.[it.id]?.value === "yes" && record.answers[it.id].photoUrl);
+        if (proof.length === 0) return "";
+        return `
+          <h4>${t("documentationPhotos")}</h4>
+          ${proof
+            .map(
+              (it) => `
+            <div class="detail-item" style="flex-direction:column; align-items:stretch;">
+              <div><strong>${t("itemNumber", { n: it.id })}</strong>: ${escapeHtml(tf(it))}</div>
+              <img class="photo-preview" src="${record.answers[it.id].photoUrl}" alt="" />
+            </div>`
+            )
+            .join("")}`;
+      })()}
     </div>
   `;
   document.body.appendChild(backdrop);
@@ -347,10 +363,10 @@ function renderDetailModal(record) {
 function exportCsv(rows) {
   if (!rows || rows.length === 0) return;
   const itemIds = CHECKLIST_ITEMS_FLAT.map((it) => it.id);
-  const header = ["date", "storeNumber", "storeName", "conductedBy", "submitted", ...itemIds.map((id) => `item_${id}`)];
+  const header = ["date", "storeNumber", "storeName", "conductedBy", "submitted", "item_9_actionPlan", ...itemIds.map((id) => `item_${id}`)];
   const csvRows = [header.join(",")];
   for (const r of rows) {
-    const cells = [r.date, r.storeNumber, r.storeName, r.conductedBy, r.submitted ? "yes" : "no"];
+    const cells = [r.date, r.storeNumber, r.storeName, r.conductedBy, r.submitted ? "yes" : "no", r.answers?.[9]?.actionPlan || ""];
     for (const id of itemIds) {
       cells.push(r.answers?.[id]?.value || "");
     }

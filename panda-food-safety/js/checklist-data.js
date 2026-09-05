@@ -44,7 +44,7 @@ const CHECKLIST_GROUPS = [
         es: "Mesa de Mantenimiento en Caliente / Línea de Cocina",
         items: [
           { id: 8, en: "Are all the induction units plugged in and turned on? (Verify temp digital display is working)", es: "¿Todas las unidades de inducción están conectadas y encendidas? (Verifique que la pantalla digital de temperatura funcione)" },
-          { id: 9, en: "All food held at >135°F on hot holding table?", es: "¿Todos los alimentos se mantienen a más de 135°F en la mesa de mantenimiento en caliente?" },
+          { id: 9, en: "All food held at >135°F on hot holding table?", es: "¿Todos los alimentos se mantienen a más de 135°F en la mesa de mantenimiento en caliente?", requiresActionPlan: true },
           { id: 10, en: "Are all the lights on for induction table?", es: "¿Están encendidas todas las luces de la mesa de inducción?" },
           { id: 11, en: "Is water temperature at hot holding steam table between 180°F - 200°F?", es: "¿La temperatura del agua en la mesa de vapor de mantenimiento en caliente está entre 180°F y 200°F?" },
           { id: 12, en: "Is steamed rice held >135°F in rice warmer and/or Rice Holding Unit?", es: "¿El arroz al vapor se mantiene a más de 135°F en el calentador de arroz y/o la Unidad de Retención de Arroz?" },
@@ -57,7 +57,7 @@ const CHECKLIST_GROUPS = [
         es: "Temperatura Final de Cocción",
         items: [
           { id: 14, en: "Are all foods being cooked to a min. of 165°F?", es: "¿Todos los alimentos se cocinan a un mínimo de 165°F?" },
-          { id: 15, en: "Are all the thickest parts of the Grilled Teriyaki Chicken >165°F before taken off the grill?", es: "¿Las partes más gruesas del Pollo Teriyaki a la Parrilla están por encima de 165°F antes de retirarlo de la parrilla?" },
+          { id: 15, en: "Are all the thickest parts of the Grilled Teriyaki Chicken >165°F before taken off the grill?", es: "¿Las partes más gruesas del Pollo Teriyaki a la Parrilla están por encima de 165°F antes de retirarlo de la parrilla?", alwaysPhoto: true },
         ],
       },
       {
@@ -65,7 +65,7 @@ const CHECKLIST_GROUPS = [
         en: "Walk-in Cooler",
         es: "Refrigerador Walk-in (Cámara Fría)",
         items: [
-          { id: 16, en: "All food held at <41°F in walk-in cooler?", es: "¿Todos los alimentos se mantienen a menos de 41°F en el refrigerador walk-in?" },
+          { id: 16, en: "All food held at <41°F in walk-in cooler?", es: "¿Todos los alimentos se mantienen a menos de 41°F en el refrigerador walk-in?", alwaysPhoto: true },
           { id: 17, en: "Is potentially hazardous (PHF/TCS) food being cooled from 140°F to 70°F within 2 hours and 69°F to 41°F in 4 hours? (Applies only to selective stores that allow cooling)", es: "¿Los alimentos potencialmente peligrosos (PHF/TCS) se enfrían de 140°F a 70°F en 2 horas y de 69°F a 41°F en 4 horas? (Aplica solo a tiendas seleccionadas que permiten el enfriamiento)" },
           { id: 18, en: "Is food thawed by an approved method?", es: "¿Los alimentos se descongelan usando un método aprobado?" },
           { id: 19, en: "Is all food covered with hard lids?", es: "¿Todos los alimentos están cubiertos con tapas rígidas?" },
@@ -80,7 +80,7 @@ const CHECKLIST_GROUPS = [
         en: "Food Contact Surfaces",
         es: "Superficies en Contacto con Alimentos",
         items: [
-          { id: 24, en: "Are all slicers, mixers, and similar equipment washed, rinsed, and sanitized immediately after use?", es: "¿Todas las rebanadoras, mezcladoras y equipos similares se lavan, enjuagan y desinfectan inmediatamente después de usarse?" },
+          { id: 24, en: "Are all slicers, mixers, and similar equipment washed, rinsed, and sanitized immediately after use?", es: "¿Todas las rebanadoras, mezcladoras y equipos similares se lavan, enjuagan y desinfectan inmediatamente después de usarse?", alwaysPhoto: true },
           { id: 25, en: "Are all food contact surfaces clean and free of encrusted debris?", es: "¿Todas las superficies en contacto con alimentos están limpias y libres de residuos incrustados?" },
           { id: 26, en: "Are all food contact surfaces/thermometer properly sanitized?", es: "¿Todas las superficies en contacto con alimentos/termómetros están correctamente desinfectadas?" },
           { id: 27, en: "Is the rice holding cabinet emptied and cleaned at the end of the night?", es: "¿El gabinete de retención de arroz se vacía y limpia al final de la noche?" },
@@ -120,7 +120,7 @@ const CHECKLIST_GROUPS = [
           { id: 40, en: "Are associates washing their hands when changing job duties or after touching any part of their body?", es: "¿Los asociados se lavan las manos al cambiar de tarea o después de tocarse cualquier parte del cuerpo?" },
           { id: 41, en: "All associates are eating, drinking, and smoking/vaping in an approved location?", es: "¿Todos los asociados comen, beben y fuman/vapean en un área aprobada?" },
           { id: 42, en: "All associate drinks have lids and straws and are stored below food in a designated area?", es: "¿Todas las bebidas de los asociados tienen tapa y popote, y se almacenan debajo de los alimentos en un área designada?" },
-          { id: 43, en: "Are all temperature logs complete and accurate?", es: "¿Todos los registros de temperatura están completos y son precisos?" },
+          { id: 43, en: "Are all temperature logs complete and accurate?", es: "¿Todos los registros de temperatura están completos y son precisos?", alwaysPhoto: true },
         ],
       },
       {
@@ -199,6 +199,15 @@ const CHECKLIST_GROUPS = [
           { id: 63, en: "Is the store free of all rodents, rodent droppings, gnaw marks or any other evidence of rodents?", es: "¿La tienda está libre de roedores, excremento de roedores, marcas de mordidas o cualquier otra evidencia de roedores?" },
           { id: 64, en: "Is the store free of all cockroaches, egg casings, or other evidence of cockroaches?", es: "¿La tienda está libre de cucarachas, ootecas (cápsulas de huevos) u otra evidencia de cucarachas?" },
           { id: 65, en: "Is the store free of flies?", es: "¿La tienda está libre de moscas?" },
+        ],
+      },
+      {
+        id: "other",
+        en: "Other",
+        es: "Otros",
+        items: [
+          { id: 66, en: "Is the microwave clean at all times?", es: "¿El microondas está limpio en todo momento?", alwaysPhoto: true },
+          { id: 67, en: "Are ice machines free of mold at all times?", es: "¿Las máquinas de hielo están libres de moho en todo momento?", alwaysPhoto: true },
         ],
       },
     ],
