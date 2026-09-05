@@ -79,6 +79,7 @@ button { font-family: inherit; }
 :focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 
 .app-shell { max-width: 720px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+.app-shell[hidden] { display: none; }
 .admin-shell { max-width: 1100px; }
 
 .top-bar {
