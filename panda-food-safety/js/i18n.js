@@ -98,10 +98,6 @@ const STRINGS = {
   dateColumn: { en: "Date", es: "Fecha" },
   statusColumn: { en: "Status", es: "Estado" },
   itemNumber: { en: "Item #{n}", es: "Elemento #{n}" },
-  securityNote: {
-    en: "Store data is shared across your Firebase project. Anyone with the app link can submit a walkthrough; only signed-in admins can manage stores and browse every store's history.",
-    es: "Los datos de la tienda se comparten en su proyecto de Firebase. Cualquiera con el enlace de la app puede enviar un recorrido; solo los administradores con sesión iniciada pueden administrar tiendas y ver el historial de todas las tiendas.",
-  },
 };
 
 let currentLang = localStorage.getItem("pfs_lang") || "en";

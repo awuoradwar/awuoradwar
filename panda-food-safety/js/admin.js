@@ -157,7 +157,6 @@ function renderDashboard() {
   root.innerHTML = `
     ${topBarHtml()}
     <main>
-      <div class="hint-banner">${t("securityNote")}</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <button class="btn btn-sm ${activeTab === "today" ? "btn-primary" : "btn-secondary"}" data-tab="today">${t("todayStatusTitle")}</button>
         <button class="btn btn-sm ${activeTab === "weekly" ? "btn-primary" : "btn-secondary"}" data-tab="weekly">${t("weeklySummaryTitle")}</button>
