@@ -11,7 +11,9 @@ import {
   collection,
   onSnapshot,
   orderBy,
+  where,
   query,
+  getDocs,
   serverTimestamp,
   storageRef,
   uploadBytes,
@@ -57,6 +59,71 @@ function formatDateTime(d = new Date()) {
   return d.toLocaleString(getLang() === "es" ? "es-US" : "en-US", {
     weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   });
+}
+
+// Rolling 7-day window ending today, oldest first — not a Mon-Sun
+// calendar week, so it always has a full 7 days of context regardless
+// of what day someone checks it.
+function lastNDates(n) {
+  const dates = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dates.push(todayDateString(d));
+  }
+  return dates;
+}
+
+async function fetchStoreWeeklySubmissions(storeNumber) {
+  await ensureAuth();
+  const days = lastNDates(7);
+  const snap = await getDocs(
+    query(
+      collection(db, "submissions"),
+      where("storeNumber", "==", storeNumber),
+      where("date", ">=", days[0]),
+      where("date", "<=", days[days.length - 1])
+    )
+  );
+  return snap.docs.map((d) => d.data());
+}
+
+function renderWeeklySummaryPanel(submissions) {
+  const days = lastNDates(7);
+  const byDate = {};
+  submissions.forEach((s) => {
+    byDate[s.date] = s;
+  });
+  const doneDays = days.filter((d) => byDate[d]?.submitted).length;
+  const flaggedTotal = submissions.reduce(
+    (sum, s) => sum + Object.values(s.answers || {}).filter((a) => a.value === "no").length,
+    0
+  );
+
+  const rows = days
+    .map((d) => {
+      const sub = byDate[d];
+      const submitted = Boolean(sub?.submitted);
+      const flagged = submitted ? Object.values(sub.answers || {}).filter((a) => a.value === "no").length : null;
+      return `<tr>
+        <td>${d}</td>
+        <td><span class="badge ${submitted ? "badge-success" : "badge-neutral"}">${submitted ? t("submittedStatus") : t("missingStatus")}</span></td>
+        <td>${flagged === null ? "—" : flagged}</td>
+      </tr>`;
+    })
+    .join("");
+
+  return `
+    <div class="card">
+      <strong>${t("daysSubmittedLabel", { done: doneDays, total: 7 })}</strong>
+      <div style="color:var(--text-muted); font-size:13px; margin:2px 0 12px;">${t("last7DaysLabel")} · ${t("flaggedThisWeekLabel", { n: flaggedTotal })}</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>${t("dateColumn")}</th><th>${t("statusColumn")}</th><th>${t("weeklyFlaggedColumn")}</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
 function formatTime(d) {
@@ -107,7 +174,9 @@ function renderSetupScreen() {
                   ${storeOptions}
                 </select>`
           }
+          <div id="weekly-summary-toggle"></div>
         </div>
+        <div id="weekly-summary-panel"></div>
         <div class="field">
           <label>${t("conductedByLabel")}</label>
           <input type="text" id="conducted-by" placeholder="${t("conductedByPlaceholder")}" autocomplete="name" />
@@ -126,6 +195,8 @@ function renderSetupScreen() {
   const storeSelect = root.querySelector("#store-select");
   const nameInput = root.querySelector("#conducted-by");
   const startBtn = root.querySelector("#btn-start");
+  const weeklyToggleEl = root.querySelector("#weekly-summary-toggle");
+  const weeklyPanelEl = root.querySelector("#weekly-summary-panel");
 
   function refreshStartEnabled() {
     const ok = storeSelect && storeSelect.value && nameInput.value.trim().length > 1;
@@ -133,6 +204,36 @@ function renderSetupScreen() {
   }
   if (storeSelect) storeSelect.addEventListener("change", refreshStartEnabled);
   nameInput.addEventListener("input", refreshStartEnabled);
+
+  function renderWeeklyToggle(expanded) {
+    if (!storeSelect || !storeSelect.value) {
+      weeklyToggleEl.innerHTML = "";
+      weeklyPanelEl.innerHTML = "";
+      return;
+    }
+    weeklyToggleEl.innerHTML = `<button type="button" class="text-link" id="btn-weekly-toggle" style="padding-left:0;">${expanded ? t("hideWeeklySummary") : t("viewWeeklySummary")}</button>`;
+    weeklyToggleEl.querySelector("#btn-weekly-toggle").addEventListener("click", async () => {
+      if (expanded) {
+        weeklyPanelEl.innerHTML = "";
+        renderWeeklyToggle(false);
+        return;
+      }
+      weeklyPanelEl.innerHTML = `<div class="card">${t("loadingButton")}</div>`;
+      renderWeeklyToggle(true);
+      const store = stores.find((s) => s.id === storeSelect.value);
+      try {
+        const submissions = await fetchStoreWeeklySubmissions(store.number);
+        weeklyPanelEl.innerHTML = renderWeeklySummaryPanel(submissions);
+      } catch (err) {
+        console.error(err);
+        weeklyPanelEl.innerHTML = `<div class="hint-banner">${escapeHtml(err.message || String(err))}</div>`;
+      }
+    });
+  }
+  if (storeSelect) {
+    storeSelect.addEventListener("change", () => renderWeeklyToggle(false));
+    renderWeeklyToggle(false);
+  }
 
   const clockTimer = setInterval(() => {
     const el = root.querySelector("#now-display");

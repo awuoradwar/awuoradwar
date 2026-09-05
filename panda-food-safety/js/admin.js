@@ -147,6 +147,7 @@ function renderDashboard() {
       <div class="hint-banner">${t("securityNote")}</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <button class="btn btn-sm ${activeTab === "today" ? "btn-primary" : "btn-secondary"}" data-tab="today">${t("todayStatusTitle")}</button>
+        <button class="btn btn-sm ${activeTab === "weekly" ? "btn-primary" : "btn-secondary"}" data-tab="weekly">${t("weeklySummaryTitle")}</button>
         <button class="btn btn-sm ${activeTab === "history" ? "btn-primary" : "btn-secondary"}" data-tab="history">${t("historyTitle")}</button>
         <button class="btn btn-sm ${activeTab === "stores" ? "btn-primary" : "btn-secondary"}" data-tab="stores">${t("manageStoresTitle")}</button>
         <a class="text-link" href="#/" style="margin-left:auto;">${t("backToChecklist")}</a>
@@ -165,6 +166,7 @@ function renderDashboard() {
   });
 
   if (activeTab === "today") renderTodayTab();
+  else if (activeTab === "weekly") renderWeeklyTab();
   else if (activeTab === "history") renderHistoryTab();
   else renderManageStoresTab();
 }
@@ -202,6 +204,78 @@ async function renderTodayTab() {
           </div>`;
         })
         .join("")}
+    </div>
+  `;
+}
+
+// ---------- Weekly Summary ----------
+
+// Rolling 7-day window ending today (not a Mon-Sun calendar week).
+function lastNDates(n) {
+  const dates = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+  return dates;
+}
+
+async function renderWeeklyTab() {
+  const content = root.querySelector("#tab-content");
+  if (!content) return;
+  content.innerHTML = `<div class="card">${t("loadingButton")}</div>`;
+
+  const days = lastNDates(7);
+  // Single date-range filter, no equality filter alongside it — this
+  // doesn't need a composite index, unlike the per-store History search.
+  const snap = await getDocs(
+    query(collection(db, "submissions"), where("date", ">=", days[0]), where("date", "<=", days[days.length - 1]))
+  );
+
+  const byStore = {};
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    const bucket = (byStore[data.storeNumber] ||= { doneDays: new Set(), flagged: 0, lastSubmittedAt: null });
+    if (data.submitted) {
+      bucket.doneDays.add(data.date);
+      bucket.flagged += Object.values(data.answers || {}).filter((a) => a.value === "no").length;
+      const ts = data.submittedAt?.toMillis ? data.submittedAt.toMillis() : 0;
+      if (!bucket.lastSubmittedAt || ts > bucket.lastSubmittedAt) bucket.lastSubmittedAt = ts;
+    }
+  });
+
+  const rows = storesCache
+    .map((s) => {
+      const b = byStore[s.number] || { doneDays: new Set(), flagged: 0, lastSubmittedAt: null };
+      return { store: s, doneDays: b.doneDays.size, flagged: b.flagged, lastSubmittedAt: b.lastSubmittedAt };
+    })
+    .sort((a, b) => a.doneDays - b.doneDays || b.flagged - a.flagged);
+
+  content.innerHTML = `
+    <div class="card">
+      <strong>${t("last7DaysLabel")}</strong>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>${t("filterStore")}</th><th>${t("weeklyDaysColumn")}</th><th>${t("weeklyFlaggedColumn")}</th><th>${t("weeklyLastSubmission")}</th>
+          </tr></thead>
+          <tbody>
+            ${rows
+              .map(
+                (r) => `<tr>
+              <td>${escapeHtml(r.store.number)} — ${escapeHtml(r.store.name)}</td>
+              <td><span class="badge ${r.doneDays === 7 ? "badge-success" : r.doneDays === 0 ? "badge-danger" : "badge-neutral"}">${r.doneDays} / 7</span></td>
+              <td>${r.flagged}</td>
+              <td>${r.lastSubmittedAt ? formatDateTime({ toDate: () => new Date(r.lastSubmittedAt) }) : t("weeklyNever")}</td>
+            </tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }

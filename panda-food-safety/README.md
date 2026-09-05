@@ -99,12 +99,19 @@ counts as complete → Submit once every item is answered. If someone
 already submitted for that store today, you'll see who and when, with the
 option to view it or edit it anyway.
 
+Associates can also check **their own store's** last 7 days right on the
+setup screen — pick your store, then tap "View this week's summary"
+before starting the walkthrough (or without starting one at all).
+
 **Admins:** open the same link plus `#/admin`, log in with your email/
 password → **Today's Status** shows which stores have or haven't
 submitted yet (this is a flag you check on the dashboard, not a push
-notification — see limitations below) → **History** to filter by store
-and date range, drill into any submission's flagged items and photos, and
-export CSV → **Manage Stores** to add/remove stores.
+notification — see limitations below) → **Weekly Summary** ranks every
+store by days submitted in the last 7 days (worst first) plus flagged
+item counts, so problem stores surface automatically → **History** to
+filter by store and date range, drill into any submission's flagged
+items and photos, and export CSV → **Manage Stores** to add/remove
+stores.
 
 ## Known limitations
 
@@ -127,8 +134,10 @@ export CSV → **Manage Stores** to add/remove stores.
   single tap with no login screen. Only the two admin accounts can manage
   the store roster or pull cross-store history/exports.
 - **First composite-index search.** The first time you run a History
-  search with both a store filter and a date range, Firestore may show a
-  "this query requires an index" error with a link in it — click the
+  search with both a store filter and a date range, or the first time
+  anyone opens their store's weekly summary (same query shape: one
+  store + a date range), Firestore may show a "this query requires an
+  index" error with a link in it — click the
   link, wait about a minute while it builds, then re-run the search. This
   is normal, one-time Firestore behavior, not a bug.
 - **Free-tier limits.** Spark (free) plan covers typical daily use for a
