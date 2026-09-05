@@ -112,6 +112,7 @@ export default function CateringOrderRow({
 }) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const router = useRouter();
 
   function run(fn: () => Promise<void>) {
@@ -154,27 +155,42 @@ export default function CateringOrderRow({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
-        {order.status === "OPEN" && (
-          <>
-            <button disabled={pending} onClick={() => run(() => completeCateringOrderAction(order.id))} className={btnPrimary}>
-              {t(lang, "action_complete")}
-            </button>
-            <button disabled={pending} onClick={() => run(() => cancelCateringOrderAction(order.id))} className={btnDanger}>
-              {lang === "es" ? "Cancelar" : "Cancel"}
-            </button>
-          </>
-        )}
-        {order.status !== "OPEN" && (
+        {order.status === "OPEN" ? (
+          <button disabled={pending} onClick={() => run(() => completeCateringOrderAction(order.id))} className={btnPrimary}>
+            {t(lang, "action_complete")}
+          </button>
+        ) : (
           <button disabled={pending} onClick={() => run(() => reopenCateringOrderAction(order.id))} className={btnNeutral}>
             {lang === "es" ? "Reabrir" : "Reopen"}
           </button>
         )}
-        <button disabled={pending} onClick={() => run(() => setCateringPaidAction(order.id, !order.paid))} className={btnOutline}>
-          {t(lang, order.paid ? "action_mark_unpaid" : "action_mark_paid")}
+        {/* Cancel, paid status, and Edit are all less frequent than
+            Complete -- tucked behind "⋯" so the row reads as one action by
+            default instead of a wall of buttons, same pattern as the
+            inventory stepper's "⋯" for Order/Delete. */}
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          title={lang === "es" ? "Más" : "More"}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base transition-colors ${moreOpen ? "bg-accent/10 text-accent" : "text-muted hover:text-accent"}`}
+        >
+          ⋯
         </button>
-        <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
-          ✎ {lang === "es" ? "Editar" : "Edit"}
-        </button>
+        {moreOpen && (
+          <>
+            {order.status === "OPEN" && (
+              <button disabled={pending} onClick={() => run(() => cancelCateringOrderAction(order.id))} className={btnDanger}>
+                {lang === "es" ? "Cancelar" : "Cancel"}
+              </button>
+            )}
+            <button disabled={pending} onClick={() => run(() => setCateringPaidAction(order.id, !order.paid))} className={btnOutline}>
+              {t(lang, order.paid ? "action_mark_unpaid" : "action_mark_paid")}
+            </button>
+            <button type="button" disabled={pending} onClick={() => setEditing(true)} className={`gap-1 ${btnOutline}`}>
+              ✎ {lang === "es" ? "Editar" : "Edit"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
