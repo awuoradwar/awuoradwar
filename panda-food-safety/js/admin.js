@@ -157,13 +157,15 @@ function renderDashboard() {
   root.innerHTML = `
     ${topBarHtml()}
     <main>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <div class="admin-tabs">
         <button class="btn btn-sm ${activeTab === "today" ? "btn-primary" : "btn-secondary"}" data-tab="today">${t("todayStatusTitle")}</button>
         <button class="btn btn-sm ${activeTab === "weekly" ? "btn-primary" : "btn-secondary"}" data-tab="weekly">${t("weeklySummaryTitle")}</button>
         <button class="btn btn-sm ${activeTab === "history" ? "btn-primary" : "btn-secondary"}" data-tab="history">${t("historyTitle")}</button>
         <button class="btn btn-sm ${activeTab === "stores" ? "btn-primary" : "btn-secondary"}" data-tab="stores">${t("manageStoresTitle")}</button>
         ${isOwnerSession ? `<button class="btn btn-sm ${activeTab === "admins" ? "btn-primary" : "btn-secondary"}" data-tab="admins">${t("manageAdminsTitle")}</button>` : ""}
-        <a class="text-link" href="#/" style="margin-left:auto;">${t("backToChecklist")}</a>
+      </div>
+      <div class="admin-account-row">
+        <a class="text-link" href="#/">${t("backToChecklist")}</a>
         <button class="text-link" id="btn-logout">${t("logoutButton")}</button>
       </div>
       <div id="tab-content"></div>
