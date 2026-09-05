@@ -85,6 +85,8 @@ const STRINGS = {
   storeNameLabel: { en: "Store name / location", es: "Nombre de tienda / ubicación" },
   saveButton: { en: "Save", es: "Guardar" },
   cancelButton: { en: "Cancel", es: "Cancelar" },
+  editButton: { en: "Edit", es: "Editar" },
+  optionalLabel: { en: "optional", es: "opcional" },
   deleteButton: { en: "Remove", es: "Eliminar" },
   confirmDeleteStore: { en: "Remove this store from the list? Past submissions are kept.", es: "¿Eliminar esta tienda de la lista? Los envíos anteriores se conservan." },
   exportCsv: { en: "Export CSV", es: "Exportar CSV" },

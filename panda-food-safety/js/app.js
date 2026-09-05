@@ -53,6 +53,12 @@ function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// Stores can be number-only — a name is optional, not every store has (or
+// needs) a descriptive one.
+function storeLabel(number, name) {
+  return name ? `${number} — ${name}` : String(number);
+}
+
 function todayDateString(d = new Date()) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -162,7 +168,7 @@ function wireLangToggle(onChange) {
 
 function renderSetupScreen() {
   const storeOptions = stores
-    .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.number)} — ${escapeHtml(s.name)}</option>`)
+    .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(storeLabel(s.number, s.name))}</option>`)
     .join("");
 
   root.innerHTML = `
@@ -537,7 +543,7 @@ function renderChecklistScreen() {
     ${topBarHtml()}
     <main id="checklist-body">
       <div class="card">
-        <strong>${escapeHtml(session.storeNumber)} — ${escapeHtml(session.storeName)}</strong>
+        <strong>${escapeHtml(storeLabel(session.storeNumber, session.storeName))}</strong>
         <div style="color:var(--text-muted); font-size:13px;">${escapeHtml(session.conductedBy)} · ${formatDateTime()}</div>
       </div>
       ${body}

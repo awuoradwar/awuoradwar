@@ -27,6 +27,7 @@ let storesCache = [];
 let storesUnsub = null;
 let lastHistoryResults = [];
 let isOwnerSession = false;
+let editingStoreId = null;
 let adminsCache = [];
 let adminsUnsub = null;
 
@@ -39,6 +40,12 @@ export function initAdminApp() {
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Stores can be number-only — a name is optional, not every store has (or
+// needs) a descriptive one.
+function storeLabel(number, name) {
+  return name ? `${number} — ${name}` : String(number);
 }
 
 function todayDateString() {
@@ -218,7 +225,7 @@ async function renderTodayTab() {
           const submitted = Boolean(sub?.submitted);
           return `
           <div class="store-status-card ${submitted ? "" : "missing"} ${submitted ? "clickable" : ""}" ${submitted ? `data-view-today="${escapeHtml(s.number)}"` : ""}>
-            <div class="store-name">${escapeHtml(s.number)} — ${escapeHtml(s.name)}</div>
+            <div class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</div>
             <span class="badge ${submitted ? "badge-success" : "badge-danger"}">${submitted ? t("submittedStatus") : t("missingStatus")}</span>
             ${submitted ? `<div class="meta">${t("submittedAt", { time: formatDateTime(sub.submittedAt), name: escapeHtml(sub.conductedBy) })}</div>` : `<div class="meta">${t("noSubmissionYet")}</div>`}
           </div>`;
@@ -294,7 +301,7 @@ async function renderWeeklyTab() {
             ${rows
               .map(
                 (r) => `<tr>
-              <td>${escapeHtml(r.store.number)} — ${escapeHtml(r.store.name)}</td>
+              <td>${escapeHtml(storeLabel(r.store.number, r.store.name))}</td>
               <td><span class="badge ${r.doneDays === 7 ? "badge-success" : r.doneDays === 0 ? "badge-danger" : "badge-neutral"}">${r.doneDays} / 7</span></td>
               <td>${r.flagged}</td>
               <td>${r.lastSubmittedAt ? formatDateTime({ toDate: () => new Date(r.lastSubmittedAt) }) : t("weeklyNever")}</td>
@@ -325,7 +332,7 @@ function renderHistoryTab() {
           <label>${t("filterStore")}</label>
           <select id="hist-store">
             <option value="">${t("filterAllStores")}</option>
-            ${storesCache.map((s) => `<option value="${escapeHtml(s.number)}">${escapeHtml(s.number)} — ${escapeHtml(s.name)}</option>`).join("")}
+            ${storesCache.map((s) => `<option value="${escapeHtml(s.number)}">${escapeHtml(storeLabel(s.number, s.name))}</option>`).join("")}
           </select>
         </div>
         <div class="field">
@@ -388,10 +395,10 @@ async function runHistorySearch() {
               const flaggedCount = Object.values(r.answers || {}).filter((a) => a.value === "no").length;
               return `<tr>
                 <td>${escapeHtml(r.date)}</td>
-                <td>${escapeHtml(r.storeNumber)} — ${escapeHtml(r.storeName)}</td>
+                <td>${escapeHtml(storeLabel(r.storeNumber, r.storeName))}</td>
                 <td>${escapeHtml(r.conductedBy)}</td>
                 <td><span class="badge ${r.submitted ? "badge-success" : "badge-neutral"}">${r.submitted ? t("submittedStatus") : t("missingStatus")}</span></td>
-                <td>${flaggedCount}</td>
+                <td>${flaggedCount > 0 ? `<button class="btn btn-sm btn-danger" data-view-flagged="${r.id}">${flaggedCount}</button>` : flaggedCount}</td>
                 <td><button class="btn btn-sm btn-secondary" data-view="${r.id}">${t("viewDetail")}</button></td>
               </tr>`;
             })
@@ -400,15 +407,16 @@ async function runHistorySearch() {
       </table>
     </div>
   `;
-  resultsEl.querySelectorAll("button[data-view]").forEach((btn) => {
+  resultsEl.querySelectorAll("button[data-view], button[data-view-flagged]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const record = lastHistoryResults.find((r) => r.id === btn.dataset.view);
+      const recordId = btn.dataset.view || btn.dataset.viewFlagged;
+      const record = lastHistoryResults.find((r) => r.id === recordId);
       const originalLabel = btn.textContent;
       btn.disabled = true;
       btn.textContent = t("loadingButton");
       try {
         const hydrated = await hydrateRecordPhotos(record);
-        renderDetailModal(hydrated);
+        renderDetailModal(hydrated, { expandFlagged: Boolean(btn.dataset.viewFlagged) });
       } finally {
         btn.disabled = false;
         btn.textContent = originalLabel;
@@ -431,9 +439,10 @@ async function hydrateRecordPhotos(record) {
   return { ...record, answers };
 }
 
-function renderDetailModal(record) {
+function renderDetailModal(record, { expandFlagged = false } = {}) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
+  let firstFlaggedId = null;
 
   let sectionsHtml = "";
   for (const group of CHECKLIST_GROUPS) {
@@ -446,15 +455,16 @@ function renderDetailModal(record) {
         const badgeClass = value === "yes" ? "badge-success" : value === "no" ? "badge-danger" : "badge-neutral";
         const badgeLabel = value === "yes" ? t("yes") : value === "no" ? t("no") : value === "na" ? t("na") : "—";
         const proofPhoto = item.alwaysPhoto && value === "yes" && a.photoUrl;
+        if (isNo && firstFlaggedId === null) firstFlaggedId = item.id;
         sectionsHtml += `
-          <div class="detail-row ${isNo ? "detail-row-flagged" : ""}" ${isNo ? `data-toggle-detail="${item.id}"` : ""}>
+          <div class="detail-row ${isNo ? "detail-row-flagged" : ""}" ${isNo ? `data-toggle-detail="${item.id}"` : ""} id="detail-row-${item.id}">
             <div class="detail-row-main">
               <span class="detail-item-text">${item.id}. ${escapeHtml(tf(item))}</span>
               <span class="badge ${badgeClass}">${badgeLabel}</span>
             </div>
             ${
               isNo
-                ? `<div class="detail-row-body collapsed" id="detail-body-${item.id}">
+                ? `<div class="detail-row-body ${expandFlagged ? "" : "collapsed"}" id="detail-body-${item.id}">
                     ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
                     ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
                   </div>`
@@ -479,6 +489,9 @@ function renderDetailModal(record) {
     </div>
   `;
   document.body.appendChild(backdrop);
+  if (expandFlagged && firstFlaggedId !== null) {
+    backdrop.querySelector(`#detail-row-${firstFlaggedId}`)?.scrollIntoView({ block: "start" });
+  }
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
   backdrop.addEventListener("click", (e) => {
     if (e.target === backdrop) {
@@ -537,17 +550,26 @@ function renderManageStoresTab() {
           <input type="text" id="new-store-number" />
         </div>
         <div class="field" style="margin-bottom:0; flex:1;">
-          <label>${t("storeNameLabel")}</label>
+          <label>${t("storeNameLabel")} (${t("optionalLabel")})</label>
           <input type="text" id="new-store-name" />
         </div>
         <button class="btn btn-primary" id="btn-add-store">${t("addStore")}</button>
       </div>
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${storesCache
-          .map(
-            (s) => `
+          .map((s) =>
+            editingStoreId === s.id
+              ? `
           <div class="store-manage-row">
-            <div class="grow"><strong>${escapeHtml(s.number)}</strong> — ${escapeHtml(s.name)}</div>
+            <input type="text" class="grow" id="edit-number-${s.id}" value="${escapeHtml(s.number)}" />
+            <input type="text" class="grow" id="edit-name-${s.id}" value="${escapeHtml(s.name || "")}" placeholder="${t("optionalLabel")}" />
+            <button class="btn btn-sm btn-primary" data-save-edit="${escapeHtml(s.id)}">${t("saveButton")}</button>
+            <button class="btn btn-sm btn-secondary" data-cancel-edit="1">${t("cancelButton")}</button>
+          </div>`
+              : `
+          <div class="store-manage-row">
+            <div class="grow">${escapeHtml(storeLabel(s.number, s.name))}</div>
+            <button class="btn btn-sm btn-secondary" data-edit="${escapeHtml(s.id)}">${t("editButton")}</button>
             <button class="btn btn-sm btn-danger" data-remove="${escapeHtml(s.id)}">${t("deleteButton")}</button>
           </div>`
           )
@@ -559,7 +581,7 @@ function renderManageStoresTab() {
   content.querySelector("#btn-add-store").addEventListener("click", async () => {
     const number = content.querySelector("#new-store-number").value.trim();
     const name = content.querySelector("#new-store-name").value.trim();
-    if (!number || !name) return;
+    if (!number) return;
     await setDoc(doc(collection(db, "stores"), number), { number, name, active: true });
     content.querySelector("#new-store-number").value = "";
     content.querySelector("#new-store-name").value = "";
@@ -569,6 +591,41 @@ function renderManageStoresTab() {
     btn.addEventListener("click", async () => {
       if (!confirm(t("confirmDeleteStore"))) return;
       await deleteDoc(doc(db, "stores", btn.dataset.remove));
+    });
+  });
+
+  content.querySelectorAll("button[data-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingStoreId = btn.dataset.edit;
+      renderManageStoresTab();
+    });
+  });
+
+  content.querySelectorAll("button[data-cancel-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingStoreId = null;
+      renderManageStoresTab();
+    });
+  });
+
+  content.querySelectorAll("button[data-save-edit]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const oldId = btn.dataset.saveEdit;
+      const newNumber = content.querySelector(`#edit-number-${oldId}`).value.trim();
+      const newName = content.querySelector(`#edit-name-${oldId}`).value.trim();
+      if (!newNumber) return;
+      if (newNumber !== oldId) {
+        // The store number is the document id, so renaming it means
+        // creating a new document and dropping the old one — existing
+        // submissions keep whatever storeNumber they were recorded
+        // under, unaffected.
+        await setDoc(doc(collection(db, "stores"), newNumber), { number: newNumber, name: newName, active: true });
+        await deleteDoc(doc(db, "stores", oldId));
+      } else {
+        await setDoc(doc(db, "stores", oldId), { number: newNumber, name: newName, active: true });
+      }
+      editingStoreId = null;
+      renderManageStoresTab();
     });
   });
 }
