@@ -17,3 +17,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FOOD_SAFETY_WALKTHROUGH }}
           channelId: live
           projectId: food-safety-walkthrough
+          entryPoint: panda-food-safety
