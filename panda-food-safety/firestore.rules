@@ -12,7 +12,7 @@ service cloud.firestore {
     }
     function isOwner() {
       return request.auth != null &&
-        request.auth.token.email == "owner@example.com";
+        request.auth.token.email == "radwar0224@gmail.com";
     }
     // Owner always counts as admin; anyone else needs a matching
     // /admins/{their email} document (added by the owner).

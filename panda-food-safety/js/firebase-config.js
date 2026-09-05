@@ -19,4 +19,4 @@ export const firebaseConfig = {
 // so update both together if it ever changes. Every other admin is
 // added later from inside the app itself (Manage Admins tab) — no code
 // change needed for them.
-export const OWNER_EMAIL = "owner@example.com";
+export const OWNER_EMAIL = "radwar0224@gmail.com";
