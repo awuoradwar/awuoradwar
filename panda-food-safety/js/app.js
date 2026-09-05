@@ -26,18 +26,22 @@ let session = null; // { docId, storeNumber, storeName, conductedBy, answers, ad
 let pendingWrites = 0;
 const saveTimers = {};
 
-export function initAssociateApp() {
+export async function initAssociateApp() {
   if (initialized) return;
   initialized = true;
   root = document.getElementById("associate-root");
+  renderSetupScreen();
+
+  // Reading the store list requires being signed in (even anonymously) —
+  // has to happen before subscribing, not just before "Start Walkthrough",
+  // or the very first read is rejected and the dropdown never populates.
+  await ensureAuth();
 
   onSnapshot(query(collection(db, "stores"), orderBy("number")), (snap) => {
     stores = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     storesLoaded = true;
     if (!session) renderSetupScreen();
   });
-
-  renderSetupScreen();
 }
 
 function escapeHtml(str) {

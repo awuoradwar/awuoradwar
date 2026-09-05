@@ -200,10 +200,14 @@ async function renderTodayTab() {
   });
 
   const doneCount = storesCache.filter((s) => byStoreNumber[s.number]?.submitted).length;
+  const todayLabel = new Date(`${today}T00:00:00`).toLocaleDateString(getLang() === "es" ? "es-US" : "en-US", {
+    weekday: "short", month: "short", day: "numeric", year: "numeric",
+  });
 
   content.innerHTML = `
     <div class="card">
       <strong>${t("storesSubmittedCount", { done: doneCount, total: storesCache.length })}</strong>
+      <div style="color:var(--text-muted); font-size:13px;">${todayLabel}</div>
     </div>
     <div class="admin-grid">
       ${storesCache
