@@ -8,9 +8,11 @@ counts as done. Two admin logins can see every store's data, browse
 history, export CSV, and manage the store list.
 
 It's a plain static site (no build step) backed by Firebase — Firebase
-Authentication, Firestore (the data), and Storage (the photos) — deployed
-to a public URL you QR-code. There's no server to run or maintain beyond
-the free Firebase project itself.
+Authentication and Firestore, including the photos, stored directly as
+image data in Firestore documents rather than in Cloud Storage (see
+below for why) — deployed to a public URL you QR-code. There's no server
+to run or maintain beyond the free Firebase project itself, and no
+credit card required anywhere.
 
 ## Why Firebase instead of a Claude Artifact
 
@@ -19,6 +21,17 @@ members of the owner's Claude organization — they can't be opened by an
 anonymous QR-code scan from a store associate's phone. A real hosted web
 app has no such restriction, which is why this is a standalone app you
 deploy yourself rather than something living inside claude.ai.
+
+## Why no Cloud Storage
+
+As of October 2024, Cloud Storage for Firebase requires the pay-as-you-go
+**Blaze** plan — a linked billing account — even though actual usage
+would stay well within its free quota for an app this size. Rather than
+require a credit card on file at all, photos are stored as compressed
+base64 image data directly in Firestore instead, one document per
+flagged item (`submissions/{id}/photos/{itemId}`). Firestore itself has
+stayed free (Spark plan, no billing account) throughout, so the whole
+app runs at zero cost with nothing to attach a card to.
 
 ## One-time setup (~15 minutes)
 
@@ -38,20 +51,18 @@ deploy yourself rather than something living inside claude.ai.
 
 4. **Enable Firestore.** *Build → Firestore Database* → *Create
    database* → production mode → pick a region close to your stores.
+   (No Storage step — see "Why no Cloud Storage" above.)
 
-5. **Enable Storage.** *Build → Storage* → *Get started* → production
-   mode → same region.
-
-6. **Register a web app to get your config.** *Project settings*
+5. **Register a web app to get your config.** *Project settings*
    (gear icon) → *General* tab → under "Your apps" click the web icon
    (`</>`) → register (any nickname, no need for Firebase Hosting setup
    here) → copy the `firebaseConfig` object it shows you.
 
-7. **Paste your config in.** Open `js/firebase-config.js` in this folder
+6. **Paste your config in.** Open `js/firebase-config.js` in this folder
    and replace the placeholder values with what you just copied. In the
    same file, set `ADMIN_EMAILS` to the exact two admin emails from step 3.
 
-8. **Match the admin emails in the security rules.** Open
+7. **Match the admin emails in the security rules.** Open
    `firestore.rules` and replace the two placeholder emails inside
    `isAdmin()` with the same two admin emails. This is the file that
    actually enforces admin-only access (`firebase-config.js` only
@@ -67,7 +78,7 @@ npm install -g firebase-tools
 firebase login
 cd panda-food-safety
 firebase use --add          # pick the project you created above
-firebase deploy --only firestore:rules,storage:rules,hosting
+firebase deploy --only firestore:rules,hosting
 ```
 
 The deploy prints a live URL like `https://your-project.web.app` — that's
@@ -140,10 +151,19 @@ stores.
   index" error with a link in it — click the
   link, wait about a minute while it builds, then re-run the search. This
   is normal, one-time Firestore behavior, not a bug.
-- **Free-tier limits.** Spark (free) plan covers typical daily use for a
-  modest number of stores. If you scale up significantly, watch usage in
-  the Firebase console and consider the pay-as-you-go Blaze plan (still
-  inexpensive at this volume).
+- **Free-tier limits.** Firestore's free Spark quota (roughly 1 GiB
+  stored, 50K reads/20K writes/20K deletes per day, at time of writing —
+  check the Firebase console for current figures) comfortably covers
+  daily use for a modest number of stores, photos included. If you scale
+  up to many more stores or a lot more photo volume, watch usage in the
+  console; you'd only need to consider the paid Blaze plan if you
+  actually exceeded these quotas, not before.
+- **Photos are capped smaller than a typical phone photo.** Each is
+  compressed client-side to at most 1280px wide, JPEG quality 0.6,
+  before being stored — enough to read a thermometer or a work order,
+  but noticeably lower resolution than the original if you zoom in a
+  lot. That's deliberate, to stay safely under Firestore's 1 MiB
+  per-document limit.
 
 ## Editing the checklist or wording
 

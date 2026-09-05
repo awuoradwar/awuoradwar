@@ -1,6 +1,12 @@
-// Central Firebase setup — every other module imports `auth`, `db`,
-// `storage`, and the re-exported SDK helpers from here so there's one
-// place that knows the SDK version.
+// Central Firebase setup — every other module imports `auth`, `db`, and
+// the re-exported SDK helpers from here so there's one place that knows
+// the SDK version.
+//
+// No Cloud Storage here on purpose: as of Oct 2024 Cloud Storage for
+// Firebase requires the Blaze (billing-account) plan even for free-tier
+// usage. Photos are stored as compressed base64 image data directly in
+// Firestore instead (see js/app.js), which stays on the no-cost Spark
+// plan with no credit card required.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
@@ -27,24 +33,16 @@ import {
   getDocs,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/12.18.0/firebase-storage.js";
 
 import { firebaseConfig, ADMIN_EMAILS } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 export {
   auth,
   db,
-  storage,
   ADMIN_EMAILS,
   signInAnonymously,
   signInWithEmailAndPassword,
@@ -64,7 +62,4 @@ export {
   limit,
   getDocs,
   serverTimestamp,
-  storageRef,
-  uploadBytes,
-  getDownloadURL,
 };

@@ -1,7 +1,6 @@
 import {
   auth,
   db,
-  storage,
   signInAnonymously,
   onAuthStateChanged,
   doc,
@@ -15,9 +14,6 @@ import {
   query,
   getDocs,
   serverTimestamp,
-  storageRef,
-  uploadBytes,
-  getDownloadURL,
 } from "./firebase-init.js";
 
 let initialized = false;
@@ -272,6 +268,26 @@ async function ensureAuth() {
   });
 }
 
+// Photos live in a subcollection (submissions/{docId}/photos/{itemId}),
+// each holding its own base64 image — never in Cloud Storage, which
+// requires a billing account even for free-tier usage. The parent
+// submission doc only carries a lightweight `hasPhoto` flag per item, so
+// hydrate the actual image data back onto `answers[id].photoUrl` when
+// resuming a draft or reopening an already-submitted day.
+async function hydratePhotoUrls(docId, answers) {
+  const merged = { ...answers };
+  try {
+    const snap = await getDocs(collection(db, "submissions", docId, "photos"));
+    snap.forEach((d) => {
+      const id = Number(d.id);
+      if (merged[id]) merged[id] = { ...merged[id], photoUrl: d.data().dataUrl };
+    });
+  } catch (err) {
+    console.error("failed to load photos", err);
+  }
+  return merged;
+}
+
 async function beginWalkthrough(store, conductedBy) {
   await ensureAuth();
   const date = todayDateString();
@@ -285,8 +301,10 @@ async function beginWalkthrough(store, conductedBy) {
   }
 
   let data;
+  let answers;
   if (snap.exists()) {
     data = snap.data();
+    answers = await hydratePhotoUrls(docId, data.answers || {});
   } else {
     data = {
       storeId: store.id,
@@ -301,6 +319,7 @@ async function beginWalkthrough(store, conductedBy) {
       additionalNotes: "",
     };
     await setDoc(ref, data);
+    answers = {};
   }
 
   session = {
@@ -308,7 +327,7 @@ async function beginWalkthrough(store, conductedBy) {
     storeNumber: store.number,
     storeName: store.name,
     conductedBy: data.conductedBy || conductedBy,
-    answers: { ...(data.answers || {}) },
+    answers,
     additionalNotes: data.additionalNotes || "",
   };
   renderChecklistScreen();
@@ -334,13 +353,13 @@ function renderAlreadySubmittedScreen(store, docId, data) {
     session = null;
     renderSetupScreen();
   });
-  root.querySelector("#btn-edit-anyway").addEventListener("click", () => {
+  root.querySelector("#btn-edit-anyway").addEventListener("click", async () => {
     session = {
       docId,
       storeNumber: store.number,
       storeName: store.name,
       conductedBy: data.conductedBy,
-      answers: { ...(data.answers || {}) },
+      answers: await hydratePhotoUrls(docId, data.answers || {}),
       additionalNotes: data.additionalNotes || "",
     };
     renderChecklistScreen();
@@ -360,11 +379,11 @@ function itemIsComplete(item, answer) {
   if (!answer || !answer.value) return false;
   if (answer.value === "na") return true;
   if (answer.value === "yes") {
-    return item.alwaysPhoto ? Boolean(answer.photoUrl) : true;
+    return item.alwaysPhoto ? Boolean(answer.hasPhoto) : true;
   }
   // "no"
   const needsPhoto = item.alwaysPhoto || item.requiresPhoto;
-  if (needsPhoto && !answer.photoUrl) return false;
+  if (needsPhoto && !answer.hasPhoto) return false;
   return Boolean(answer.note && answer.note.trim());
 }
 
@@ -575,13 +594,13 @@ async function onPhotoSelected(itemId, file) {
     if (label) label.textContent = t("uploadingPhoto");
   }
   try {
-    const blob = await compressImage(file);
-    const path = `submissions/${session.docId}/item-${itemId}-${Date.now()}.jpg`;
-    const ref = storageRef(storage, path);
-    await uploadBytes(ref, blob, { contentType: "image/jpeg" });
-    const url = await getDownloadURL(ref);
-    session.answers[itemId] = { ...(session.answers[itemId] || {}), photoUrl: url };
-    scheduleSave(`item-${itemId}-photo`, { [`answers.${itemId}.photoUrl`]: url }, true);
+    const dataUrl = await compressImage(file);
+    await setDoc(doc(db, "submissions", session.docId, "photos", String(itemId)), {
+      dataUrl,
+      updatedAt: serverTimestamp(),
+    });
+    session.answers[itemId] = { ...(session.answers[itemId] || {}), photoUrl: dataUrl, hasPhoto: true };
+    scheduleSave(`item-${itemId}-photo`, { [`answers.${itemId}.hasPhoto`]: true }, true);
     reRenderItem(itemId);
   } catch (err) {
     console.error(err);
@@ -592,6 +611,11 @@ async function onPhotoSelected(itemId, file) {
   }
 }
 
+// Resolves a compressed JPEG as a data: URL (not a Blob) — it's written
+// straight into a Firestore field, never uploaded anywhere. Quality 0.6
+// at up to 1280px wide keeps a typical photo well under ~250 KB even
+// after base64's ~33% size overhead, comfortably inside Firestore's
+// 1 MiB per-document limit with room to spare.
 function compressImage(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -607,7 +631,7 @@ function compressImage(file) {
       canvas.width = w;
       canvas.height = h;
       canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("compress failed"))), "image/jpeg", 0.72);
+      resolve(canvas.toDataURL("image/jpeg", 0.6));
     };
     img.onerror = reject;
     reader.onerror = reject;

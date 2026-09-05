@@ -373,11 +373,34 @@ async function runHistorySearch() {
     </div>
   `;
   resultsEl.querySelectorAll("button[data-view]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const record = lastHistoryResults.find((r) => r.id === btn.dataset.view);
-      renderDetailModal(record);
+      const originalLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = t("loadingButton");
+      try {
+        const hydrated = await hydrateRecordPhotos(record);
+        renderDetailModal(hydrated);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
     });
   });
+}
+
+// Photos live in a subcollection (submissions/{id}/photos/{itemId}), not
+// on the submission doc itself — fetched lazily, only when an admin
+// actually opens a detail view, so browsing the History list itself
+// stays light.
+async function hydrateRecordPhotos(record) {
+  const photosSnap = await getDocs(collection(db, "submissions", record.id, "photos"));
+  const answers = { ...record.answers };
+  photosSnap.forEach((d) => {
+    const id = Number(d.id);
+    if (answers[id]) answers[id] = { ...answers[id], photoUrl: d.data().dataUrl };
+  });
+  return { ...record, answers };
 }
 
 function renderDetailModal(record) {

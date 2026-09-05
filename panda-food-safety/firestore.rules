@@ -36,6 +36,18 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isSignedIn();
       allow delete: if isAdmin();
+
+      // Corrective-action photos, one doc per flagged item, stored as
+      // base64 image data (there's no Cloud Storage in this app — it
+      // requires a billing account even for free-tier usage). Rules
+      // don't cascade to subcollections, so this needs its own match
+      // even though it lives under a submission.
+      match /photos/{photoId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if isSignedIn();
+        allow delete: if isAdmin();
+      }
     }
   }
 }
