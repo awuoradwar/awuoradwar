@@ -4,12 +4,12 @@
 // See README.md for the full setup walkthrough.
 
 export const firebaseConfig = {
-  apiKey: "PASTE_API_KEY_HERE",
-  authDomain: "PASTE_PROJECT_ID_HERE.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID_HERE",
-  storageBucket: "PASTE_PROJECT_ID_HERE.firebasestorage.app",
-  messagingSenderId: "PASTE_SENDER_ID_HERE",
-  appId: "PASTE_APP_ID_HERE",
+  apiKey: "AIzaSyCFzw0BVyZxXtZNRZmKMCIOCx8BruuxDso",
+  authDomain: "food-safety-walkthrough.firebaseapp.com",
+  projectId: "food-safety-walkthrough",
+  storageBucket: "food-safety-walkthrough.firebasestorage.app",
+  messagingSenderId: "843008741924",
+  appId: "1:843008741924:web:b85c928853affd534c3eb1",
 };
 
 // The exact two admin email addresses that may log into the Admin
