@@ -4,7 +4,7 @@
 // See README.md for the full setup walkthrough.
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyCFzw0BVyZxXtZNRZmKMCIOCx8BruuxDso",
+  apiKey: "AIzaSyCFzw0BvyZxXtZNRZmKMCIOCx8BruuxDso",
   authDomain: "food-safety-walkthrough.firebaseapp.com",
   projectId: "food-safety-walkthrough",
   storageBucket: "food-safety-walkthrough.firebasestorage.app",
