@@ -331,7 +331,6 @@ function renderDetailModal(record) {
                   <div><strong>${t("itemNumber", { n: it.id })}</strong>: ${escapeHtml(tf(it))}</div>
                   ${a.photoUrl ? `<img class="photo-preview" src="${a.photoUrl}" alt="" />` : ""}
                   ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
-                  ${a.actionPlan ? `<div><strong>${t("actionPlanLabel")}:</strong> ${escapeHtml(a.actionPlan)}</div>` : ""}
                 </div>`;
               })
               .join("")
@@ -363,10 +362,10 @@ function renderDetailModal(record) {
 function exportCsv(rows) {
   if (!rows || rows.length === 0) return;
   const itemIds = CHECKLIST_ITEMS_FLAT.map((it) => it.id);
-  const header = ["date", "storeNumber", "storeName", "conductedBy", "submitted", "item_9_actionPlan", ...itemIds.map((id) => `item_${id}`)];
+  const header = ["date", "storeNumber", "storeName", "conductedBy", "submitted", ...itemIds.map((id) => `item_${id}`)];
   const csvRows = [header.join(",")];
   for (const r of rows) {
-    const cells = [r.date, r.storeNumber, r.storeName, r.conductedBy, r.submitted ? "yes" : "no", r.answers?.[9]?.actionPlan || ""];
+    const cells = [r.date, r.storeNumber, r.storeName, r.conductedBy, r.submitted ? "yes" : "no"];
     for (const id of itemIds) {
       cells.push(r.answers?.[id]?.value || "");
     }

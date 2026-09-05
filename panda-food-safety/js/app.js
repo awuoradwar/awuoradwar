@@ -248,12 +248,13 @@ function renderAlreadySubmittedScreen(store, docId, data) {
 
 // ---------- Screen 2: checklist ----------
 
-// Most items only need a photo+note when they fail ("No"). A few items
-// (flagged `alwaysPhoto` in checklist-data.js) need a documentation
-// photo every time they're checked, pass or fail — those still need the
-// standard photo+note when they fail, but ALSO need a photo (no note) to
-// count as complete when they pass. #9 additionally needs a distinct
-// "action plan" field on top of the standard photo+note when it fails.
+// Three tiers, set per item in checklist-data.js:
+//  - `alwaysPhoto`: needs a documentation photo every time it's checked,
+//    pass or fail (on "No" it also needs the course-of-action text).
+//  - `requiresPhoto`: needs a photo only when it fails, alongside the
+//    course-of-action text.
+//  - neither flag (the majority of items): no photo is ever required —
+//    a failed answer just needs the course-of-action text.
 function itemIsComplete(item, answer) {
   if (!answer || !answer.value) return false;
   if (answer.value === "na") return true;
@@ -261,9 +262,9 @@ function itemIsComplete(item, answer) {
     return item.alwaysPhoto ? Boolean(answer.photoUrl) : true;
   }
   // "no"
-  if (!answer.photoUrl || !answer.note || !answer.note.trim()) return false;
-  if (item.requiresActionPlan && !(answer.actionPlan && answer.actionPlan.trim())) return false;
-  return true;
+  const needsPhoto = item.alwaysPhoto || item.requiresPhoto;
+  if (needsPhoto && !answer.photoUrl) return false;
+  return Boolean(answer.note && answer.note.trim());
 }
 
 function renderItemRow(item) {
@@ -287,28 +288,24 @@ function renderItemRow(item) {
 function renderFollowup(item, answer, isFail) {
   const photoUrl = answer?.photoUrl || "";
   const note = answer?.note || "";
-  const actionPlan = answer?.actionPlan || "";
+  const needsPhoto = item.alwaysPhoto || (isFail && item.requiresPhoto);
   return `
     <div class="flagged-followup">
-      <div class="photo-required-label">📷 ${isFail ? t("photoRequiredLabel") : t("photoProofLabel")}</div>
+      ${
+        needsPhoto
+          ? `<div class="photo-required-label">📷 ${isFail ? t("photoRequiredLabel") : t("photoProofLabel")}</div>
       ${photoUrl ? `<img class="photo-preview" src="${photoUrl}" alt="" />` : `<div id="upload-status-${item.id}"></div>`}
       <label class="file-btn btn btn-secondary btn-sm">
         <span class="photo-btn-label-${item.id}">${photoUrl ? t("retakePhoto") : t("takePhoto")}</span>
         <input type="file" accept="image/*" capture="environment" class="photo-input" data-item="${item.id}" />
-      </label>
+      </label>`
+          : ""
+      }
       ${
         isFail
           ? `<div>
         <label>${t("noteLabel")}</label>
         <textarea class="note-input" data-item="${item.id}" placeholder="${escapeHtml(t("notePlaceholder"))}">${escapeHtml(note)}</textarea>
-      </div>`
-          : ""
-      }
-      ${
-        isFail && item.requiresActionPlan
-          ? `<div>
-        <label>${t("actionPlanLabel")}</label>
-        <textarea class="action-plan-input" data-item="${item.id}" placeholder="${escapeHtml(t("actionPlanPlaceholder"))}">${escapeHtml(actionPlan)}</textarea>
       </div>`
           : ""
       }
@@ -375,8 +372,6 @@ function renderChecklistScreen() {
   body_.addEventListener("input", (e) => {
     const ta = e.target.closest("textarea.note-input");
     if (ta) onNoteInput(Number(ta.dataset.item), ta.value);
-    const ap = e.target.closest("textarea.action-plan-input");
-    if (ap) onActionPlanInput(Number(ap.dataset.item), ap.value);
   });
   root.querySelector("#additional-notes").addEventListener("input", (e) => {
     session.additionalNotes = e.target.value;
@@ -437,12 +432,6 @@ function onValueClick(itemId, value) {
 function onNoteInput(itemId, value) {
   session.answers[itemId] = { ...(session.answers[itemId] || {}), note: value };
   scheduleSave(`item-${itemId}-note`, { [`answers.${itemId}.note`]: value });
-  refreshItemCompleteClass(itemId);
-}
-
-function onActionPlanInput(itemId, value) {
-  session.answers[itemId] = { ...(session.answers[itemId] || {}), actionPlan: value };
-  scheduleSave(`item-${itemId}-actionplan`, { [`answers.${itemId}.actionPlan`]: value });
   refreshItemCompleteClass(itemId);
 }
 

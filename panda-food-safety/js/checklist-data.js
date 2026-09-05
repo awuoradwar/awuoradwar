@@ -24,7 +24,7 @@ const CHECKLIST_GROUPS = [
         en: "Reach-In Cooler",
         es: "Refrigerador Reach-In",
         items: [
-          { id: 3, en: "All food held at <41°F at cooks line reach-in cooler?", es: "¿Todos los alimentos se mantienen a menos de 41°F en el refrigerador reach-in de la línea de cocina?" },
+          { id: 3, en: "All food held at <41°F at cooks line reach-in cooler?", es: "¿Todos los alimentos se mantienen a menos de 41°F en el refrigerador reach-in de la línea de cocina?", requiresPhoto: true },
           { id: 4, en: "Is all raw chicken stored below other raw meats?", es: "¿Todo el pollo crudo se almacena debajo de otras carnes crudas?" },
           { id: 5, en: "Is all food covered with hard lids?", es: "¿Todos los alimentos están cubiertos con tapas rígidas?" },
           { id: 6, en: "Are all foods properly date marked?", es: "¿Todos los alimentos tienen la fecha correctamente marcada?" },
@@ -35,7 +35,7 @@ const CHECKLIST_GROUPS = [
         en: "Prep Cooler",
         es: "Refrigerador de Preparación",
         items: [
-          { id: 7, en: "Is kale and cabbage stored in the back of the prep cooler and not overfilled?", es: "¿La col rizada (kale) y el repollo se almacenan en la parte de atrás del refrigerador de preparación y sin sobrellenarlo?" },
+          { id: 7, en: "Is kale and cabbage stored in the back of the prep cooler and not overfilled?", es: "¿La col rizada (kale) y el repollo se almacenan en la parte de atrás del refrigerador de preparación y sin sobrellenarlo?", requiresPhoto: true },
         ],
       },
       {
@@ -44,11 +44,11 @@ const CHECKLIST_GROUPS = [
         es: "Mesa de Mantenimiento en Caliente / Línea de Cocina",
         items: [
           { id: 8, en: "Are all the induction units plugged in and turned on? (Verify temp digital display is working)", es: "¿Todas las unidades de inducción están conectadas y encendidas? (Verifique que la pantalla digital de temperatura funcione)" },
-          { id: 9, en: "All food held at >135°F on hot holding table?", es: "¿Todos los alimentos se mantienen a más de 135°F en la mesa de mantenimiento en caliente?", requiresActionPlan: true },
+          { id: 9, en: "All food held at >135°F on hot holding table?", es: "¿Todos los alimentos se mantienen a más de 135°F en la mesa de mantenimiento en caliente?" },
           { id: 10, en: "Are all the lights on for induction table?", es: "¿Están encendidas todas las luces de la mesa de inducción?" },
           { id: 11, en: "Is water temperature at hot holding steam table between 180°F - 200°F?", es: "¿La temperatura del agua en la mesa de vapor de mantenimiento en caliente está entre 180°F y 200°F?" },
           { id: 12, en: "Is steamed rice held >135°F in rice warmer and/or Rice Holding Unit?", es: "¿El arroz al vapor se mantiene a más de 135°F en el calentador de arroz y/o la Unidad de Retención de Arroz?" },
-          { id: 13, en: "Is water temperature at Rice Holding Unit >144°F?", es: "¿La temperatura del agua en la Unidad de Retención de Arroz es mayor a 144°F?" },
+          { id: 13, en: "Is water temperature at Rice Holding Unit >144°F?", es: "¿La temperatura del agua en la Unidad de Retención de Arroz es mayor a 144°F?", requiresPhoto: true },
         ],
       },
       {
@@ -68,7 +68,7 @@ const CHECKLIST_GROUPS = [
           { id: 16, en: "All food held at <41°F in walk-in cooler?", es: "¿Todos los alimentos se mantienen a menos de 41°F en el refrigerador walk-in?", alwaysPhoto: true },
           { id: 17, en: "Is potentially hazardous (PHF/TCS) food being cooled from 140°F to 70°F within 2 hours and 69°F to 41°F in 4 hours? (Applies only to selective stores that allow cooling)", es: "¿Los alimentos potencialmente peligrosos (PHF/TCS) se enfrían de 140°F a 70°F en 2 horas y de 69°F a 41°F en 4 horas? (Aplica solo a tiendas seleccionadas que permiten el enfriamiento)" },
           { id: 18, en: "Is food thawed by an approved method?", es: "¿Los alimentos se descongelan usando un método aprobado?" },
-          { id: 19, en: "Is all food covered with hard lids?", es: "¿Todos los alimentos están cubiertos con tapas rígidas?" },
+          { id: 19, en: "Is all food covered with hard lids?", es: "¿Todos los alimentos están cubiertos con tapas rígidas?", requiresPhoto: true },
           { id: 20, en: "Are all foods properly date marked?", es: "¿Todos los alimentos tienen la fecha correctamente marcada?" },
           { id: 21, en: "Are all food containers elevated 6\" off the floor?", es: "¿Todos los contenedores de alimentos están elevados 6 pulgadas del piso?" },
           { id: 22, en: "Are all ready-to-eat foods/vegetables above all raw meats?", es: "¿Todos los alimentos listos para comer/vegetales están por encima de todas las carnes crudas?" },
@@ -92,7 +92,7 @@ const CHECKLIST_GROUPS = [
         es: "Agua / Fregaderos",
         items: [
           { id: 28, en: "Is water available throughout the store?", es: "¿Hay agua disponible en toda la tienda?" },
-          { id: 29, en: "Does the store have hot water of at least 120°F within 60 seconds at 1 location?", es: "¿La tienda tiene agua caliente de al menos 120°F en un lapso de 60 segundos en al menos 1 ubicación?" },
+          { id: 29, en: "Does the store have hot water of at least 120°F within 60 seconds at 1 location?", es: "¿La tienda tiene agua caliente de al menos 120°F en un lapso de 60 segundos en al menos 1 ubicación?", requiresPhoto: true },
           { id: 30, en: "Do all hand sinks have hot water of >100°F within 60 seconds?", es: "¿Todos los lavamanos tienen agua caliente de más de 100°F en un lapso de 60 segundos?" },
           { id: 31, en: "Are all hand sinks easily accessible with nothing blocking them?", es: "¿Todos los lavamanos son fácilmente accesibles y no están obstruidos?" },
           { id: 32, en: "Are all handwashing sinks being used for handwashing only?", es: "¿Todos los lavamanos se usan exclusivamente para lavarse las manos?" },
