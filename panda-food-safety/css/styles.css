@@ -1,63 +1,66 @@
 /* Panda Food Safety Checklist — styles.
    Mobile-first: this gets used one-handed on a store phone during a
    lunch rush, so touch targets stay large and nothing needs a webfont
-   round-trip on bad store wifi (system font stack only). */
+   round-trip on bad store wifi (system font stack only). Calm, muted
+   palette everywhere except failure states — red is reserved for
+   "not meeting requirements" so it actually means something when it
+   shows up. */
 
 :root {
   color-scheme: light dark;
   --bg: #faf9f7;
   --surface: #ffffff;
   --surface-alt: #f2efe9;
-  --text: #201c19;
-  --text-muted: #6b6560;
-  --border: #e5e1db;
-  --accent: #c8102e;
-  --accent-dark: #9c0c22;
+  --text: #2b2825;
+  --text-muted: #7a736a;
+  --border: #e7e2da;
+  --accent: #4a6b63;
+  --accent-dark: #38524b;
   --accent-contrast: #ffffff;
-  --success: #1e7d32;
-  --success-bg: #e6f4ea;
-  --danger: #c62828;
-  --danger-bg: #fdecea;
+  --success: #3d7a56;
+  --success-bg: #e8f2ec;
+  --danger: #c0392b;
+  --danger-bg: #fbeae8;
   --neutral-bg: #eeeae3;
   --focus-ring: #2f6fed;
-  --shadow: 0 1px 2px rgba(32, 28, 25, 0.06), 0 4px 12px rgba(32, 28, 25, 0.06);
+  --shadow: 0 1px 2px rgba(43, 40, 37, 0.05), 0 3px 10px rgba(43, 40, 37, 0.05);
   --radius: 10px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #171513;
-    --surface: #211e1b;
-    --surface-alt: #2a2622;
-    --text: #f3efe9;
-    --text-muted: #a89f96;
-    --border: #3a352f;
-    --accent: #ff5a72;
-    --accent-dark: #ff8194;
-    --accent-contrast: #201c19;
-    --success: #6bcf83;
-    --success-bg: #17301e;
-    --danger: #ff8a80;
-    --danger-bg: #3a1a17;
-    --neutral-bg: #2a2622;
+    --bg: #171614;
+    --surface: #201e1b;
+    --surface-alt: #292620;
+    --text: #ece7e0;
+    --text-muted: #a39a8f;
+    --border: #38352e;
+    --accent: #8fbdae;
+    --accent-dark: #a9d0c3;
+    --accent-contrast: #16211d;
+    --success: #7fc79a;
+    --success-bg: #1c2e22;
+    --danger: #ff8a7a;
+    --danger-bg: #3a1f1a;
+    --neutral-bg: #292620;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.3);
   }
 }
 :root[data-theme="dark"] {
-  --bg: #171513;
-  --surface: #211e1b;
-  --surface-alt: #2a2622;
-  --text: #f3efe9;
-  --text-muted: #a89f96;
-  --border: #3a352f;
-  --accent: #ff5a72;
-  --accent-dark: #ff8194;
-  --accent-contrast: #201c19;
-  --success: #6bcf83;
-  --success-bg: #17301e;
-  --danger: #ff8a80;
-  --danger-bg: #3a1a17;
-  --neutral-bg: #2a2622;
+  --bg: #171614;
+  --surface: #201e1b;
+  --surface-alt: #292620;
+  --text: #ece7e0;
+  --text-muted: #a39a8f;
+  --border: #38352e;
+  --accent: #8fbdae;
+  --accent-dark: #a9d0c3;
+  --accent-contrast: #16211d;
+  --success: #7fc79a;
+  --success-bg: #1c2e22;
+  --danger: #ff8a7a;
+  --danger-bg: #3a1f1a;
+  --neutral-bg: #292620;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
@@ -68,7 +71,7 @@ body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 16px;
-  line-height: 1.4;
+  line-height: 1.45;
   -webkit-tap-highlight-color: transparent;
 }
 img { max-width: 100%; }
@@ -85,11 +88,12 @@ button { font-family: inherit; }
   padding: 10px 16px;
   display: flex; align-items: center; gap: 12px;
 }
-.top-bar h1 { font-size: 17px; margin: 0; flex: 1; font-weight: 700; }
+.top-bar h1 { font-size: 16px; margin: 0; flex: 1; font-weight: 600; }
 .lang-toggle { display: flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
 .lang-toggle button {
   border: none; background: transparent; color: var(--text-muted);
   padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 .lang-toggle button.active { background: var(--accent); color: var(--accent-contrast); }
 .text-link { background: none; border: none; color: var(--accent); font-weight: 600; font-size: 14px; cursor: pointer; padding: 6px 4px; }
@@ -112,11 +116,13 @@ textarea { resize: vertical; min-height: 70px; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  border: none; border-radius: 10px; padding: 14px 20px; font-size: 16px; font-weight: 700;
+  border: none; border-radius: 10px; padding: 14px 20px; font-size: 16px; font-weight: 600;
   cursor: pointer; min-height: 48px;
+  transition: transform 0.08s ease, background-color 0.12s ease, opacity 0.12s ease;
 }
+.btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: var(--accent-contrast); }
-.btn-primary:disabled { background: var(--neutral-bg); color: var(--text-muted); cursor: not-allowed; }
+.btn-primary:disabled { background: var(--neutral-bg); color: var(--text-muted); cursor: not-allowed; transform: none; }
 .btn-secondary { background: var(--surface-alt); color: var(--text); }
 .btn-block { width: 100%; }
 .btn-sm { padding: 8px 14px; min-height: 36px; font-size: 14px; }
@@ -136,32 +142,49 @@ textarea { resize: vertical; min-height: 70px; }
 .section-header {
   position: sticky; top: 49px; z-index: 10;
   background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 14px; font-weight: 700; font-size: 14px;
+  border-radius: 8px; padding: 10px 14px; font-weight: 600; font-size: 14px;
 }
-.group-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 700; margin: 4px 0 -6px 2px; }
+.group-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; margin: 4px 0 -6px 2px; }
 
-.item-row { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--surface); }
+.item-row { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--surface); transition: border-color 0.15s ease, background-color 0.15s ease; }
 .item-row.flagged { border-color: var(--danger); background: var(--danger-bg); }
 .item-row.complete { border-color: var(--success); }
 .item-text { font-size: 15px; margin-bottom: 10px; }
-.item-number { color: var(--text-muted); font-weight: 700; margin-right: 4px; }
+.item-number { color: var(--text-muted); font-weight: 600; margin-right: 4px; }
 
 .segmented { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 .segmented button {
   border: 2px solid var(--border); background: var(--surface); color: var(--text);
-  border-radius: 8px; padding: 12px 8px; font-weight: 700; font-size: 15px; cursor: pointer; min-height: 48px;
+  border-radius: 8px; padding: 12px 8px; font-weight: 600; font-size: 15px; cursor: pointer; min-height: 48px;
+  transition: transform 0.08s ease, background-color 0.12s ease, border-color 0.12s ease;
 }
+.segmented button:active { transform: scale(0.96); }
 .segmented button.sel-yes.selected { background: var(--success-bg); border-color: var(--success); color: var(--success); }
 .segmented button.sel-no.selected { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
 .segmented button.sel-na.selected { background: var(--neutral-bg); border-color: var(--text-muted); }
 
 .flagged-followup { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 10px; }
-.photo-required-label { color: var(--danger); font-size: 13px; font-weight: 700; }
-.photo-preview { width: 100%; max-height: 220px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+.photo-required-label { color: var(--danger); font-size: 13px; font-weight: 600; }
+
+/* Photo control: a compact button, not a placeholder block. Once a
+   photo exists it's just a small thumbnail next to the button — tap
+   the thumbnail to see it full-size (a lightbox), never a big inline
+   image dominating the row. */
+.photo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.photo-thumb {
+  width: 44px; height: 44px; object-fit: cover; border-radius: 8px;
+  border: 1px solid var(--border); cursor: zoom-in; flex-shrink: 0;
+}
 .file-btn { display: inline-flex; }
 .file-btn input[type="file"] { display: none; }
 
-.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.lightbox-backdrop {
+  position: fixed; inset: 0; background: rgba(20, 17, 15, 0.75);
+  display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 60; cursor: zoom-out;
+}
+.lightbox-backdrop img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge-success { background: var(--success-bg); color: var(--success); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
 .badge-neutral { background: var(--neutral-bg); color: var(--text-muted); }
@@ -175,13 +198,13 @@ textarea { resize: vertical; min-height: 70px; }
 .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .store-status-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
 .store-status-card.missing { border-color: var(--danger); background: var(--danger-bg); }
-.store-status-card .store-name { font-weight: 700; }
+.store-status-card .store-name { font-weight: 600; }
 .store-status-card .meta { font-size: 12px; color: var(--text-muted); }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-th { background: var(--surface-alt); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+th { background: var(--surface-alt); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); font-weight: 600; }
 tr:last-child td { border-bottom: none; }
 
 .filters-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }

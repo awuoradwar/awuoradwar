@@ -403,7 +403,7 @@ function renderDetailModal(record) {
                 return `
                 <div class="detail-item" style="flex-direction:column; align-items:stretch;">
                   <div><strong>${t("itemNumber", { n: it.id })}</strong>: ${escapeHtml(tf(it))}</div>
-                  ${a.photoUrl ? `<img class="photo-preview" src="${a.photoUrl}" alt="" />` : ""}
+                  ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
                   ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
                 </div>`;
               })
@@ -419,7 +419,7 @@ function renderDetailModal(record) {
               (it) => `
             <div class="detail-item" style="flex-direction:column; align-items:stretch;">
               <div><strong>${t("itemNumber", { n: it.id })}</strong>: ${escapeHtml(tf(it))}</div>
-              <img class="photo-preview" src="${record.answers[it.id].photoUrl}" alt="" />
+              <img class="photo-thumb" src="${record.answers[it.id].photoUrl}" alt="" data-lightbox="${record.answers[it.id].photoUrl}" />
             </div>`
             )
             .join("")}`;
@@ -430,7 +430,17 @@ function renderDetailModal(record) {
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
   backdrop.addEventListener("click", (e) => {
     if (e.target === backdrop) backdrop.remove();
+    const thumb = e.target.closest("img[data-lightbox]");
+    if (thumb) openLightbox(thumb.dataset.lightbox);
   });
+}
+
+function openLightbox(url) {
+  const lb = document.createElement("div");
+  lb.className = "lightbox-backdrop";
+  lb.innerHTML = `<img src="${url}" alt="" />`;
+  lb.addEventListener("click", () => lb.remove());
+  document.body.appendChild(lb);
 }
 
 function exportCsv(rows) {

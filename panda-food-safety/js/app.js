@@ -395,11 +395,13 @@ function renderFollowup(item, answer, isFail) {
       ${
         needsPhoto
           ? `<div class="photo-required-label">📷 ${isFail ? t("photoRequiredLabel") : t("photoProofLabel")}</div>
-      ${photoUrl ? `<img class="photo-preview" src="${photoUrl}" alt="" />` : `<div id="upload-status-${item.id}"></div>`}
-      <label class="file-btn btn btn-secondary btn-sm">
-        <span class="photo-btn-label-${item.id}">${photoUrl ? t("retakePhoto") : t("takePhoto")}</span>
-        <input type="file" accept="image/*" capture="environment" class="photo-input" data-item="${item.id}" />
-      </label>`
+      <div class="photo-row" id="photo-row-${item.id}">
+        ${photoUrl ? `<img class="photo-thumb" src="${photoUrl}" alt="" data-lightbox="${photoUrl}" />` : ""}
+        <label class="file-btn btn btn-secondary btn-sm">
+          <span>${photoUrl ? t("retakePhoto") : t("takePhoto")}</span>
+          <input type="file" accept="image/*" capture="environment" class="photo-input" data-item="${item.id}" />
+        </label>
+      </div>`
           : ""
       }
       ${
@@ -411,6 +413,14 @@ function renderFollowup(item, answer, isFail) {
           : ""
       }
     </div>`;
+}
+
+function openLightbox(url) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "lightbox-backdrop";
+  backdrop.innerHTML = `<img src="${url}" alt="" />`;
+  backdrop.addEventListener("click", () => backdrop.remove());
+  document.body.appendChild(backdrop);
 }
 
 function computeProgress() {
@@ -446,12 +456,12 @@ function renderChecklistScreen() {
         <label>${t("additionalNotesLabel")}</label>
         <textarea id="additional-notes" placeholder="${escapeHtml(t("additionalNotesPlaceholder"))}">${escapeHtml(session.additionalNotes)}</textarea>
       </div>
-      <div class="save-indicator" id="save-indicator"></div>
     </main>
     <div class="sticky-footer">
       <div class="progress-row">
         <div class="progress-track" style="flex:1;"><div class="progress-fill" id="progress-fill"></div></div>
         <span id="progress-label"></span>
+        <span class="save-indicator" id="save-indicator"></span>
       </div>
       <button class="btn btn-primary btn-block" id="btn-submit">${t("submitButton")}</button>
       <div class="remaining-note" id="remaining-note"></div>
@@ -465,6 +475,8 @@ function renderChecklistScreen() {
   body_.addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-value]");
     if (btn) onValueClick(Number(btn.dataset.item), btn.dataset.value);
+    const thumb = e.target.closest("img[data-lightbox]");
+    if (thumb) openLightbox(thumb.dataset.lightbox);
   });
   body_.addEventListener("change", (e) => {
     const fileInput = e.target.closest("input.photo-input");
@@ -544,8 +556,24 @@ function refreshItemCompleteClass(itemId) {
 }
 
 async function onPhotoSelected(itemId, file) {
-  const statusEl = document.getElementById(`upload-status-${itemId}`);
-  if (statusEl) statusEl.textContent = t("uploadingPhoto");
+  // Optimistic: show the photo instantly from a local object URL so the
+  // tap feels immediate, while the compress+upload happens in the
+  // background. reRenderItem() below (success or failure) replaces this
+  // element entirely, so the temporary URL is safe to revoke right after.
+  const localUrl = URL.createObjectURL(file);
+  const row = document.getElementById(`photo-row-${itemId}`);
+  if (row) {
+    let img = row.querySelector(".photo-thumb");
+    if (!img) {
+      img = document.createElement("img");
+      img.className = "photo-thumb";
+      img.alt = "";
+      row.prepend(img);
+    }
+    img.src = localUrl;
+    const label = row.querySelector(".file-btn span");
+    if (label) label.textContent = t("uploadingPhoto");
+  }
   try {
     const blob = await compressImage(file);
     const path = `submissions/${session.docId}/item-${itemId}-${Date.now()}.jpg`;
@@ -557,8 +585,10 @@ async function onPhotoSelected(itemId, file) {
     reRenderItem(itemId);
   } catch (err) {
     console.error(err);
-    if (statusEl) statusEl.textContent = "";
     alert(err.message || String(err));
+    reRenderItem(itemId);
+  } finally {
+    URL.revokeObjectURL(localUrl);
   }
 }
 
