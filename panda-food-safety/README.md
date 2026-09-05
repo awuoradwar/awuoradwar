@@ -4,8 +4,9 @@ A bilingual (English/Spanish), mobile-first web app for the daily 65-item
 Panda Food Safety walkthrough. Associates and managers scan a QR code,
 pick their store, and work through the checklist; any "No" answer
 requires a photo of the corrective work order plus a note before it
-counts as done. Two admin logins can see every store's data, browse
-history, export CSV, and manage the store list.
+counts as done. One owner account plus any number of admins you add
+later can see every store's data, browse history, export CSV, and
+manage the store list.
 
 It's a plain static site (no build step) backed by Firebase — Firebase
 Authentication and Firestore, including the photos, stored directly as
@@ -42,32 +43,50 @@ app runs at zero cost with nothing to attach a card to.
 2. **Enable sign-in methods.** In the console: *Build → Authentication →
    Sign-in method* → enable **Anonymous** (this is how associates get a
    session without creating an account) and **Email/Password** (this is
-   how the two admins log in).
+   how admins log in). There's no manual "add user" step needed —
+   admins create their own accounts from inside the app (next section).
 
-3. **Create the two admin accounts.** Still under Authentication, go to
-   the **Users** tab → *Add user* → enter each admin's email and a
-   password they'll use to log into the dashboard. Do this for both
-   admins.
-
-4. **Enable Firestore.** *Build → Firestore Database* → *Create
+3. **Enable Firestore.** *Build → Firestore Database* → *Create
    database* → production mode → pick a region close to your stores.
    (No Storage step — see "Why no Cloud Storage" above.)
 
-5. **Register a web app to get your config.** *Project settings*
+4. **Register a web app to get your config.** *Project settings*
    (gear icon) → *General* tab → under "Your apps" click the web icon
    (`</>`) → register (any nickname, no need for Firebase Hosting setup
    here) → copy the `firebaseConfig` object it shows you.
 
-6. **Paste your config in.** Open `js/firebase-config.js` in this folder
-   and replace the placeholder values with what you just copied. In the
-   same file, set `ADMIN_EMAILS` to the exact two admin emails from step 3.
+5. **Paste your config in.** Open `js/firebase-config.js` in this folder
+   and replace the placeholder values with what you just copied.
 
-7. **Match the admin emails in the security rules.** Open
-   `firestore.rules` and replace the two placeholder emails inside
-   `isAdmin()` with the same two admin emails. This is the file that
-   actually enforces admin-only access (`firebase-config.js` only
-   controls what the UI shows) — keep both in sync whenever an admin
-   email changes.
+6. **Set the owner email.** In that same file, set `OWNER_EMAIL` to
+   your own email — the one you'll sign up with as the permanent owner
+   account (see below). Then open `firestore.rules` and replace the
+   placeholder email inside `isOwner()` with that same email. This is
+   the file that actually enforces it (`firebase-config.js` only
+   controls what the UI shows) — keep both in sync if it ever changes.
+
+## Admin accounts: one owner, any number of others
+
+There's exactly one hardcoded account — the **owner** (`OWNER_EMAIL`
+above) — and it's permanent: only the owner can add or remove every
+other admin, from inside the app, with no code changes or redeploys.
+Every admin (owner included) has identical access to view, edit, and
+export data; the owner is just the only one who can manage who else
+has that access.
+
+To set it up:
+
+1. Deploy the app (next section), then open `your-url/#/admin`.
+2. Tap **"New admin? Create an account"**, enter your own email
+   (exactly matching `OWNER_EMAIL`) and a password you'll remember, and
+   submit. You're now logged in as the owner.
+3. To add someone else later: while logged in, open **Manage Admins**
+   → enter their email → **Add Admin**. They then visit the same
+   `#/admin` link, tap "Create an account" themselves, sign up with
+   that exact email, and they're in immediately — no console work, no
+   waiting on you.
+4. To remove someone's access, go back to **Manage Admins** and remove
+   them; they'd need to be re-added to get back in.
 
 ## Deploy
 
@@ -91,9 +110,9 @@ same `firebase deploy --only ...` command.
 ## Add your stores
 
 Before generating the associate QR code, log into the admin dashboard
-(`…/#/admin`) with one of the two admin accounts, open **Manage Stores**,
-and add each store's number and name. Associates will see "no stores
-configured" until at least one exists.
+(`…/#/admin`), open **Manage Stores**, and add each store's number and
+name. Associates will see "no stores configured" until at least one
+exists.
 
 ## Generate the QR code
 
@@ -142,8 +161,15 @@ stores.
   another store's data the way a full per-store login system would. Given
   this holds internal operational data (no payment info, no customer
   PII), that's a deliberate trade for keeping the associate flow to a
-  single tap with no login screen. Only the two admin accounts can manage
-  the store roster or pull cross-store history/exports.
+  single tap with no login screen. Only admin accounts can manage the
+  store roster or pull cross-store history/exports — and anyone can
+  self-sign-up as an admin, but only gets treated as one if the owner
+  has already added their email under Manage Admins.
+- **Anyone can create a Firebase Auth account with any email.** The
+  "Create an account" sign-up isn't itself gated — what actually
+  matters is whether that email is the owner's or already listed under
+  Manage Admins; an unlisted email just lands on a "not authorized yet"
+  screen after signing up, with no access to anything.
 - **First composite-index search.** The first time you run a History
   search with both a store filter and a date range, or the first time
   anyone opens their store's weekly summary (same query shape: one

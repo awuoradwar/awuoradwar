@@ -1,9 +1,10 @@
 import {
   auth,
   db,
-  ADMIN_EMAILS,
+  OWNER_EMAIL,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   signOut,
   doc,
   getDoc,
@@ -16,6 +17,7 @@ import {
   orderBy,
   limit,
   getDocs,
+  serverTimestamp,
 } from "./firebase-init.js";
 
 let initialized = false;
@@ -24,6 +26,9 @@ let activeTab = "today";
 let storesCache = [];
 let storesUnsub = null;
 let lastHistoryResults = [];
+let isOwnerSession = false;
+let adminsCache = [];
+let adminsUnsub = null;
 
 export function initAdminApp() {
   if (initialized) return;
@@ -69,25 +74,30 @@ function wireLangToggle(rerender) {
 
 // ---------- Auth screens ----------
 
-function handleAuthChange(user) {
+async function handleAuthChange(user) {
   if (!user || !user.email) {
-    renderLoginScreen();
+    renderLoginScreen("login");
     return;
   }
-  if (!ADMIN_EMAILS.includes(user.email)) {
-    renderNotAdminScreen();
-    return;
+  isOwnerSession = user.email === OWNER_EMAIL;
+  if (!isOwnerSession) {
+    const adminDoc = await getDoc(doc(db, "admins", user.email));
+    if (!adminDoc.exists()) {
+      renderNotAdminScreen();
+      return;
+    }
   }
   ensureStoresSubscription();
   renderDashboard();
 }
 
-function renderLoginScreen(errorMsg) {
+function renderLoginScreen(mode, errorMsg) {
+  const isSignUp = mode === "signup";
   root.innerHTML = `
     ${topBarHtml()}
     <main>
       <div class="card" style="max-width:360px; margin:40px auto;">
-        <h2 style="margin-top:0;">${t("loginTitle")}</h2>
+        <h2 style="margin-top:0;">${isSignUp ? t("signUpTitle") : t("loginTitle")}</h2>
         ${errorMsg ? `<div class="hint-banner" style="color:var(--danger); border-color:var(--danger);">${escapeHtml(errorMsg)}</div>` : ""}
         <div class="field">
           <label>${t("emailLabel")}</label>
@@ -95,20 +105,23 @@ function renderLoginScreen(errorMsg) {
         </div>
         <div class="field">
           <label>${t("passwordLabel")}</label>
-          <input type="password" id="login-password" autocomplete="current-password" />
+          <input type="password" id="login-password" autocomplete="${isSignUp ? "new-password" : "current-password"}" />
         </div>
-        <button class="btn btn-primary btn-block" id="btn-login">${t("loginButton")}</button>
+        <button class="btn btn-primary btn-block" id="btn-submit-auth">${isSignUp ? t("signUpButton") : t("loginButton")}</button>
+        <button class="text-link" id="btn-toggle-mode" style="display:block; margin:10px auto 0;">${isSignUp ? t("switchToLogin") : t("switchToSignUp")}</button>
       </div>
     </main>
   `;
-  wireLangToggle(() => renderLoginScreen(errorMsg));
-  root.querySelector("#btn-login").addEventListener("click", async () => {
+  wireLangToggle(() => renderLoginScreen(mode, errorMsg));
+  root.querySelector("#btn-toggle-mode").addEventListener("click", () => renderLoginScreen(isSignUp ? "login" : "signup"));
+  root.querySelector("#btn-submit-auth").addEventListener("click", async () => {
     const email = root.querySelector("#login-email").value.trim();
     const password = root.querySelector("#login-password").value;
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
+      else await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      renderLoginScreen(t("loginError"));
+      renderLoginScreen(mode, isSignUp ? err.message : t("loginError"));
     }
   });
 }
@@ -150,6 +163,7 @@ function renderDashboard() {
         <button class="btn btn-sm ${activeTab === "weekly" ? "btn-primary" : "btn-secondary"}" data-tab="weekly">${t("weeklySummaryTitle")}</button>
         <button class="btn btn-sm ${activeTab === "history" ? "btn-primary" : "btn-secondary"}" data-tab="history">${t("historyTitle")}</button>
         <button class="btn btn-sm ${activeTab === "stores" ? "btn-primary" : "btn-secondary"}" data-tab="stores">${t("manageStoresTitle")}</button>
+        ${isOwnerSession ? `<button class="btn btn-sm ${activeTab === "admins" ? "btn-primary" : "btn-secondary"}" data-tab="admins">${t("manageAdminsTitle")}</button>` : ""}
         <a class="text-link" href="#/" style="margin-left:auto;">${t("backToChecklist")}</a>
         <button class="text-link" id="btn-logout">${t("logoutButton")}</button>
       </div>
@@ -168,6 +182,7 @@ function renderDashboard() {
   if (activeTab === "today") renderTodayTab();
   else if (activeTab === "weekly") renderWeeklyTab();
   else if (activeTab === "history") renderHistoryTab();
+  else if (activeTab === "admins" && isOwnerSession) renderManageAdminsTab();
   else renderManageStoresTab();
 }
 
@@ -534,4 +549,63 @@ function renderManageStoresTab() {
       await deleteDoc(doc(db, "stores", btn.dataset.remove));
     });
   });
+}
+
+// ---------- Manage Admins (owner-only) ----------
+
+function renderManageAdminsTab() {
+  const content = root.querySelector("#tab-content");
+  if (!content) return;
+
+  if (!adminsUnsub) {
+    adminsUnsub = onSnapshot(collection(db, "admins"), (snap) => {
+      adminsCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (activeTab === "admins") renderManageAdminsList();
+    });
+  }
+  renderManageAdminsList();
+
+  function renderManageAdminsList() {
+    content.innerHTML = `
+      <div class="hint-banner">${t("ownerNote")}</div>
+      <div class="card">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px;">
+          <div class="field" style="margin-bottom:0; flex:1;">
+            <label>${t("adminEmailLabel")}</label>
+            <input type="email" id="new-admin-email" placeholder="name@example.com" />
+          </div>
+          <button class="btn btn-primary" id="btn-add-admin">${t("addAdmin")}</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="store-manage-row">
+            <div class="grow"><strong>${escapeHtml(OWNER_EMAIL)}</strong> — ${t("ownerRole")}</div>
+          </div>
+          ${adminsCache
+            .map(
+              (a) => `
+            <div class="store-manage-row">
+              <div class="grow">${escapeHtml(a.email)} — ${t("adminRole")}</div>
+              <button class="btn btn-sm btn-danger" data-remove="${escapeHtml(a.id)}">${t("deleteButton")}</button>
+            </div>`
+            )
+            .join("")}
+        </div>
+      </div>
+    `;
+
+    content.querySelector("#btn-add-admin").addEventListener("click", async () => {
+      const emailInput = content.querySelector("#new-admin-email");
+      const email = emailInput.value.trim();
+      if (!email) return;
+      await setDoc(doc(db, "admins", email), { email, addedAt: serverTimestamp() });
+      emailInput.value = "";
+    });
+
+    content.querySelectorAll("button[data-remove]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm(t("confirmRemoveAdmin"))) return;
+        await deleteDoc(doc(db, "admins", btn.dataset.remove));
+      });
+    });
+  }
 }

@@ -13,6 +13,7 @@ import {
   getAuth,
   signInAnonymously,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
@@ -34,7 +35,7 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
-import { firebaseConfig, ADMIN_EMAILS } from "./firebase-config.js";
+import { firebaseConfig, OWNER_EMAIL } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -43,9 +44,10 @@ const db = getFirestore(app);
 export {
   auth,
   db,
-  ADMIN_EMAILS,
+  OWNER_EMAIL,
   signInAnonymously,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
   doc,

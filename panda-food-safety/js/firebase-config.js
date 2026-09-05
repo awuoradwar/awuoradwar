@@ -12,12 +12,11 @@ export const firebaseConfig = {
   appId: "1:843008741924:web:b85c928853affd534c3eb1",
 };
 
-// The exact two admin email addresses that may log into the Admin
-// dashboard. These must match Firebase Authentication → Users (Email/
-// Password provider) accounts you create for the two admins — see
-// README.md. This list is also mirrored in firestore.rules and
-// storage.rules, so update all three together if an admin email changes.
-export const ADMIN_EMAILS = [
-  "admin1@example.com",
-  "admin2@example.com",
-];
+// The one owner email — full admin access, and the only account that
+// can add or remove other admins from the "Manage Admins" tab. This
+// must exactly match the email you sign up with on the admin login
+// screen. This value is also mirrored in firestore.rules (OWNER_EMAIL),
+// so update both together if it ever changes. Every other admin is
+// added later from inside the app itself (Manage Admins tab) — no code
+// change needed for them.
+export const OWNER_EMAIL = "owner@example.com";

@@ -1,20 +1,33 @@
 rules_version = '2';
 
-// ── EDIT THE EMAIL LIST BELOW to match ADMIN_EMAILS in
-// js/firebase-config.js. Keep both in sync — this file is what actually
-// enforces admin-only access; firebase-config.js only controls what the
-// UI shows.
+// ── EDIT OWNER_EMAIL BELOW to match OWNER_EMAIL in js/firebase-config.js.
+// Keep both in sync — this file is what actually enforces admin-only
+// access; firebase-config.js only controls what the UI shows. Every
+// other admin is NOT listed here — they're added dynamically at
+// /admins/{email} by the owner, from the app's Manage Admins tab.
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {
       return request.auth != null;
     }
-    function isAdmin() {
+    function isOwner() {
       return request.auth != null &&
-        request.auth.token.email in [
-          "admin1@example.com",
-          "admin2@example.com"
-        ];
+        request.auth.token.email == "owner@example.com";
+    }
+    // Owner always counts as admin; anyone else needs a matching
+    // /admins/{their email} document (added by the owner).
+    function isAdmin() {
+      return isOwner() ||
+        (request.auth != null &&
+          exists(/databases/$(database)/documents/admins/$(request.auth.token.email)));
+    }
+
+    // The admin roster itself. Every admin can read it (so the app can
+    // show who else has access); only the owner can add or remove
+    // entries — that's the one thing that stays exclusive to them.
+    match /admins/{email} {
+      allow read: if isAdmin();
+      allow write: if isOwner();
     }
 
     // Store roster: every signed-in viewer (including anonymous
@@ -29,8 +42,8 @@ service cloud.firestore {
     // included) can create/update — they need to submit their store's
     // walkthrough without an admin in the loop. Reads are signed-in-only
     // (not public) so the data isn't open to the whole internet; the
-    // admin dashboard route itself is additionally gated by ADMIN_EMAILS
-    // client-side. Only admins can delete a submission outright.
+    // admin dashboard route itself is additionally gated by the isAdmin()
+    // check above. Only admins can delete a submission outright.
     match /submissions/{submissionId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
