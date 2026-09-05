@@ -1,0 +1,145 @@
+# Panda Food Safety Checklist
+
+A bilingual (English/Spanish), mobile-first web app for the daily 65-item
+Panda Food Safety walkthrough. Associates and managers scan a QR code,
+pick their store, and work through the checklist; any "No" answer
+requires a photo of the corrective work order plus a note before it
+counts as done. Two admin logins can see every store's data, browse
+history, export CSV, and manage the store list.
+
+It's a plain static site (no build step) backed by Firebase — Firebase
+Authentication, Firestore (the data), and Storage (the photos) — deployed
+to a public URL you QR-code. There's no server to run or maintain beyond
+the free Firebase project itself.
+
+## Why Firebase instead of a Claude Artifact
+
+Claude Artifacts with shared data storage are restricted to signed-in
+members of the owner's Claude organization — they can't be opened by an
+anonymous QR-code scan from a store associate's phone. A real hosted web
+app has no such restriction, which is why this is a standalone app you
+deploy yourself rather than something living inside claude.ai.
+
+## One-time setup (~15 minutes)
+
+1. **Create a Firebase project.** Go to <https://console.firebase.google.com>,
+   "Add project", give it a name. The free "Spark" plan is enough for
+   normal use at this scale.
+
+2. **Enable sign-in methods.** In the console: *Build → Authentication →
+   Sign-in method* → enable **Anonymous** (this is how associates get a
+   session without creating an account) and **Email/Password** (this is
+   how the two admins log in).
+
+3. **Create the two admin accounts.** Still under Authentication, go to
+   the **Users** tab → *Add user* → enter each admin's email and a
+   password they'll use to log into the dashboard. Do this for both
+   admins.
+
+4. **Enable Firestore.** *Build → Firestore Database* → *Create
+   database* → production mode → pick a region close to your stores.
+
+5. **Enable Storage.** *Build → Storage* → *Get started* → production
+   mode → same region.
+
+6. **Register a web app to get your config.** *Project settings*
+   (gear icon) → *General* tab → under "Your apps" click the web icon
+   (`</>`) → register (any nickname, no need for Firebase Hosting setup
+   here) → copy the `firebaseConfig` object it shows you.
+
+7. **Paste your config in.** Open `js/firebase-config.js` in this folder
+   and replace the placeholder values with what you just copied. In the
+   same file, set `ADMIN_EMAILS` to the exact two admin emails from step 3.
+
+8. **Match the admin emails in the security rules.** Open
+   `firestore.rules` and replace the two placeholder emails inside
+   `isAdmin()` with the same two admin emails. This is the file that
+   actually enforces admin-only access (`firebase-config.js` only
+   controls what the UI shows) — keep both in sync whenever an admin
+   email changes.
+
+## Deploy
+
+You need Node.js installed once, to get the Firebase CLI:
+
+```
+npm install -g firebase-tools
+firebase login
+cd panda-food-safety
+firebase use --add          # pick the project you created above
+firebase deploy --only firestore:rules,storage:rules,hosting
+```
+
+The deploy prints a live URL like `https://your-project.web.app` — that's
+the link to QR-code for associates. The same link with `#/admin` appended
+(`https://your-project.web.app/#/admin`) is the admin dashboard login.
+
+Whenever you edit any file in this folder afterward, redeploy with the
+same `firebase deploy --only ...` command.
+
+## Add your stores
+
+Before generating the associate QR code, log into the admin dashboard
+(`…/#/admin`) with one of the two admin accounts, open **Manage Stores**,
+and add each store's number and name. Associates will see "no stores
+configured" until at least one exists.
+
+## Generate the QR code
+
+Point any QR code generator (for example
+<https://www.qr-code-generator.com>, or the `qrencode` command-line tool)
+at your Hosting URL, then print/post it in each store.
+
+## Day-to-day use
+
+**Associates:** scan the QR code → pick your store, type your name → date
+and time fill in automatically → answer all 65 items → any "No" opens a
+required photo-of-the-work-order upload plus a short note before it
+counts as complete → Submit once every item is answered. If someone
+already submitted for that store today, you'll see who and when, with the
+option to view it or edit it anyway.
+
+**Admins:** open the same link plus `#/admin`, log in with your email/
+password → **Today's Status** shows which stores have or haven't
+submitted yet (this is a flag you check on the dashboard, not a push
+notification — see limitations below) → **History** to filter by store
+and date range, drill into any submission's flagged items and photos, and
+export CSV → **Manage Stores** to add/remove stores.
+
+## Known limitations
+
+- **Missed-day notification is dashboard-only**, by design choice — no
+  push, email, or text is sent. An admin has to open the dashboard to see
+  which stores haven't submitted yet today.
+- **"Today" is each device's local date/time.** If your stores span
+  multiple time zones, the daily cutover happens at a slightly different
+  real-world moment per store. Not an issue if all stores are in one
+  region.
+- **Data access isn't per-store-walled.** Any signed-in visitor —
+  including an associate, who is auto-signed-in anonymously the moment
+  they open the link — can technically read or write the shared
+  `submissions` collection if they inspect network requests directly.
+  The Firestore rules block outside/anonymous-to-the-internet access, but
+  they don't cryptographically prevent one store's associate from seeing
+  another store's data the way a full per-store login system would. Given
+  this holds internal operational data (no payment info, no customer
+  PII), that's a deliberate trade for keeping the associate flow to a
+  single tap with no login screen. Only the two admin accounts can manage
+  the store roster or pull cross-store history/exports.
+- **First composite-index search.** The first time you run a History
+  search with both a store filter and a date range, Firestore may show a
+  "this query requires an index" error with a link in it — click the
+  link, wait about a minute while it builds, then re-run the search. This
+  is normal, one-time Firestore behavior, not a bug.
+- **Free-tier limits.** Spark (free) plan covers typical daily use for a
+  modest number of stores. If you scale up significantly, watch usage in
+  the Firebase console and consider the pay-as-you-go Blaze plan (still
+  inexpensive at this volume).
+
+## Editing the checklist or wording
+
+- `js/checklist-data.js` — the 65 items and section headers, English and
+  Spanish, transcribed from the paper form. Each item's `id` is also its
+  Firestore field key, so don't renumber existing items — add new ones
+  with new ids instead.
+- `js/i18n.js` — every other UI label/button, English and Spanish.

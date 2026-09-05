@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// ── EDIT THE EMAIL LIST BELOW to match ADMIN_EMAILS in
+// js/firebase-config.js. Keep both in sync — this file is what actually
+// enforces admin-only access; firebase-config.js only controls what the
+// UI shows.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return request.auth != null &&
+        request.auth.token.email in [
+          "admin1@example.com",
+          "admin2@example.com"
+        ];
+    }
+
+    // Store roster: every signed-in viewer (including anonymous
+    // associates) can read it to populate the store dropdown; only
+    // admins can add/edit/remove stores.
+    match /stores/{storeId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Daily submissions: any signed-in viewer (anonymous associates
+    // included) can create/update — they need to submit their store's
+    // walkthrough without an admin in the loop. Reads are signed-in-only
+    // (not public) so the data isn't open to the whole internet; the
+    // admin dashboard route itself is additionally gated by ADMIN_EMAILS
+    // client-side. Only admins can delete a submission outright.
+    match /submissions/{submissionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+  }
+}
