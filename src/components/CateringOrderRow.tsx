@@ -104,12 +104,10 @@ export default function CateringOrderRow({
 }: {
   order: CateringOrderData;
   lang: Language;
-  /** Bolder treatment for an order due THIS shift -- bigger headline, a
-   * higher-contrast box around the item notes, and a heavier card border --
-   * so the pickup time, item codes, and paid status can't get missed or
-   * misread in the moment they actually matter. Only meant for My Shift's
-   * "This Shift" section; the Catering page and history stay at the
-   * ordinary row weight. */
+  /** Bolds just the headline for an order due THIS shift -- everything else
+   * on the row (subtext, notes, buttons) stays the same size and weight as
+   * anywhere else in the app. Only meant for My Shift's "This Shift"
+   * section; the Catering page and history stay at the ordinary weight. */
   emphasized?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
@@ -132,23 +130,18 @@ export default function CateringOrderRow({
   }
 
   return (
-    <div className={`card flex flex-col gap-2 p-3 ${emphasized ? "border-2 border-accent" : ""}`}>
+    <div className="card flex flex-col gap-2 p-3">
       <div>
-        <p className={emphasized ? "text-base font-bold" : "text-sm font-medium"}>
+        <p className={`text-sm ${emphasized ? "font-bold" : "font-medium"}`}>
           {order.number_of_people ? `${order.number_of_people} ${lang === "es" ? "personas" : "people"}` : lang === "es" ? "Catering" : "Catering"}
           {order.customer_name ? ` · ${order.customer_name}` : ""}
         </p>
-        <p className={emphasized ? "text-sm font-semibold text-foreground" : "text-sm text-muted"}>
+        <p className="text-sm text-muted">
           {order.pickup_time ? `${lang === "es" ? "Recoge" : "Pickup"} ${order.pickup_time}` : lang === "es" ? "Sin hora fijada" : "No time set"}
           {" · "}
           {cateringChannelLabel(order.channel, lang)}
         </p>
-        {order.notes &&
-          (emphasized ? (
-            <p className="mt-1.5 whitespace-pre-wrap rounded-lg bg-card-subtle px-2.5 py-2 text-sm font-medium text-foreground">{order.notes}</p>
-          ) : (
-            <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{order.notes}</p>
-          ))}
+        {order.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{order.notes}</p>}
         {order.completed_by_name && order.status !== "OPEN" && (
           <p className="mt-1 text-xs text-muted">
             {order.status === "CANCELLED" ? (lang === "es" ? "Cancelado por" : "Cancelled by") : lang === "es" ? "Completado por" : "Completed by"}{" "}
