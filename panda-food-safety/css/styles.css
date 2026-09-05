@@ -124,6 +124,7 @@ textarea { resize: vertical; min-height: 70px; }
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: var(--accent-contrast); }
 .btn-primary:disabled { background: var(--neutral-bg); color: var(--text-muted); cursor: not-allowed; transform: none; }
+.btn-primary.is-incomplete { background: var(--neutral-bg); color: var(--text-muted); }
 .btn-secondary { background: var(--surface-alt); color: var(--text); }
 .btn-block { width: 100%; }
 .btn-sm { padding: 8px 14px; min-height: 36px; font-size: 14px; }
@@ -140,14 +141,23 @@ textarea { resize: vertical; min-height: 70px; }
 .progress-fill { height: 100%; background: var(--accent); transition: width 0.2s ease; }
 .progress-row { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
-.section-header {
-  position: sticky; top: 49px; z-index: 10;
-  background: var(--surface-alt); border: 1px solid var(--border);
-  border-radius: 8px; padding: 10px 14px; font-weight: 600; font-size: 14px;
-}
 .group-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; margin: 4px 0 -6px 2px; }
 
+/* Collapsible section accordion — closed except the section currently
+   being worked on, so 67 items never all show at once. */
+.section-block { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.section-toggle {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  background: var(--surface-alt); border: none; cursor: pointer;
+  padding: 12px 14px; font-weight: 600; font-size: 14px; color: var(--text); text-align: left;
+}
+.section-chevron { color: var(--text-muted); font-size: 11px; width: 10px; flex-shrink: 0; }
+.section-name { flex: 1; }
+.section-body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.section-body.collapsed { display: none; }
+
 .item-row { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--surface); transition: border-color 0.15s ease, background-color 0.15s ease; }
+.item-row.jump-highlight { border-color: var(--accent); border-width: 2px; background: var(--surface-alt); }
 .item-row.flagged { border-color: var(--danger); background: var(--danger-bg); }
 .item-row.complete { border-color: var(--success); }
 .item-text { font-size: 15px; margin-bottom: 10px; }

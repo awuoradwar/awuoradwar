@@ -26,6 +26,11 @@ let session = null; // { docId, storeNumber, storeName, conductedBy, answers, ad
 let pendingWrites = 0;
 const saveTimers = {};
 
+// Which checklist section is currently expanded (accordion — only one
+// open at a time). Set to the first incomplete section whenever a
+// walkthrough starts/resumes; null means every section is complete.
+let expandedSectionId = null;
+
 export async function initAssociateApp() {
   if (initialized) return;
   initialized = true;
@@ -334,6 +339,7 @@ async function beginWalkthrough(store, conductedBy) {
     answers,
     additionalNotes: data.additionalNotes || "",
   };
+  expandedSectionId = firstIncompleteSectionId();
   renderChecklistScreen();
 }
 
@@ -366,6 +372,7 @@ function renderAlreadySubmittedScreen(store, docId, data) {
       answers: await hydratePhotoUrls(docId, data.answers || {}),
       additionalNotes: data.additionalNotes || "",
     };
+    expandedSectionId = firstIncompleteSectionId();
     renderChecklistScreen();
   });
 }
@@ -389,6 +396,68 @@ function itemIsComplete(item, answer) {
   const needsPhoto = item.alwaysPhoto || item.requiresPhoto;
   if (needsPhoto && !answer.hasPhoto) return false;
   return Boolean(answer.note && answer.note.trim());
+}
+
+function sectionItems(sectionId) {
+  return CHECKLIST_ITEMS_FLAT.filter((it) => it.sectionId === sectionId);
+}
+
+function isSectionComplete(sectionId) {
+  return sectionItems(sectionId).every((it) => itemIsComplete(it, session.answers[it.id]));
+}
+
+function firstIncompleteSectionId() {
+  for (const group of CHECKLIST_GROUPS) {
+    for (const section of group.sections) {
+      if (!isSectionComplete(section.id)) return section.id;
+    }
+  }
+  return null;
+}
+
+// Only meaningful right after an answer changes: if that item's section
+// is the one currently open and it just became fully complete, collapse
+// it and open the next incomplete section (or none, if that was the
+// last one) — the guided, one-section-at-a-time flow.
+function maybeAdvanceSection(itemId) {
+  const item = CHECKLIST_ITEMS_FLAT.find((it) => it.id === itemId);
+  if (!item || item.sectionId !== expandedSectionId || !isSectionComplete(item.sectionId)) return;
+  expandedSectionId = firstIncompleteSectionId();
+  renderChecklistScreen();
+  if (expandedSectionId) {
+    document.querySelector(`[data-section-block="${expandedSectionId}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function jumpToFirstIncomplete() {
+  const item = CHECKLIST_ITEMS_FLAT.find((it) => !itemIsComplete(it, session.answers[it.id]));
+  if (!item) return;
+  expandedSectionId = item.sectionId;
+  renderChecklistScreen();
+  const row = document.getElementById(`item-${item.id}`);
+  if (row) {
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.classList.add("jump-highlight");
+    setTimeout(() => row.classList.remove("jump-highlight"), 1600);
+  }
+}
+
+function renderSectionBlock(section) {
+  const done = section.items.filter((it) => itemIsComplete(it, session.answers[it.id])).length;
+  const total = section.items.length;
+  const complete = done === total;
+  const expanded = expandedSectionId === section.id;
+  return `
+    <div class="section-block" data-section-block="${section.id}">
+      <button type="button" class="section-toggle" data-section="${section.id}">
+        <span class="section-chevron">${expanded ? "▾" : "▸"}</span>
+        <span class="section-name">${escapeHtml(tf(section))}</span>
+        <span class="badge ${complete ? "badge-success" : "badge-neutral"}">${complete ? "✓" : `${done}/${total}`}</span>
+      </button>
+      <div class="section-body ${expanded ? "" : "collapsed"}">
+        ${section.items.map((item) => renderItemRow(item)).join("")}
+      </div>
+    </div>`;
 }
 
 function renderItemRow(item) {
@@ -422,7 +491,7 @@ function renderFollowup(item, answer, isFail) {
         ${photoUrl ? `<img class="photo-thumb" src="${photoUrl}" alt="" data-lightbox="${photoUrl}" />` : ""}
         <label class="file-btn btn btn-secondary btn-sm">
           <span>${photoUrl ? t("retakePhoto") : t("takePhoto")}</span>
-          <input type="file" accept="image/*" capture="environment" class="photo-input" data-item="${item.id}" />
+          <input type="file" accept="image/*" class="photo-input" data-item="${item.id}" />
         </label>
       </div>`
           : ""
@@ -460,10 +529,7 @@ function renderChecklistScreen() {
   for (const group of CHECKLIST_GROUPS) {
     body += `<div class="group-title">${escapeHtml(tf(group))}</div>`;
     for (const section of group.sections) {
-      body += `<div class="section-header">${escapeHtml(tf(section))}</div>`;
-      for (const item of section.items) {
-        body += renderItemRow(item);
-      }
+      body += renderSectionBlock(section);
     }
   }
 
@@ -500,6 +566,12 @@ function renderChecklistScreen() {
     if (btn) onValueClick(Number(btn.dataset.item), btn.dataset.value);
     const thumb = e.target.closest("img[data-lightbox]");
     if (thumb) openLightbox(thumb.dataset.lightbox);
+    const toggle = e.target.closest("button.section-toggle");
+    if (toggle) {
+      const sid = toggle.dataset.section;
+      expandedSectionId = expandedSectionId === sid ? null : sid;
+      renderChecklistScreen();
+    }
   });
   body_.addEventListener("change", (e) => {
     const fileInput = e.target.closest("input.photo-input");
@@ -508,6 +580,12 @@ function renderChecklistScreen() {
   body_.addEventListener("input", (e) => {
     const ta = e.target.closest("textarea.note-input");
     if (ta) onNoteInput(Number(ta.dataset.item), ta.value);
+  });
+  // Checking for section completion on every keystroke would re-render
+  // mid-typing and steal focus — only check once they tap away.
+  body_.addEventListener("focusout", (e) => {
+    const ta = e.target.closest("textarea.note-input");
+    if (ta) maybeAdvanceSection(Number(ta.dataset.item));
   });
   root.querySelector("#additional-notes").addEventListener("input", (e) => {
     session.additionalNotes = e.target.value;
@@ -526,7 +604,7 @@ function refreshProgressUI() {
   if (fill) fill.style.width = `${Math.round((done / total) * 100)}%`;
   if (label) label.textContent = t("progressLabel", { done, total });
   if (remaining) remaining.textContent = done < total ? t("itemsRemaining", { n: total - done }) : "";
-  if (submitBtn) submitBtn.disabled = done < total;
+  if (submitBtn) submitBtn.classList.toggle("is-incomplete", done < total);
 }
 
 function reRenderItem(itemId) {
@@ -563,6 +641,7 @@ function onValueClick(itemId, value) {
   session.answers[itemId] = next;
   reRenderItem(itemId);
   scheduleSave(`item-${itemId}-value`, { [`answers.${itemId}.value`]: next.value ?? null }, true);
+  maybeAdvanceSection(itemId);
 }
 
 function onNoteInput(itemId, value) {
@@ -606,6 +685,7 @@ async function onPhotoSelected(itemId, file) {
     session.answers[itemId] = { ...(session.answers[itemId] || {}), photoUrl: dataUrl, hasPhoto: true };
     scheduleSave(`item-${itemId}-photo`, { [`answers.${itemId}.hasPhoto`]: true }, true);
     reRenderItem(itemId);
+    maybeAdvanceSection(itemId);
   } catch (err) {
     console.error(err);
     alert(err.message || String(err));
@@ -645,7 +725,10 @@ function compressImage(file) {
 
 async function onSubmit() {
   const { done, total } = computeProgress();
-  if (done < total) return;
+  if (done < total) {
+    jumpToFirstIncomplete();
+    return;
+  }
   const submitBtn = root.querySelector("#btn-submit");
   submitBtn.disabled = true;
   submitBtn.textContent = t("loadingButton");
