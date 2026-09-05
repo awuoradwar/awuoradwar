@@ -196,7 +196,7 @@ async function renderTodayTab() {
   const snap = await getDocs(query(collection(db, "submissions"), where("date", "==", today)));
   const byStoreNumber = {};
   snap.docs.forEach((d) => {
-    byStoreNumber[d.data().storeNumber] = d.data();
+    byStoreNumber[d.data().storeNumber] = { id: d.id, ...d.data() };
   });
 
   const doneCount = storesCache.filter((s) => byStoreNumber[s.number]?.submitted).length;
@@ -215,7 +215,7 @@ async function renderTodayTab() {
           const sub = byStoreNumber[s.number];
           const submitted = Boolean(sub?.submitted);
           return `
-          <div class="store-status-card ${submitted ? "" : "missing"}">
+          <div class="store-status-card ${submitted ? "" : "missing"} ${submitted ? "clickable" : ""}" ${submitted ? `data-view-today="${escapeHtml(s.number)}"` : ""}>
             <div class="store-name">${escapeHtml(s.number)} — ${escapeHtml(s.name)}</div>
             <span class="badge ${submitted ? "badge-success" : "badge-danger"}">${submitted ? t("submittedStatus") : t("missingStatus")}</span>
             ${submitted ? `<div class="meta">${t("submittedAt", { time: formatDateTime(sub.submittedAt), name: escapeHtml(sub.conductedBy) })}</div>` : `<div class="meta">${t("noSubmissionYet")}</div>`}
@@ -224,6 +224,14 @@ async function renderTodayTab() {
         .join("")}
     </div>
   `;
+
+  content.querySelectorAll("[data-view-today]").forEach((cardEl) => {
+    cardEl.addEventListener("click", async () => {
+      const record = byStoreNumber[cardEl.dataset.viewToday];
+      const hydrated = await hydrateRecordPhotos(record);
+      renderDetailModal(hydrated);
+    });
+  });
 }
 
 // ---------- Weekly Summary ----------
@@ -424,7 +432,38 @@ async function hydrateRecordPhotos(record) {
 function renderDetailModal(record) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
-  const flagged = CHECKLIST_ITEMS_FLAT.filter((it) => record.answers?.[it.id]?.value === "no");
+
+  let sectionsHtml = "";
+  for (const group of CHECKLIST_GROUPS) {
+    for (const section of group.sections) {
+      sectionsHtml += `<div class="detail-section-title">${escapeHtml(tf(section))}</div>`;
+      for (const item of section.items) {
+        const a = record.answers?.[item.id] || {};
+        const value = a.value || null;
+        const isNo = value === "no";
+        const badgeClass = value === "yes" ? "badge-success" : value === "no" ? "badge-danger" : "badge-neutral";
+        const badgeLabel = value === "yes" ? t("yes") : value === "no" ? t("no") : value === "na" ? t("na") : "—";
+        const proofPhoto = item.alwaysPhoto && value === "yes" && a.photoUrl;
+        sectionsHtml += `
+          <div class="detail-row ${isNo ? "detail-row-flagged" : ""}" ${isNo ? `data-toggle-detail="${item.id}"` : ""}>
+            <div class="detail-row-main">
+              <span class="detail-item-text">${item.id}. ${escapeHtml(tf(item))}</span>
+              <span class="badge ${badgeClass}">${badgeLabel}</span>
+            </div>
+            ${
+              isNo
+                ? `<div class="detail-row-body collapsed" id="detail-body-${item.id}">
+                    ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
+                    ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
+                  </div>`
+                : proofPhoto
+                  ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />`
+                  : ""
+            }
+          </div>`;
+      }
+    }
+  }
 
   backdrop.innerHTML = `
     <div class="modal">
@@ -434,45 +473,23 @@ function renderDetailModal(record) {
       </div>
       <p style="color:var(--text-muted); margin-top:0;">${t("conductedByColumn")}: ${escapeHtml(record.conductedBy)}</p>
       ${record.additionalNotes ? `<p><em>${escapeHtml(record.additionalNotes)}</em></p>` : ""}
-      <h4>${t("flaggedItems")}</h4>
-      ${
-        flagged.length === 0
-          ? `<p>${t("noFlagged")}</p>`
-          : flagged
-              .map((it) => {
-                const a = record.answers[it.id];
-                return `
-                <div class="detail-item" style="flex-direction:column; align-items:stretch;">
-                  <div><strong>${t("itemNumber", { n: it.id })}</strong>: ${escapeHtml(tf(it))}</div>
-                  ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
-                  ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
-                </div>`;
-              })
-              .join("")
-      }
-      ${(() => {
-        const proof = CHECKLIST_ITEMS_FLAT.filter((it) => it.alwaysPhoto && record.answers?.[it.id]?.value === "yes" && record.answers[it.id].photoUrl);
-        if (proof.length === 0) return "";
-        return `
-          <h4>${t("documentationPhotos")}</h4>
-          ${proof
-            .map(
-              (it) => `
-            <div class="detail-item" style="flex-direction:column; align-items:stretch;">
-              <div><strong>${t("itemNumber", { n: it.id })}</strong>: ${escapeHtml(tf(it))}</div>
-              <img class="photo-thumb" src="${record.answers[it.id].photoUrl}" alt="" data-lightbox="${record.answers[it.id].photoUrl}" />
-            </div>`
-            )
-            .join("")}`;
-      })()}
+      ${sectionsHtml}
     </div>
   `;
   document.body.appendChild(backdrop);
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
   backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) backdrop.remove();
+    if (e.target === backdrop) {
+      backdrop.remove();
+      return;
+    }
     const thumb = e.target.closest("img[data-lightbox]");
-    if (thumb) openLightbox(thumb.dataset.lightbox);
+    if (thumb) {
+      openLightbox(thumb.dataset.lightbox);
+      return;
+    }
+    const row = e.target.closest("[data-toggle-detail]");
+    if (row) backdrop.querySelector(`#detail-body-${row.dataset.toggleDetail}`)?.classList.toggle("collapsed");
   });
 }
 

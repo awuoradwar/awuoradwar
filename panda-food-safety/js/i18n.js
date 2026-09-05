@@ -89,15 +89,12 @@ const STRINGS = {
   confirmDeleteStore: { en: "Remove this store from the list? Past submissions are kept.", es: "¿Eliminar esta tienda de la lista? Los envíos anteriores se conservan." },
   exportCsv: { en: "Export CSV", es: "Exportar CSV" },
   flaggedItems: { en: "Flagged items", es: "Elementos marcados" },
-  noFlagged: { en: "Nothing flagged — full pass.", es: "Nada marcado — aprobado completo." },
-  documentationPhotos: { en: "Documentation photos", es: "Fotos de documentación" },
   noSubmissionYet: { en: "No submission for this store today yet.", es: "Aún no hay envío para esta tienda hoy." },
   viewDetail: { en: "View", es: "Ver" },
   closeButton: { en: "Close", es: "Cerrar" },
   conductedByColumn: { en: "Conducted by", es: "Realizado por" },
   dateColumn: { en: "Date", es: "Fecha" },
   statusColumn: { en: "Status", es: "Estado" },
-  itemNumber: { en: "Item #{n}", es: "Elemento #{n}" },
 };
 
 let currentLang = localStorage.getItem("pfs_lang") || "en";
