@@ -37,8 +37,6 @@ let isOwnerSession = false;
 let editingStoreId = null;
 let adminsCache = [];
 let adminsUnsub = null;
-let historyPreset = null;
-let historyAutoOpenFlagged = false;
 let weeklyOffset = 0;
 
 export function initAdminApp() {
@@ -426,13 +424,36 @@ async function renderWeeklyTab() {
   });
 
   content.querySelectorAll("[data-view-weekly-flagged]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      historyPreset = { storeNumber: btn.dataset.viewWeeklyFlagged, from, to };
-      historyAutoOpenFlagged = true;
-      activeTab = "history";
-      renderDashboard();
+    btn.addEventListener("click", async () => {
+      const originalLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = t("loadingButton");
+      try {
+        await openWeeklyFlagged(btn.dataset.viewWeeklyFlagged, from, to);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
     });
   });
+}
+
+// Fetches and opens the flagged-only view directly, without switching to
+// the History tab — closing it should land back on Weekly Summary, not
+// on a History list the admin never actually asked to browse.
+async function openWeeklyFlagged(storeNumber, from, to) {
+  const snap = await getDocs(
+    query(
+      collection(db, "submissions"),
+      where("date", ">=", from),
+      where("date", "<=", to),
+      where("storeNumber", "==", storeNumber),
+      orderBy("date", "desc")
+    )
+  );
+  const records = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const flaggedRecords = records.filter((r) => Object.values(r.answers || {}).filter((a) => a.value === "no").length > 0);
+  if (flaggedRecords.length > 0) openFlaggedOnly(flaggedRecords);
 }
 
 // ---------- History ----------
@@ -458,13 +479,8 @@ function renderHistoryTab() {
   const today = todayDateString();
   const monthAgo = new Date();
   monthAgo.setDate(monthAgo.getDate() - 30);
-  const fromDefault = historyPreset ? historyPreset.from : todayDateStringFor(monthAgo);
-  const toDefault = historyPreset ? historyPreset.to : today;
-  const storeDefault = historyPreset ? historyPreset.storeNumber : "";
-  historyPreset = null;
-  const autoOpenFlagged = historyAutoOpenFlagged;
-  historyAutoOpenFlagged = false;
-  const presetStore = storesCache.find((s) => s.number === storeDefault);
+  const fromDefault = todayDateStringFor(monthAgo);
+  const toDefault = today;
 
   content.innerHTML = `
     <div class="card">
@@ -479,8 +495,8 @@ function renderHistoryTab() {
         <div class="field">
           <label>${t("filterStore")}</label>
           <div class="store-combo">
-            <input type="text" id="hist-store-input" autocomplete="off" placeholder="${t("filterAllStores")}" value="${presetStore ? escapeHtml(storeLabel(presetStore.number, presetStore.name)) : ""}" />
-            <input type="hidden" id="hist-store" value="${escapeHtml(storeDefault)}" />
+            <input type="text" id="hist-store-input" autocomplete="off" placeholder="${t("filterAllStores")}" />
+            <input type="hidden" id="hist-store" value="" />
             <div class="store-combo-list" id="hist-store-list" hidden></div>
           </div>
         </div>
@@ -518,12 +534,12 @@ function renderHistoryTab() {
 
   root.querySelector("#btn-hist-search").addEventListener("click", () => runHistorySearch());
   root.querySelector("#btn-hist-export").addEventListener("click", () => exportCsv(lastHistoryResults));
-  runHistorySearch(autoOpenFlagged);
+  runHistorySearch();
 }
 
-async function openHistoryRecord(record, { expandFlagged = false } = {}) {
+async function openHistoryRecord(record) {
   const hydrated = await hydrateRecordPhotos(record);
-  renderDetailModal(hydrated, { expandFlagged });
+  renderDetailModal(hydrated);
 }
 
 async function openFlaggedOnly(records) {
@@ -610,7 +626,7 @@ function renderFlaggedItemsModal(records) {
   });
 }
 
-async function runHistorySearch(autoOpenFlagged = false) {
+async function runHistorySearch() {
   const storeInputEl = root.querySelector("#hist-store-input");
   const storeText = storeInputEl ? storeInputEl.value.trim() : "";
   let storeNumber = root.querySelector("#hist-store").value;
@@ -682,16 +698,6 @@ async function runHistorySearch(autoOpenFlagged = false) {
       }
     });
   });
-
-  if (autoOpenFlagged) {
-    const flaggedRecords = lastHistoryResults.filter(
-      (r) => Object.values(r.answers || {}).filter((a) => a.value === "no").length > 0
-    );
-    // Straight to the flagged items themselves, across every submission
-    // in this range that has any — not to this filtered History list
-    // (still here underneath, reachable by closing the modal).
-    if (flaggedRecords.length > 0) openFlaggedOnly(flaggedRecords);
-  }
 }
 
 // Photos live in a subcollection (submissions/{id}/photos/{itemId}), not
