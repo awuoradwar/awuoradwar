@@ -30,6 +30,7 @@ let isOwnerSession = false;
 let editingStoreId = null;
 let adminsCache = [];
 let adminsUnsub = null;
+let historyPreset = null;
 
 export function initAdminApp() {
   if (initialized) return;
@@ -303,7 +304,7 @@ async function renderWeeklyTab() {
                 (r) => `<tr>
               <td>${escapeHtml(storeLabel(r.store.number, r.store.name))}</td>
               <td><span class="badge ${r.doneDays === 7 ? "badge-success" : r.doneDays === 0 ? "badge-danger" : "badge-neutral"}">${r.doneDays} / 7</span></td>
-              <td>${r.flagged}</td>
+              <td>${r.flagged > 0 ? `<button class="btn btn-sm btn-danger" data-view-weekly-flagged="${escapeHtml(r.store.number)}">${r.flagged}</button>` : r.flagged}</td>
               <td>${r.lastSubmittedAt ? formatDateTime({ toDate: () => new Date(r.lastSubmittedAt) }) : t("weeklyNever")}</td>
             </tr>`
               )
@@ -313,6 +314,14 @@ async function renderWeeklyTab() {
       </div>
     </div>
   `;
+
+  content.querySelectorAll("[data-view-weekly-flagged]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      historyPreset = { storeNumber: btn.dataset.viewWeeklyFlagged, from: days[0], to: days[days.length - 1] };
+      activeTab = "history";
+      renderDashboard();
+    });
+  });
 }
 
 // ---------- History ----------
@@ -323,7 +332,10 @@ function renderHistoryTab() {
   const today = todayDateString();
   const monthAgo = new Date();
   monthAgo.setDate(monthAgo.getDate() - 30);
-  const fromDefault = todayDateStringFor(monthAgo);
+  const fromDefault = historyPreset ? historyPreset.from : todayDateStringFor(monthAgo);
+  const toDefault = historyPreset ? historyPreset.to : today;
+  const storeDefault = historyPreset ? historyPreset.storeNumber : "";
+  historyPreset = null;
 
   content.innerHTML = `
     <div class="card">
@@ -332,7 +344,7 @@ function renderHistoryTab() {
           <label>${t("filterStore")}</label>
           <select id="hist-store">
             <option value="">${t("filterAllStores")}</option>
-            ${storesCache.map((s) => `<option value="${escapeHtml(s.number)}">${escapeHtml(storeLabel(s.number, s.name))}</option>`).join("")}
+            ${storesCache.map((s) => `<option value="${escapeHtml(s.number)}" ${s.number === storeDefault ? "selected" : ""}>${escapeHtml(storeLabel(s.number, s.name))}</option>`).join("")}
           </select>
         </div>
         <div class="field">
@@ -341,7 +353,7 @@ function renderHistoryTab() {
         </div>
         <div class="field">
           <label>${t("filterTo")}</label>
-          <input type="date" id="hist-to" value="${today}" />
+          <input type="date" id="hist-to" value="${toDefault}" />
         </div>
         <button class="btn btn-secondary" id="btn-hist-search">${t("historyTitle")}</button>
         <button class="btn btn-secondary" id="btn-hist-export">${t("exportCsv")}</button>
