@@ -37,6 +37,7 @@ let editingStoreId = null;
 let adminsCache = [];
 let adminsUnsub = null;
 let historyPreset = null;
+let historyAutoOpenFlagged = false;
 let weeklyOffset = 0;
 
 export function initAdminApp() {
@@ -397,6 +398,7 @@ async function renderWeeklyTab() {
   content.querySelectorAll("[data-view-weekly-flagged]").forEach((btn) => {
     btn.addEventListener("click", () => {
       historyPreset = { storeNumber: btn.dataset.viewWeeklyFlagged, from, to };
+      historyAutoOpenFlagged = true;
       activeTab = "history";
       renderDashboard();
     });
@@ -430,6 +432,8 @@ function renderHistoryTab() {
   const toDefault = historyPreset ? historyPreset.to : today;
   const storeDefault = historyPreset ? historyPreset.storeNumber : "";
   historyPreset = null;
+  const autoOpenFlagged = historyAutoOpenFlagged;
+  historyAutoOpenFlagged = false;
   const presetStore = storesCache.find((s) => s.number === storeDefault);
 
   content.innerHTML = `
@@ -482,12 +486,17 @@ function renderHistoryTab() {
     });
   });
 
-  root.querySelector("#btn-hist-search").addEventListener("click", runHistorySearch);
+  root.querySelector("#btn-hist-search").addEventListener("click", () => runHistorySearch());
   root.querySelector("#btn-hist-export").addEventListener("click", () => exportCsv(lastHistoryResults));
-  runHistorySearch();
+  runHistorySearch(autoOpenFlagged);
 }
 
-async function runHistorySearch() {
+async function openHistoryRecord(record, { expandFlagged = false } = {}) {
+  const hydrated = await hydrateRecordPhotos(record);
+  renderDetailModal(hydrated, { expandFlagged });
+}
+
+async function runHistorySearch(autoOpenFlagged = false) {
   const storeInputEl = root.querySelector("#hist-store-input");
   const storeText = storeInputEl ? storeInputEl.value.trim() : "";
   let storeNumber = root.querySelector("#hist-store").value;
@@ -551,14 +560,24 @@ async function runHistorySearch() {
       btn.disabled = true;
       btn.textContent = t("loadingButton");
       try {
-        const hydrated = await hydrateRecordPhotos(record);
-        renderDetailModal(hydrated, { expandFlagged: Boolean(btn.dataset.viewFlagged) });
+        await openHistoryRecord(record, { expandFlagged: Boolean(btn.dataset.viewFlagged) });
       } finally {
         btn.disabled = false;
         btn.textContent = originalLabel;
       }
     });
   });
+
+  if (autoOpenFlagged) {
+    const flaggedRecords = lastHistoryResults.filter(
+      (r) => Object.values(r.answers || {}).filter((a) => a.value === "no").length > 0
+    );
+    // Only one submission actually has flags in this range — jump straight
+    // to it instead of making the admin find and tap it themselves. With
+    // more than one, there's no single record to guess, so leave the
+    // filtered list for them to pick from.
+    if (flaggedRecords.length === 1) openHistoryRecord(flaggedRecords[0], { expandFlagged: true });
+  }
 }
 
 // Photos live in a subcollection (submissions/{id}/photos/{itemId}), not
