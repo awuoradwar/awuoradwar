@@ -475,6 +475,15 @@ async function beginWalkthrough(store, conductedBy) {
   if (snap.exists()) {
     data = snap.data();
     answers = await hydratePhotoUrls(docId, data.answers || {});
+    // A different associate picking up where someone else left off (or
+    // the same one correcting a typo) should have their name stick —
+    // not silently keep whoever started it, which is what made an
+    // owner's placeholder name stay attached to work an associate
+    // actually finished.
+    if (conductedBy && conductedBy !== data.conductedBy) {
+      await updateDoc(ref, { conductedBy });
+      data = { ...data, conductedBy };
+    }
   } else {
     data = {
       storeId: store.id,
@@ -496,7 +505,7 @@ async function beginWalkthrough(store, conductedBy) {
     docId,
     storeNumber: store.number,
     storeName: store.name,
-    conductedBy: data.conductedBy || conductedBy,
+    conductedBy: data.conductedBy,
     answers,
     additionalNotes: data.additionalNotes || "",
   };

@@ -11,6 +11,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   deleteDoc,
   collection,
   onSnapshot,
@@ -456,11 +457,15 @@ async function renderTodayTab() {
         .map((s) => {
           const sub = byStoreNumber[s.number];
           const submitted = Boolean(sub?.submitted);
-          const penalize = !submitted && !notYetLaunched;
+          const inProgress = Boolean(sub) && !submitted;
+          const penalize = !submitted && !inProgress && !notYetLaunched;
+          const clickable = submitted || inProgress;
+          const badgeClass = submitted ? "badge-success" : inProgress ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
+          const badgeLabel = submitted ? t("submittedStatus") : inProgress ? t("inProgressStatus") : t("missingStatus");
           return `
-          <div class="store-status-card ${penalize ? "missing" : ""} ${submitted ? "clickable" : ""}" ${submitted ? `data-view-today="${escapeHtml(s.number)}"` : ""}>
+          <div class="store-status-card ${penalize ? "missing" : ""} ${clickable ? "clickable" : ""}" ${clickable ? `data-view-today="${escapeHtml(s.number)}"` : ""}>
             <span class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</span>
-            <span class="badge ${submitted ? "badge-success" : penalize ? "badge-danger" : "badge-neutral"}">${submitted ? t("submittedStatus") : t("missingStatus")}</span>
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
           </div>`;
         })
         .join("")}
@@ -819,7 +824,7 @@ async function runHistorySearch() {
                 <td>${escapeHtml(r.date)}</td>
                 <td>${escapeHtml(storeLabel(r.storeNumber, r.storeName))}</td>
                 <td>${escapeHtml(r.conductedBy)}</td>
-                <td><span class="badge ${r.submitted ? "badge-success" : "badge-neutral"}">${r.submitted ? t("submittedStatus") : t("missingStatus")}</span></td>
+                <td><span class="badge ${r.submitted ? "badge-success" : "badge-info"}">${r.submitted ? t("submittedStatus") : t("inProgressStatus")}</span></td>
                 <td>${flaggedCount > 0 ? `<button class="btn btn-sm btn-danger" data-view-flagged="${r.id}">${flaggedCount}</button>` : flaggedCount}</td>
                 <td><button class="btn btn-sm btn-secondary" data-view="${r.id}">${t("viewDetail")}</button></td>
               </tr>`;
@@ -924,7 +929,17 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
         <h3 style="margin:0;">${escapeHtml(record.storeNumber)} — ${escapeHtml(record.date)}</h3>
         <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
       </div>
-      <p style="color:var(--text-muted); margin-top:0;">${t("conductedByColumn")}: ${escapeHtml(record.conductedBy)}</p>
+      <div style="display:flex; align-items:center; gap:8px; color:var(--text-muted); margin-top:0;">
+        <span id="conducted-by-display">${t("conductedByColumn")}: ${escapeHtml(record.conductedBy)}</span>
+        <button type="button" class="text-link" id="btn-edit-conducted-by">${t("editButton")}</button>
+      </div>
+      <div class="field" id="conducted-by-edit-row" hidden style="margin-top:-4px;">
+        <input type="text" id="conducted-by-input" value="${escapeHtml(record.conductedBy)}" />
+        <div style="display:flex; gap:8px; margin-top:6px;">
+          <button type="button" class="btn btn-sm btn-primary" id="btn-save-conducted-by">${t("saveButton")}</button>
+          <button type="button" class="btn btn-sm btn-secondary" id="btn-cancel-conducted-by">${t("cancelButton")}</button>
+        </div>
+      </div>
       ${record.additionalNotes ? `<p><em>${escapeHtml(record.additionalNotes)}</em></p>` : ""}
       ${sectionsHtml}
       <button type="button" class="text-link" id="modal-delete-submission" style="color:var(--danger); margin-top:14px;">${t("deleteSubmission")}</button>
@@ -942,6 +957,37 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
     });
   }
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#btn-edit-conducted-by").addEventListener("click", () => {
+    backdrop.querySelector("#conducted-by-edit-row").hidden = false;
+    backdrop.querySelector("#conducted-by-input").focus();
+  });
+  backdrop.querySelector("#btn-cancel-conducted-by").addEventListener("click", () => {
+    backdrop.querySelector("#conducted-by-input").value = record.conductedBy;
+    backdrop.querySelector("#conducted-by-edit-row").hidden = true;
+  });
+  backdrop.querySelector("#btn-save-conducted-by").addEventListener("click", async (e) => {
+    const input = backdrop.querySelector("#conducted-by-input");
+    const name = input.value.trim();
+    if (!name || name === record.conductedBy) {
+      backdrop.querySelector("#conducted-by-edit-row").hidden = true;
+      return;
+    }
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = t("loadingButton");
+    try {
+      await withTimeout(updateDoc(doc(db, "submissions", record.id), { conductedBy: name }));
+      record.conductedBy = name;
+      backdrop.querySelector("#conducted-by-display").textContent = `${t("conductedByColumn")}: ${name}`;
+      backdrop.querySelector("#conducted-by-edit-row").hidden = true;
+      refreshCurrentTab();
+    } catch (err) {
+      alert(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = t("saveButton");
+    }
+  });
   backdrop.querySelector("#modal-delete-submission").addEventListener("click", async (e) => {
     if (!confirm(t("confirmDeleteSubmission", { store: record.storeNumber, date: record.date }))) return;
     const btn = e.target;
