@@ -31,6 +31,7 @@ let editingStoreId = null;
 let adminsCache = [];
 let adminsUnsub = null;
 let historyPreset = null;
+let weeklyOffset = 0;
 
 export function initAdminApp() {
   if (initialized) return;
@@ -241,6 +242,7 @@ function renderDashboard() {
   root.querySelectorAll("button[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.tab;
+      if (activeTab === "weekly") weeklyOffset = 0;
       renderDashboard();
     });
   });
@@ -303,15 +305,13 @@ async function renderTodayTab() {
 
 // ---------- Weekly Summary ----------
 
-// Rolling 7-day window ending today (not a Mon-Sun calendar week).
-function lastNDates(n) {
-  const dates = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
-  }
-  return dates;
+function formatWeekRangeLabel(from, to) {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const [ty, tm, td] = to.split("-").map(Number);
+  const lang = getLang() === "es" ? "es-US" : "en-US";
+  const fromStr = new Date(fy, fm - 1, fd).toLocaleDateString(lang, { month: "short", day: "numeric" });
+  const toStr = new Date(ty, tm - 1, td).toLocaleDateString(lang, { month: "short", day: "numeric", year: "numeric" });
+  return `${fromStr} – ${toStr}`;
 }
 
 async function renderWeeklyTab() {
@@ -319,12 +319,10 @@ async function renderWeeklyTab() {
   if (!content) return;
   content.innerHTML = `<div class="card">${t("loadingButton")}</div>`;
 
-  const days = lastNDates(7);
+  const { from, to } = weekRangeDates(weeklyOffset);
   // Single date-range filter, no equality filter alongside it — this
   // doesn't need a composite index, unlike the per-store History search.
-  const snap = await getDocs(
-    query(collection(db, "submissions"), where("date", ">=", days[0]), where("date", "<=", days[days.length - 1]))
-  );
+  const snap = await getDocs(query(collection(db, "submissions"), where("date", ">=", from), where("date", "<=", to)));
 
   const byStore = {};
   snap.docs.forEach((d) => {
@@ -347,7 +345,11 @@ async function renderWeeklyTab() {
 
   content.innerHTML = `
     <div class="card">
-      <strong>${t("last7DaysLabel")}</strong>
+      <div class="week-nav-row">
+        <button class="btn btn-sm btn-secondary" id="btn-week-prev">${t("previousWeek")}</button>
+        <strong class="week-range-label">${escapeHtml(formatWeekRangeLabel(from, to))}</strong>
+        <button class="btn btn-sm btn-secondary" id="btn-week-next" ${weeklyOffset === 0 ? "disabled" : ""}>${t("nextWeek")}</button>
+      </div>
     </div>
     <div class="card">
       <div class="table-wrap">
@@ -372,9 +374,19 @@ async function renderWeeklyTab() {
     </div>
   `;
 
+  content.querySelector("#btn-week-prev").addEventListener("click", () => {
+    weeklyOffset += 1;
+    renderWeeklyTab();
+  });
+  content.querySelector("#btn-week-next").addEventListener("click", () => {
+    if (weeklyOffset === 0) return;
+    weeklyOffset -= 1;
+    renderWeeklyTab();
+  });
+
   content.querySelectorAll("[data-view-weekly-flagged]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      historyPreset = { storeNumber: btn.dataset.viewWeeklyFlagged, from: days[0], to: days[days.length - 1] };
+      historyPreset = { storeNumber: btn.dataset.viewWeeklyFlagged, from, to };
       activeTab = "history";
       renderDashboard();
     });
@@ -387,9 +399,9 @@ function todayDateStringFor(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Rolling 7-day windows, same semantics as Weekly Summary's lastNDates(7):
-// weeksAgo=0 is "this week" (today back 6 days), weeksAgo=1 is the 7 days
-// before that, and so on — not calendar (Mon-Sun) weeks.
+// Rolling 7-day windows shared by Weekly Summary and History's quick
+// filters: weeksAgo=0 is "this week" (today back 6 days), weeksAgo=1 is
+// the 7 days before that, and so on — not calendar (Mon-Sun) weeks.
 function weekRangeDates(weeksAgo) {
   const to = new Date();
   to.setDate(to.getDate() - weeksAgo * 7);

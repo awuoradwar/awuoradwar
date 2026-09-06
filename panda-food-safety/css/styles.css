@@ -124,6 +124,7 @@ textarea { resize: vertical; min-height: 70px; }
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: var(--accent-contrast); }
 .btn-primary:disabled { background: var(--neutral-bg); color: var(--text-muted); cursor: not-allowed; transform: none; }
+.btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-primary.is-incomplete { background: var(--neutral-bg); color: var(--text-muted); }
 .btn-secondary { background: var(--surface-alt); color: var(--text); }
 .btn-block { width: 100%; }
@@ -228,6 +229,9 @@ tr:last-child td { border-bottom: none; }
 
 .quick-range-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 .quick-range-label { font-size: 13px; color: var(--text-muted); margin-right: 2px; }
+
+.week-nav-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.week-range-label { font-size: 16px; }
 
 .store-combo { position: relative; }
 .store-combo-list {

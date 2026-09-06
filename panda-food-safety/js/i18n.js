@@ -65,6 +65,8 @@ const STRINGS = {
   historyTitle: { en: "History", es: "Historial" },
   weeklySummaryTitle: { en: "Weekly Summary", es: "Resumen Semanal" },
   last7DaysLabel: { en: "Last 7 days", es: "Últimos 7 días" },
+  previousWeek: { en: "‹ Previous", es: "‹ Anterior" },
+  nextWeek: { en: "Next ›", es: "Siguiente ›" },
   viewWeeklySummary: { en: "📊 View this week's summary", es: "📊 Ver el resumen de esta semana" },
   hideWeeklySummary: { en: "Hide summary", es: "Ocultar resumen" },
   daysSubmittedLabel: { en: "{done} of {total} days submitted", es: "{done} de {total} días enviados" },
