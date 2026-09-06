@@ -195,6 +195,11 @@ textarea { resize: vertical; min-height: 70px; }
   display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 60; cursor: zoom-out;
 }
 .lightbox-backdrop img { max-width: 100%; max-height: 100%; border-radius: 8px; }
+.lightbox-close {
+  position: fixed; top: 16px; right: 16px; width: 44px; height: 44px; border-radius: 999px; border: none;
+  background: rgba(20, 17, 15, 0.6); color: #fff; font-size: 28px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; z-index: 61;
+}
 
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .badge-success { background: var(--success-bg); color: var(--success); }

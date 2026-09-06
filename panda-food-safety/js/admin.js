@@ -639,7 +639,7 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
 function openLightbox(url) {
   const lb = document.createElement("div");
   lb.className = "lightbox-backdrop";
-  lb.innerHTML = `<img src="${url}" alt="" />`;
+  lb.innerHTML = `<button type="button" class="lightbox-close" aria-label="${escapeHtml(t("closeButton"))}">&times;</button><img src="${url}" alt="" />`;
   lb.addEventListener("click", () => lb.remove());
   document.body.appendChild(lb);
 }

@@ -578,7 +578,7 @@ function renderFollowup(item, answer, isFail) {
 function openLightbox(url) {
   const backdrop = document.createElement("div");
   backdrop.className = "lightbox-backdrop";
-  backdrop.innerHTML = `<img src="${url}" alt="" />`;
+  backdrop.innerHTML = `<button type="button" class="lightbox-close" aria-label="${escapeHtml(t("closeButton"))}">&times;</button><img src="${url}" alt="" />`;
   backdrop.addEventListener("click", () => backdrop.remove());
   document.body.appendChild(backdrop);
 }
