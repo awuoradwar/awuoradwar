@@ -52,7 +52,13 @@ const db = getFirestore(app);
 // this is what keeps someone from having to re-enter a password every
 // time they open the app, short of explicitly logging out or the
 // browser clearing its own site data.
-setPersistence(auth, browserLocalPersistence).catch(() => {});
+//
+// Must be awaited (top-level await — every importer of this module
+// waits for it) before any consumer calls signInAnonymously/
+// signInWithEmailAndPassword/etc: Firebase has a documented race where
+// a sign-in call issued while setPersistence() is still pending can
+// silently fail.
+await setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 export {
   auth,
