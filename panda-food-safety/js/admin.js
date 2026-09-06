@@ -641,6 +641,7 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
       <p style="color:var(--text-muted); margin-top:0;">${t("conductedByColumn")}: ${escapeHtml(record.conductedBy)}</p>
       ${record.additionalNotes ? `<p><em>${escapeHtml(record.additionalNotes)}</em></p>` : ""}
       ${sectionsHtml}
+      <button type="button" class="text-link" id="modal-delete-submission" style="color:var(--danger); margin-top:14px;">${t("deleteSubmission")}</button>
     </div>
   `;
   document.body.appendChild(backdrop);
@@ -648,6 +649,15 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
     backdrop.querySelector(`#detail-row-${firstFlaggedId}`)?.scrollIntoView({ block: "start" });
   }
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#modal-delete-submission").addEventListener("click", async (e) => {
+    if (!confirm(t("confirmDeleteSubmission", { store: record.storeNumber, date: record.date }))) return;
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = t("loadingButton");
+    await deleteSubmission(record);
+    backdrop.remove();
+    refreshCurrentTab();
+  });
   backdrop.addEventListener("click", (e) => {
     if (e.target === backdrop) {
       backdrop.remove();
@@ -661,6 +671,20 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
     const row = e.target.closest("[data-toggle-detail]");
     if (row) backdrop.querySelector(`#detail-body-${row.dataset.toggleDetail}`)?.classList.toggle("collapsed");
   });
+}
+
+async function deleteSubmission(record) {
+  // Subcollections don't cascade-delete with their parent doc, so each
+  // photo doc needs deleting first.
+  const photosSnap = await getDocs(collection(db, "submissions", record.id, "photos"));
+  await Promise.all(photosSnap.docs.map((d) => deleteDoc(doc(db, "submissions", record.id, "photos", d.id))));
+  await deleteDoc(doc(db, "submissions", record.id));
+}
+
+function refreshCurrentTab() {
+  if (activeTab === "today") renderTodayTab();
+  else if (activeTab === "weekly") renderWeeklyTab();
+  else if (activeTab === "history") runHistorySearch();
 }
 
 function openLightbox(url) {

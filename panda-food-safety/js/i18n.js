@@ -98,6 +98,8 @@ const STRINGS = {
   exportCsv: { en: "Export CSV", es: "Exportar CSV" },
   flaggedItems: { en: "Flagged items", es: "Elementos marcados" },
   viewDetail: { en: "View", es: "Ver" },
+  deleteSubmission: { en: "Delete this submission", es: "Eliminar este envío" },
+  confirmDeleteSubmission: { en: "Permanently delete the submission for store {store} on {date}? This cannot be undone.", es: "¿Eliminar permanentemente el envío de la tienda {store} del {date}? Esto no se puede deshacer." },
   closeButton: { en: "Close", es: "Cerrar" },
   conductedByColumn: { en: "Conducted by", es: "Realizado por" },
   dateColumn: { en: "Date", es: "Fecha" },
