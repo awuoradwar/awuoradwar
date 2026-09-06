@@ -540,9 +540,14 @@ function renderItemRow(item) {
   const isNo = value === "no";
   const showFollowup = isNo || (value === "yes" && item.alwaysPhoto);
   const complete = itemIsComplete(item, answer);
+  // A displayed count of "how many questions in, out of how many total"
+  // — not the item's stable id. Hiding questions leaves gaps in ids
+  // (30, then 34), and a custom item's id isn't a number at all; this
+  // stays a clean 1..N regardless of which items are currently active.
+  const displayNumber = CHECKLIST_ITEMS_FLAT.findIndex((it) => it.id === item.id) + 1;
   return `
     <div class="item-row ${isNo ? "flagged" : ""} ${complete ? "complete" : ""}" id="item-${item.id}">
-      <div class="item-text"><span class="item-number">${item.id}.</span>${escapeHtml(tf(item))}</div>
+      <div class="item-text"><span class="item-number">${displayNumber}.</span>${escapeHtml(tf(item))}</div>
       <div class="segmented">
         <button class="sel-yes ${value === "yes" ? "selected" : ""}" data-item="${item.id}" data-value="yes">${t("yes")}</button>
         <button class="sel-no ${value === "no" ? "selected" : ""}" data-item="${item.id}" data-value="no">${t("no")}</button>
