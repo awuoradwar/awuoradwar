@@ -226,6 +226,23 @@ tr:last-child td { border-bottom: none; }
 .filters-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .filters-row .field { margin-bottom: 0; min-width: 140px; }
 
+.quick-range-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.quick-range-label { font-size: 13px; color: var(--text-muted); margin-right: 2px; }
+
+.store-combo { position: relative; }
+.store-combo-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); max-height: 240px; overflow-y: auto; padding: 4px;
+}
+.store-combo-item {
+  display: block; width: 100%; text-align: left; padding: 10px 12px; border: none; background: none;
+  color: var(--text); font-size: 14px; border-radius: 6px; cursor: pointer;
+}
+.store-combo-item:hover, .store-combo-item:focus { background: var(--surface-alt); }
+.store-combo-item.store-combo-all { color: var(--text-muted); border-bottom: 1px solid var(--border); border-radius: 0; margin-bottom: 4px; padding-bottom: 10px; }
+.store-combo-empty { padding: 10px 12px; font-size: 14px; color: var(--text-muted); }
+
 .store-manage-row { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
 .store-manage-row .grow { flex: 1; }
 

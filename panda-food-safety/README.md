@@ -176,7 +176,10 @@ stores.
   store + a date range), Firestore may show a "this query requires an
   index" error with a link in it — click the
   link, wait about a minute while it builds, then re-run the search. This
-  is normal, one-time Firestore behavior, not a bug.
+  is normal, one-time Firestore behavior, not a bug. The needed index is
+  tracked in `firestore.indexes.json` for reference, but it isn't
+  auto-deployed by the GitHub Action (that action's service account only
+  has Hosting permissions) — the console link is the actual fix.
 - **Free-tier limits.** Firestore's free Spark quota (roughly 1 GiB
   stored, 50K reads/20K writes/20K deletes per day, at time of writing —
   check the Firebase console for current figures) comfortably covers

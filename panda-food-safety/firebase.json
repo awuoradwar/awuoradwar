@@ -6,6 +6,7 @@
       "**/.*",
       "**/node_modules/**",
       "firestore.rules",
+      "firestore.indexes.json",
       "README.md"
     ],
     "rewrites": [
@@ -24,6 +25,7 @@
     ]
   },
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   }
 }

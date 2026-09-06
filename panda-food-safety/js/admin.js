@@ -49,6 +49,63 @@ function storeLabel(number, name) {
   return name ? `${number} — ${name}` : String(number);
 }
 
+// Type-to-filter store picker: a text input backed by a hidden field that
+// holds the actual selected store's value (or "" for "none selected" / "all
+// stores"). Typing narrows a dropdown of matches by number or name; picking
+// one (or pressing Enter with a single unambiguous match) fills the text
+// input and closes the list. valueKey picks what's stored in hiddenEl —
+// "number" for admin filtering, "id" for the associate's store doc lookup.
+function wireStoreCombo({ inputEl, hiddenEl, listEl, stores, allLabel, valueKey = "number", onSelect }) {
+  if (!inputEl || !hiddenEl || !listEl) return;
+  const notify = onSelect || (() => {});
+
+  function currentMatches(filterText) {
+    const q = filterText.trim().toLowerCase();
+    return stores.filter((s) => !q || s.number.toLowerCase().includes(q) || (s.name || "").toLowerCase().includes(q));
+  }
+
+  function select(s) {
+    inputEl.value = s ? storeLabel(s.number, s.name) : "";
+    hiddenEl.value = s ? s[valueKey] : "";
+    listEl.hidden = true;
+    notify(s || null);
+  }
+
+  function renderList(filterText) {
+    const q = filterText.trim();
+    const matches = currentMatches(filterText).slice(0, 8);
+
+    const allRow = q || !allLabel ? "" : `<button type="button" class="store-combo-item store-combo-all" data-all="1">${escapeHtml(allLabel)}</button>`;
+    listEl.innerHTML =
+      allRow +
+      (matches.length
+        ? matches.map((s) => `<button type="button" class="store-combo-item" data-value="${escapeHtml(s[valueKey])}">${escapeHtml(storeLabel(s.number, s.name))}</button>`).join("")
+        : `<div class="store-combo-empty">${escapeHtml(t("noMatchingStores"))}</div>`);
+    listEl.hidden = false;
+
+    listEl.querySelectorAll("[data-value]").forEach((btn) => {
+      btn.addEventListener("click", () => select(stores.find((st) => String(st[valueKey]) === btn.dataset.value)));
+    });
+    const allBtn = listEl.querySelector("[data-all]");
+    if (allBtn) allBtn.addEventListener("click", () => select(null));
+  }
+
+  inputEl.addEventListener("focus", () => renderList(inputEl.value));
+  inputEl.addEventListener("input", () => {
+    hiddenEl.value = "";
+    renderList(inputEl.value);
+  });
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const matches = currentMatches(inputEl.value);
+    if (matches.length === 1) select(matches[0]);
+  });
+  document.addEventListener("click", (e) => {
+    if (!inputEl.parentElement.contains(e.target)) listEl.hidden = true;
+  });
+}
+
 function todayDateString() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -326,6 +383,21 @@ async function renderWeeklyTab() {
 
 // ---------- History ----------
 
+function todayDateStringFor(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Rolling 7-day windows, same semantics as Weekly Summary's lastNDates(7):
+// weeksAgo=0 is "this week" (today back 6 days), weeksAgo=1 is the 7 days
+// before that, and so on — not calendar (Mon-Sun) weeks.
+function weekRangeDates(weeksAgo) {
+  const to = new Date();
+  to.setDate(to.getDate() - weeksAgo * 7);
+  const from = new Date(to);
+  from.setDate(from.getDate() - 6);
+  return { from: todayDateStringFor(from), to: todayDateStringFor(to) };
+}
+
 function renderHistoryTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
@@ -336,16 +408,25 @@ function renderHistoryTab() {
   const toDefault = historyPreset ? historyPreset.to : today;
   const storeDefault = historyPreset ? historyPreset.storeNumber : "";
   historyPreset = null;
+  const presetStore = storesCache.find((s) => s.number === storeDefault);
 
   content.innerHTML = `
     <div class="card">
+      <div class="quick-range-row">
+        <span class="quick-range-label">${t("quickRangeLabel")}</span>
+        <button class="btn btn-sm btn-secondary" data-weeks-ago="0">${t("thisWeek")}</button>
+        <button class="btn btn-sm btn-secondary" data-weeks-ago="1">${t("lastWeek")}</button>
+        <button class="btn btn-sm btn-secondary" data-weeks-ago="2">${t("weeksAgo", { n: 2 })}</button>
+        <button class="btn btn-sm btn-secondary" data-weeks-ago="3">${t("weeksAgo", { n: 3 })}</button>
+      </div>
       <div class="filters-row">
         <div class="field">
           <label>${t("filterStore")}</label>
-          <select id="hist-store">
-            <option value="">${t("filterAllStores")}</option>
-            ${storesCache.map((s) => `<option value="${escapeHtml(s.number)}" ${s.number === storeDefault ? "selected" : ""}>${escapeHtml(storeLabel(s.number, s.name))}</option>`).join("")}
-          </select>
+          <div class="store-combo">
+            <input type="text" id="hist-store-input" autocomplete="off" placeholder="${t("filterAllStores")}" value="${presetStore ? escapeHtml(storeLabel(presetStore.number, presetStore.name)) : ""}" />
+            <input type="hidden" id="hist-store" value="${escapeHtml(storeDefault)}" />
+            <div class="store-combo-list" id="hist-store-list" hidden></div>
+          </div>
         </div>
         <div class="field">
           <label>${t("filterFrom")}</label>
@@ -362,17 +443,38 @@ function renderHistoryTab() {
     <div class="card" id="hist-results"><div class="table-wrap"></div></div>
   `;
 
+  wireStoreCombo({
+    inputEl: content.querySelector("#hist-store-input"),
+    hiddenEl: content.querySelector("#hist-store"),
+    listEl: content.querySelector("#hist-store-list"),
+    stores: storesCache,
+    allLabel: t("filterAllStores"),
+  });
+
+  content.querySelectorAll("[data-weeks-ago]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const { from, to } = weekRangeDates(Number(btn.dataset.weeksAgo));
+      content.querySelector("#hist-from").value = from;
+      content.querySelector("#hist-to").value = to;
+      runHistorySearch();
+    });
+  });
+
   root.querySelector("#btn-hist-search").addEventListener("click", runHistorySearch);
   root.querySelector("#btn-hist-export").addEventListener("click", () => exportCsv(lastHistoryResults));
   runHistorySearch();
 }
 
-function todayDateStringFor(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 async function runHistorySearch() {
-  const storeNumber = root.querySelector("#hist-store").value;
+  const storeInputEl = root.querySelector("#hist-store-input");
+  const storeText = storeInputEl ? storeInputEl.value.trim() : "";
+  let storeNumber = root.querySelector("#hist-store").value;
+  if (!storeNumber && storeText) {
+    // Typed a store number but didn't tap a suggestion — accept it if it
+    // unambiguously matches exactly one store.
+    const candidates = storesCache.filter((s) => s.number.startsWith(storeText));
+    if (candidates.length === 1) storeNumber = candidates[0].number;
+  }
   const from = root.querySelector("#hist-from").value;
   const to = root.querySelector("#hist-to").value;
   const resultsEl = root.querySelector("#hist-results");

@@ -59,6 +59,60 @@ function storeLabel(number, name) {
   return name ? `${number} — ${name}` : String(number);
 }
 
+// Type-to-filter store picker — see the identical helper in admin.js for
+// the full rationale. Here valueKey is "id" since the setup screen looks
+// stores up by store.id, not by number.
+function wireStoreCombo({ inputEl, hiddenEl, listEl, stores, allLabel, valueKey = "number", onSelect }) {
+  if (!inputEl || !hiddenEl || !listEl) return;
+  const notify = onSelect || (() => {});
+
+  function currentMatches(filterText) {
+    const q = filterText.trim().toLowerCase();
+    return stores.filter((s) => !q || s.number.toLowerCase().includes(q) || (s.name || "").toLowerCase().includes(q));
+  }
+
+  function select(s) {
+    inputEl.value = s ? storeLabel(s.number, s.name) : "";
+    hiddenEl.value = s ? s[valueKey] : "";
+    listEl.hidden = true;
+    notify(s || null);
+  }
+
+  function renderList(filterText) {
+    const q = filterText.trim();
+    const matches = currentMatches(filterText).slice(0, 8);
+
+    const allRow = q || !allLabel ? "" : `<button type="button" class="store-combo-item store-combo-all" data-all="1">${escapeHtml(allLabel)}</button>`;
+    listEl.innerHTML =
+      allRow +
+      (matches.length
+        ? matches.map((s) => `<button type="button" class="store-combo-item" data-value="${escapeHtml(s[valueKey])}">${escapeHtml(storeLabel(s.number, s.name))}</button>`).join("")
+        : `<div class="store-combo-empty">${escapeHtml(t("noMatchingStores"))}</div>`);
+    listEl.hidden = false;
+
+    listEl.querySelectorAll("[data-value]").forEach((btn) => {
+      btn.addEventListener("click", () => select(stores.find((st) => String(st[valueKey]) === btn.dataset.value)));
+    });
+    const allBtn = listEl.querySelector("[data-all]");
+    if (allBtn) allBtn.addEventListener("click", () => select(null));
+  }
+
+  inputEl.addEventListener("focus", () => renderList(inputEl.value));
+  inputEl.addEventListener("input", () => {
+    hiddenEl.value = "";
+    renderList(inputEl.value);
+  });
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const matches = currentMatches(inputEl.value);
+    if (matches.length === 1) select(matches[0]);
+  });
+  document.addEventListener("click", (e) => {
+    if (!inputEl.parentElement.contains(e.target)) listEl.hidden = true;
+  });
+}
+
 function todayDateString(d = new Date()) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -167,10 +221,6 @@ function wireLangToggle(onChange) {
 // ---------- Screen 1: setup ----------
 
 function renderSetupScreen() {
-  const storeOptions = stores
-    .map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(storeLabel(s.number, s.name))}</option>`)
-    .join("");
-
   root.innerHTML = `
     ${topBarHtml()}
     <main>
@@ -180,10 +230,11 @@ function renderSetupScreen() {
           ${
             storesLoaded && stores.length === 0
               ? `<div class="hint-banner">${t("noStoresConfigured")}</div>`
-              : `<select id="store-select" ${storesLoaded ? "" : "disabled"}>
-                  <option value="">${t("storeSelectPlaceholder")}</option>
-                  ${storeOptions}
-                </select>`
+              : `<div class="store-combo">
+                  <input type="text" id="store-select-input" autocomplete="off" placeholder="${t("storeSelectPlaceholder")}" ${storesLoaded ? "" : "disabled"} />
+                  <input type="hidden" id="store-select" value="" />
+                  <div class="store-combo-list" id="store-select-list" hidden></div>
+                </div>`
           }
           <div id="weekly-summary-toggle"></div>
         </div>
@@ -213,7 +264,6 @@ function renderSetupScreen() {
     const ok = storeSelect && storeSelect.value && nameInput.value.trim().length > 1;
     startBtn.disabled = !ok;
   }
-  if (storeSelect) storeSelect.addEventListener("change", refreshStartEnabled);
   nameInput.addEventListener("input", refreshStartEnabled);
 
   function renderWeeklyToggle(expanded) {
@@ -242,7 +292,18 @@ function renderSetupScreen() {
     });
   }
   if (storeSelect) {
-    storeSelect.addEventListener("change", () => renderWeeklyToggle(false));
+    wireStoreCombo({
+      inputEl: root.querySelector("#store-select-input"),
+      hiddenEl: storeSelect,
+      listEl: root.querySelector("#store-select-list"),
+      stores,
+      allLabel: "",
+      valueKey: "id",
+      onSelect: () => {
+        refreshStartEnabled();
+        renderWeeklyToggle(false);
+      },
+    });
     renderWeeklyToggle(false);
   }
 
