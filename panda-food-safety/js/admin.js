@@ -646,7 +646,14 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
   `;
   document.body.appendChild(backdrop);
   if (expandFlagged && firstFlaggedId !== null) {
-    backdrop.querySelector(`#detail-row-${firstFlaggedId}`)?.scrollIntoView({ block: "start" });
+    // Mobile Safari can miscalculate scroll geometry for an element
+    // queried in the same tick it was inserted — wait a couple of frames
+    // so layout has actually settled before scrolling to it.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        backdrop.querySelector(`#detail-row-${firstFlaggedId}`)?.scrollIntoView({ block: "start" });
+      });
+    });
   }
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
   backdrop.querySelector("#modal-delete-submission").addEventListener("click", async (e) => {
