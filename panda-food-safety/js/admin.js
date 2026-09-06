@@ -20,6 +20,12 @@ import {
   serverTimestamp,
 } from "./firebase-init.js";
 
+// One-time rollout concession: official day-to-day use starts on this
+// date, so a store not submitting on an earlier "today" in Today's Status
+// shouldn't read as a missed/penalized day. This naturally stops applying
+// once today reaches the date, so it's safe to leave in place after launch.
+const LAUNCH_DATE = "2026-09-07";
+
 let initialized = false;
 let root;
 let activeTab = "today";
@@ -271,25 +277,29 @@ async function renderTodayTab() {
   });
 
   const doneCount = storesCache.filter((s) => byStoreNumber[s.number]?.submitted).length;
-  const todayLabel = new Date(`${today}T00:00:00`).toLocaleDateString(getLang() === "es" ? "es-US" : "en-US", {
+  const dateLocale = getLang() === "es" ? "es-US" : "en-US";
+  const todayLabel = new Date(`${today}T00:00:00`).toLocaleDateString(dateLocale, {
     weekday: "short", month: "short", day: "numeric", year: "numeric",
   });
+  const notYetLaunched = today < LAUNCH_DATE;
+  const launchLabel = new Date(`${LAUNCH_DATE}T00:00:00`).toLocaleDateString(dateLocale, { month: "short", day: "numeric" });
 
   content.innerHTML = `
     <div class="card">
       <strong>${t("storesSubmittedCount", { done: doneCount, total: storesCache.length })}</strong>
       <div style="color:var(--text-muted); font-size:13px;">${todayLabel}</div>
+      ${notYetLaunched ? `<div class="hint-banner" style="margin-top:10px;">${t("notLaunchedYet", { date: launchLabel })}</div>` : ""}
     </div>
     <div class="admin-grid">
       ${storesCache
         .map((s) => {
           const sub = byStoreNumber[s.number];
           const submitted = Boolean(sub?.submitted);
+          const penalize = !submitted && !notYetLaunched;
           return `
-          <div class="store-status-card ${submitted ? "" : "missing"} ${submitted ? "clickable" : ""}" ${submitted ? `data-view-today="${escapeHtml(s.number)}"` : ""}>
-            <div class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</div>
-            <span class="badge ${submitted ? "badge-success" : "badge-danger"}">${submitted ? t("submittedStatus") : t("missingStatus")}</span>
-            ${submitted ? `<div class="meta">${t("submittedAt", { time: formatDateTime(sub.submittedAt), name: escapeHtml(sub.conductedBy) })}</div>` : `<div class="meta">${t("noSubmissionYet")}</div>`}
+          <div class="store-status-card ${penalize ? "missing" : ""} ${submitted ? "clickable" : ""}" ${submitted ? `data-view-today="${escapeHtml(s.number)}"` : ""}>
+            <span class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</span>
+            <span class="badge ${submitted ? "badge-success" : penalize ? "badge-danger" : "badge-neutral"}">${submitted ? t("submittedStatus") : t("missingStatus")}</span>
           </div>`;
         })
         .join("")}

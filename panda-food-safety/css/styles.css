@@ -215,13 +215,15 @@ textarea { resize: vertical; min-height: 70px; }
 .admin-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
 .admin-tabs .btn { flex-shrink: 0; }
 .admin-account-row { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px solid var(--border); }
-.admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-.store-status-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.store-status-card {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--surface);
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px;
+}
 .store-status-card.missing { border-color: var(--danger); background: var(--danger-bg); }
 .store-status-card.clickable { cursor: pointer; transition: border-color 0.12s ease; }
 .store-status-card.clickable:hover { border-color: var(--accent); }
-.store-status-card .store-name { font-weight: 600; }
-.store-status-card .meta { font-size: 12px; color: var(--text-muted); }
+.store-status-card .store-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
