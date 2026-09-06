@@ -193,7 +193,7 @@ function renderLoginScreen(mode, message, messageIsError = true) {
   wireLangToggle(() => renderLoginScreen(mode, message, messageIsError));
   root.querySelector("#btn-toggle-mode").addEventListener("click", () => renderLoginScreen(isSignUp ? "login" : "signup"));
   root.querySelector("#btn-submit-auth").addEventListener("click", async () => {
-    const email = root.querySelector("#login-email").value.trim();
+    const email = root.querySelector("#login-email").value.trim().toLowerCase();
     const password = root.querySelector("#login-password").value;
     try {
       if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
@@ -205,7 +205,7 @@ function renderLoginScreen(mode, message, messageIsError = true) {
   const forgotBtn = root.querySelector("#btn-forgot-password");
   if (forgotBtn) {
     forgotBtn.addEventListener("click", async () => {
-      const email = root.querySelector("#login-email").value.trim();
+      const email = root.querySelector("#login-email").value.trim().toLowerCase();
       if (!email) {
         renderLoginScreen(mode, t("forgotPasswordNeedsEmail"));
         return;
@@ -980,7 +980,10 @@ function renderManageAdminsTab() {
 
     content.querySelector("#btn-add-admin").addEventListener("click", async () => {
       const emailInput = content.querySelector("#new-admin-email");
-      const email = emailInput.value.trim();
+      // Firestore doc IDs are case-sensitive, but email addresses aren't —
+      // always normalize to lowercase here so this matches whatever casing
+      // Firebase Auth ends up storing for that admin's sign-up/login.
+      const email = emailInput.value.trim().toLowerCase();
       if (!email) return;
       await setDoc(doc(db, "admins", email), { email, addedAt: serverTimestamp() });
       emailInput.value = "";
