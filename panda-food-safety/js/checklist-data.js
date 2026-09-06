@@ -220,29 +220,39 @@ function flattenChecklist(groups) {
   return groups.flatMap((g) => g.sections.flatMap((s) => s.items.map((it) => ({ ...it, sectionId: s.id, groupId: g.id }))));
 }
 
-// overridesMap: { [itemId]: { active?, en?, es?, requiresPhoto?, alwaysPhoto?,
-// custom?, groupId?, sectionId?, order? } } — one Firestore doc per key,
-// from the `checklistOverrides` collection. active:false hides a base
-// item; en/es/requiresPhoto/alwaysPhoto reword or retier an existing
-// item; custom:true entries are admin-added items, appended to the end
-// of their target section in `order`.
+// overridesMap: { [id]: { active?, en?, es?, requiresPhoto?, alwaysPhoto?,
+// custom?, customSection?, groupId?, sectionId?, order? } } — one
+// Firestore doc per key, from the `checklistOverrides` collection.
+// active:false hides a base item or a custom section; en/es/
+// requiresPhoto/alwaysPhoto reword or retier an existing item;
+// custom:true entries are admin-added items, appended to the end of
+// their target section in `order`; customSection:true entries are
+// admin-added sections (within an existing group), which can hold their
+// own custom items the same way a base section can.
+function itemsForSectionFromOverrides(sectionId, overridesMap) {
+  return Object.entries(overridesMap)
+    .filter(([, o]) => o.custom && o.sectionId === sectionId && o.active !== false)
+    .sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))
+    .map(([id, o]) => ({ id, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto }));
+}
+
 function computeEffectiveChecklist(overridesMap) {
-  const groups = BASE_CHECKLIST_GROUPS.map((group) => ({
-    ...group,
-    sections: group.sections.map((section) => {
+  const groups = BASE_CHECKLIST_GROUPS.map((group) => {
+    const baseSections = group.sections.map((section) => {
       const items = [];
       for (const item of section.items) {
         const o = overridesMap[item.id];
         if (o?.active === false) continue;
         items.push(o ? { ...item, ...(o.en ? { en: o.en } : {}), ...(o.es ? { es: o.es } : {}), ...("requiresPhoto" in o ? { requiresPhoto: o.requiresPhoto } : {}), ...("alwaysPhoto" in o ? { alwaysPhoto: o.alwaysPhoto } : {}) } : item);
       }
-      const customItems = Object.entries(overridesMap)
-        .filter(([, o]) => o.custom && o.sectionId === section.id && o.active !== false)
-        .sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))
-        .map(([id, o]) => ({ id, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto }));
-      return { ...section, items: [...items, ...customItems] };
-    }),
-  }));
+      return { ...section, items: [...items, ...itemsForSectionFromOverrides(section.id, overridesMap)] };
+    });
+    const customSections = Object.entries(overridesMap)
+      .filter(([, o]) => o.customSection && o.groupId === group.id && o.active !== false)
+      .sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))
+      .map(([id, o]) => ({ id, en: o.en, es: o.es || o.en, items: itemsForSectionFromOverrides(id, overridesMap) }));
+    return { ...group, sections: [...baseSections, ...customSections] };
+  });
   return groups;
 }
 

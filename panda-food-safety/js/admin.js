@@ -40,6 +40,8 @@ let adminsUnsub = null;
 let expandedChecklistSectionId = null;
 let editingChecklistItemId = null;
 let addingItemToSectionId = null;
+let editingChecklistSectionId = null;
+let addingSectionToGroupId = null;
 let weeklyOffset = 0;
 
 export function initAdminApp() {
@@ -1079,15 +1081,46 @@ function renderChecklistItemRow(item) {
 }
 
 function renderChecklistSectionBlock(group, section) {
+  const sectionOverride = CHECKLIST_OVERRIDES_MAP[section.id];
+  const isCustomSection = !!sectionOverride?.customSection;
+  const sectionActive = !isCustomSection || sectionOverride.active !== false;
+  const sectionEn = isCustomSection ? sectionOverride.en : section.en;
+  const sectionEs = isCustomSection ? sectionOverride.es : section.es;
   const items = allItemsForSection(section);
   const expanded = expandedChecklistSectionId === section.id;
   return `
     <div class="section-block">
       <button type="button" class="section-toggle" data-toggle-checklist-section="${section.id}">
-        <span class="section-name">${escapeHtml(tf(section))}</span>
+        <span class="section-name">${escapeHtml(isCustomSection ? sectionEn : tf(section))}${!sectionActive ? ` (${t("hiddenBadge")})` : ""}</span>
         <span class="badge badge-neutral">${items.length}</span>
       </button>
       <div class="section-body ${expanded ? "" : "collapsed"}">
+        ${
+          isCustomSection
+            ? editingChecklistSectionId === section.id
+              ? `
+          <div class="checklist-item-row checklist-item-editing" data-section-row="${section.id}">
+            <div class="field"><label>${t("sectionEnglishLabel")}</label><input class="edit-section-en" value="${escapeHtml(sectionEn)}" /></div>
+            <div class="field"><label>${t("sectionSpanishLabel")}</label><input class="edit-section-es" value="${escapeHtml(sectionEs || "")}" /></div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-sm btn-primary" data-save-section="${section.id}">${t("saveButton")}</button>
+              <button class="btn btn-sm btn-secondary" data-cancel-section-edit="1">${t("cancelButton")}</button>
+            </div>
+          </div>`
+              : `
+          <div class="checklist-item-row ${sectionActive ? "" : "inactive"}">
+            <div class="checklist-item-main">
+              <span class="checklist-item-text">${t("sectionOptionsLabel")}</span>
+              ${!sectionActive ? `<span class="badge badge-danger">${t("hiddenBadge")}</span>` : ""}
+            </div>
+            <div class="checklist-item-actions">
+              <button class="btn btn-sm btn-secondary" data-edit-section="${section.id}">${t("editButton")}</button>
+              <button class="btn btn-sm ${sectionActive ? "btn-secondary" : "btn-primary"}" data-toggle-section="${section.id}">${sectionActive ? t("hideQuestion") : t("showQuestion")}</button>
+              <button class="btn btn-sm btn-danger" data-delete-section="${section.id}">${t("deleteButton")}</button>
+            </div>
+          </div>`
+            : ""
+        }
         ${items.map(renderChecklistItemRow).join("")}
         ${
           addingItemToSectionId === section.id
@@ -1114,6 +1147,16 @@ function renderChecklistSectionBlock(group, section) {
     </div>`;
 }
 
+// Custom sections belonging to a group, sorted by order — synthesized
+// as minimal section objects (renderChecklistSectionBlock pulls their
+// real title/state from CHECKLIST_OVERRIDES_MAP via section.id).
+function customSectionsForGroup(groupId) {
+  return Object.entries(CHECKLIST_OVERRIDES_MAP)
+    .filter(([, o]) => o.customSection && o.groupId === groupId)
+    .sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))
+    .map(([id]) => ({ id, items: [] }));
+}
+
 function renderManageChecklistTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
@@ -1125,8 +1168,21 @@ function renderManageChecklistTab() {
       <div class="card">
         <div class="detail-section-title" style="margin-top:0;">${escapeHtml(tf(group))}</div>
         <div style="display:flex; flex-direction:column; gap:10px;">
-          ${group.sections.map((section) => renderChecklistSectionBlock(group, section)).join("")}
+          ${[...group.sections, ...customSectionsForGroup(group.id)].map((section) => renderChecklistSectionBlock(group, section)).join("")}
         </div>
+        ${
+          addingSectionToGroupId === group.id
+            ? `
+          <div class="checklist-item-row checklist-item-editing" style="margin-top:10px;">
+            <div class="field"><label>${t("sectionEnglishLabel")}</label><input id="new-section-en" /></div>
+            <div class="field"><label>${t("sectionSpanishLabel")}</label><input id="new-section-es" /></div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-sm btn-primary" data-save-new-section="${group.id}">${t("saveButton")}</button>
+              <button class="btn btn-sm btn-secondary" data-cancel-new-section="1">${t("cancelButton")}</button>
+            </div>
+          </div>`
+            : `<button type="button" class="text-link" data-add-section="${group.id}" style="padding-left:0; margin-top:10px;">${t("addSection")}</button>`
+        }
       </div>`
     ).join("")}
   `;
@@ -1224,6 +1280,84 @@ function renderManageChecklistTab() {
         createdAt: serverTimestamp(),
       });
       addingItemToSectionId = null;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-toggle-section]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.toggleSection;
+      const current = CHECKLIST_OVERRIDES_MAP[id];
+      await setDoc(doc(db, "checklistOverrides", id), { active: current.active === false }, { merge: true });
+    });
+  });
+
+  content.querySelectorAll("[data-edit-section]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingChecklistSectionId = btn.dataset.editSection;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-cancel-section-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingChecklistSectionId = null;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-save-section]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.saveSection;
+      const row = btn.closest("[data-section-row]");
+      const en = row.querySelector(".edit-section-en").value.trim();
+      const es = row.querySelector(".edit-section-es").value.trim();
+      if (!en) return;
+      await setDoc(doc(db, "checklistOverrides", id), { en, es }, { merge: true });
+      editingChecklistSectionId = null;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-delete-section]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("confirmDeleteSection"))) return;
+      await deleteDoc(doc(db, "checklistOverrides", btn.dataset.deleteSection));
+    });
+  });
+
+  content.querySelectorAll("[data-add-section]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      addingSectionToGroupId = btn.dataset.addSection;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-cancel-new-section]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      addingSectionToGroupId = null;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-save-new-section]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const groupId = btn.dataset.saveNewSection;
+      const en = content.querySelector("#new-section-en").value.trim();
+      const es = content.querySelector("#new-section-es").value.trim();
+      if (!en) return;
+      const id = `customsection-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      await setDoc(doc(db, "checklistOverrides", id), {
+        customSection: true,
+        groupId,
+        en,
+        es,
+        active: true,
+        order: Date.now(),
+        createdAt: serverTimestamp(),
+      });
+      addingSectionToGroupId = null;
+      expandedChecklistSectionId = id;
       renderManageChecklistTab();
     });
   });
