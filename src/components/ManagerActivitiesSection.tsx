@@ -22,6 +22,20 @@ interface ActivityEntry {
   user_name: string;
   date: string;
   label: string;
+  start_time?: string | null;
+  end_time?: string | null;
+}
+
+/** The one symbol used everywhere this "working, not covering" status
+ * shows up (this list, the grid dot's tooltip) -- a briefcase reads
+ * unambiguously as "working, just not here" at a glance, which a plain
+ * dot or generic icon doesn't. */
+const AWAY_ICON = "🧳";
+
+function timeRange(a: ActivityEntry): string | null {
+  if (!a.start_time && !a.end_time) return null;
+  if (a.start_time && a.end_time) return `${a.start_time}–${a.end_time}`;
+  return a.start_time || a.end_time || null;
 }
 
 const PRESETS: Array<{ en: string; es: string }> = [
@@ -54,6 +68,8 @@ export default function ManagerActivitiesSection({
   const [userId, setUserId] = useState(managers[0]?.id ?? "");
   const [date, setDate] = useState(days[0]?.date ?? "");
   const [label, setLabel] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -81,9 +97,12 @@ export default function ManagerActivitiesSection({
               <div key={a.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                 <div className="min-w-0">
                   <p className="truncate font-medium">
-                    {a.user_name} · {a.label}
+                    <span aria-hidden>{AWAY_ICON}</span> {a.user_name} · {a.label}
                   </p>
-                  <p className="text-xs text-muted">{day?.label ?? a.date}</p>
+                  <p className="text-xs text-muted">
+                    {day?.label ?? a.date}
+                    {timeRange(a) && ` · ${timeRange(a)}`}
+                  </p>
                 </div>
                 {canEdit && (
                   <button
@@ -114,12 +133,14 @@ export default function ManagerActivitiesSection({
             e.preventDefault();
             setError(null);
             startTransition(async () => {
-              const result = await addManagerActivityAction(userId, date, label);
+              const result = await addManagerActivityAction(userId, date, label, startTime, endTime);
               if (result && "error" in result && result.error) {
                 setError(result.error);
                 return;
               }
               setLabel("");
+              setStartTime("");
+              setEndTime("");
               setOpen(false);
               router.refresh();
             });
@@ -144,6 +165,14 @@ export default function ManagerActivitiesSection({
                   </option>
                 ))}
               </select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={`${lang === "es" ? "Hora de inicio" : "Start time"} (${lang === "es" ? "opcional" : "optional"})`}>
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputClass} />
+            </Field>
+            <Field label={`${lang === "es" ? "Hora de fin" : "End time"} (${lang === "es" ? "opcional" : "optional"})`}>
+              <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputClass} />
             </Field>
           </div>
           <div className="flex flex-wrap gap-1.5">

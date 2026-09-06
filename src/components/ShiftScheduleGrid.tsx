@@ -43,7 +43,14 @@ interface ActivityEntry {
   user_id: string;
   date: string;
   label: string;
+  start_time?: string | null;
+  end_time?: string | null;
 }
+
+/** The one symbol used everywhere this "working, not covering" status
+ * shows up (ManagerActivitiesSection's list, this grid) -- a briefcase
+ * reads unambiguously as "working, just not here" at a glance. */
+const AWAY_ICON = "🧳";
 
 export default function ShiftScheduleGrid({
   managers,
@@ -85,7 +92,10 @@ export default function ShiftScheduleGrid({
   const byManagerDate = new Map<string, ScheduleEntry>();
   for (const s of optimisticSchedule) byManagerDate.set(`${s.user_id}|${s.date}`, s);
   const activityByManagerDate = new Map<string, string>();
-  for (const a of activities) activityByManagerDate.set(`${a.user_id}|${a.date}`, a.label);
+  for (const a of activities) {
+    const timeRange = a.start_time && a.end_time ? `${a.start_time}–${a.end_time}` : a.start_time || a.end_time || "";
+    activityByManagerDate.set(`${a.user_id}|${a.date}`, timeRange ? `${a.label} (${timeRange})` : a.label);
+  }
   // Same id-sorted assignment as the Manager Capacity list above it, so a
   // given manager's dot color matches between the two sections.
   const managerColors = buildManagerColorMap(managers.map((m) => m.id));
@@ -158,15 +168,19 @@ export default function ShiftScheduleGrid({
                       </div>
                       {/* A day with a logged activity (training, area
                        * meeting) but no real shift -- so it doesn't read as
-                       * a plain day off. Deliberately just a dot, not a
-                       * letter: the select above still governs real store
-                       * coverage on its own, this is only an annotation. */}
+                       * a plain day off. A recognizable icon, not just a
+                       * dot, so it's noticeable at a glance rather than
+                       * something you'd only spot looking closely; the
+                       * select above still governs real store coverage on
+                       * its own, this is only an annotation. */}
                       {activityLabel && (
                         <span
                           aria-hidden
                           title={activityLabel}
-                          className="pointer-events-none absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-warning ring-2 ring-card"
-                        />
+                          className="pointer-events-none absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning text-[10px] leading-none ring-2 ring-card"
+                        >
+                          {AWAY_ICON}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -181,7 +195,7 @@ export default function ShiftScheduleGrid({
           ? "M = Mañana (hasta 5pm) · E = Tarde/Noche (5pm en adelante) · D = Ambos (cubre todo el día -- incluye un turno que empieza a medio día y llega hasta el cierre)"
           : "M = Morning (through 5pm) · E = Evening (5pm on) · D = Both (covers the whole day -- this is what a midday-start-through-close shift counts as, whatever its exact start time)"}
         {" · "}
-        <span className="mr-0.5 inline-block h-2 w-2 rounded-full bg-warning align-middle" />
+        <span aria-hidden>{AWAY_ICON}</span>
         {lang === "es" ? " trabajando, no cubriendo la tienda" : " working, not covering the store"}
         {canEdit ? (lang === "es" ? " · toca para elegir" : " · tap to pick") : ""}
       </p>

@@ -34,6 +34,8 @@ export interface ManagerActivityRow {
   user_name: string;
   date: string;
   label: string;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 /** Days a manager is working but not covering the store -- offsite
@@ -46,7 +48,7 @@ export function getWeekManagerActivities(storeId: string, weekStart: string, wee
   const db = getDb();
   return db
     .prepare(
-      `SELECT a.id, a.user_id, u.name as user_name, a.date, a.label FROM manager_activities a
+      `SELECT a.id, a.user_id, u.name as user_name, a.date, a.label, a.start_time, a.end_time FROM manager_activities a
        JOIN users u ON u.id = a.user_id
        WHERE a.store_id = ? AND a.date BETWEEN ? AND ?
        ORDER BY a.date, u.name`
@@ -54,13 +56,21 @@ export function getWeekManagerActivities(storeId: string, weekStart: string, wee
     .all(storeId, weekStart, weekEnd) as ManagerActivityRow[];
 }
 
-export function addManagerActivity(storeId: string, userId: string, date: string, label: string, actor: SessionUser): string {
+export function addManagerActivity(
+  storeId: string,
+  userId: string,
+  date: string,
+  label: string,
+  startTime: string | null,
+  endTime: string | null,
+  actor: SessionUser
+): string {
   const db = getDb();
   const id = newId();
   db.prepare(
-    `INSERT INTO manager_activities (id, store_id, user_id, date, label, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, storeId, userId, date, label, actor.id, nowIso());
-  writeAudit({ entityType: "manager_activity", entityId: id, actor, action: "CREATED", newValue: { date, label } });
+    `INSERT INTO manager_activities (id, store_id, user_id, date, label, start_time, end_time, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, storeId, userId, date, label, startTime, endTime, actor.id, nowIso());
+  writeAudit({ entityType: "manager_activity", entityId: id, actor, action: "CREATED", newValue: { date, label, startTime, endTime } });
   return id;
 }
 

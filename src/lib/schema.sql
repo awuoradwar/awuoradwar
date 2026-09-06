@@ -112,6 +112,8 @@ CREATE TABLE IF NOT EXISTS manager_activities (
   user_id TEXT NOT NULL REFERENCES users(id),
   date TEXT NOT NULL,
   label TEXT NOT NULL, -- free text, e.g. "Training", "Area meeting"
+  start_time TEXT, -- HH:MM local, optional -- when known, shown alongside the label
+  end_time TEXT, -- HH:MM local, optional
   created_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL
 );

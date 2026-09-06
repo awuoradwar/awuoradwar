@@ -126,6 +126,8 @@ create table manager_activities (
   user_id uuid not null references users(id),
   date date not null,
   label text not null,
+  start_time time,
+  end_time time,
   created_by uuid references users(id),
   created_at timestamptz not null default now()
 );
