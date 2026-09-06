@@ -503,6 +503,90 @@ async function openHistoryRecord(record, { expandFlagged = false } = {}) {
   renderDetailModal(hydrated, { expandFlagged });
 }
 
+async function openFlaggedOnly(records) {
+  const hydrated = await Promise.all(records.map((r) => hydrateRecordPhotos(r)));
+  renderFlaggedItemsModal(hydrated);
+}
+
+// Shows only the flagged ("No") rows, across one or more submissions —
+// no full 65+ item questionnaire, no landing on History first. One record
+// means a single day's flags; more than one (e.g. from a week's worth of
+// submissions) shows every flagged row across them, each labeled by date.
+function renderFlaggedItemsModal(records) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  const multi = records.length > 1;
+
+  const flaggedRows = [];
+  for (const record of records) {
+    for (const group of CHECKLIST_GROUPS) {
+      for (const section of group.sections) {
+        for (const item of section.items) {
+          const a = record.answers?.[item.id];
+          if (a?.value === "no") flaggedRows.push({ record, item, a });
+        }
+      }
+    }
+  }
+
+  const rowsHtml = flaggedRows.length
+    ? flaggedRows
+        .map(
+          ({ record, item, a }) => `
+          <div class="detail-row detail-row-flagged">
+            <div class="detail-row-main">
+              <span class="detail-item-text">${multi ? `<span class="detail-flagged-date">${escapeHtml(record.date)}</span> — ` : ""}${item.id}. ${escapeHtml(tf(item))}</span>
+              <span class="badge badge-danger">${t("no")}</span>
+            </div>
+            <div class="detail-row-body">
+              ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
+              ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
+            </div>
+          </div>`
+        )
+        .join("")
+    : `<p>${t("noFlaggedItemsFound")}</p>`;
+
+  const first = records[0];
+  const headerLabel = multi
+    ? `${escapeHtml(storeLabel(first.storeNumber, first.storeName))} — ${t("flaggedItems")}`
+    : `${escapeHtml(storeLabel(first.storeNumber, first.storeName))} — ${escapeHtml(first.date)}`;
+
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3 style="margin:0;">${headerLabel}</h3>
+        <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
+      </div>
+      ${!multi ? `<p style="color:var(--text-muted); margin-top:0;">${t("conductedByColumn")}: ${escapeHtml(first.conductedBy)}</p>` : ""}
+      ${rowsHtml}
+      ${!multi ? `<button type="button" class="text-link" id="modal-delete-submission" style="color:var(--danger); margin-top:14px;">${t("deleteSubmission")}</button>` : ""}
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+  const deleteBtn = backdrop.querySelector("#modal-delete-submission");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async (e) => {
+      if (!confirm(t("confirmDeleteSubmission", { store: first.storeNumber, date: first.date }))) return;
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = t("loadingButton");
+      await deleteSubmission(first);
+      backdrop.remove();
+      refreshCurrentTab();
+    });
+  }
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) {
+      backdrop.remove();
+      return;
+    }
+    const thumb = e.target.closest("img[data-lightbox]");
+    if (thumb) openLightbox(thumb.dataset.lightbox);
+  });
+}
+
 async function runHistorySearch(autoOpenFlagged = false) {
   const storeInputEl = root.querySelector("#hist-store-input");
   const storeText = storeInputEl ? storeInputEl.value.trim() : "";
@@ -567,7 +651,8 @@ async function runHistorySearch(autoOpenFlagged = false) {
       btn.disabled = true;
       btn.textContent = t("loadingButton");
       try {
-        await openHistoryRecord(record, { expandFlagged: Boolean(btn.dataset.viewFlagged) });
+        if (btn.dataset.viewFlagged) await openFlaggedOnly([record]);
+        else await openHistoryRecord(record);
       } finally {
         btn.disabled = false;
         btn.textContent = originalLabel;
@@ -579,11 +664,10 @@ async function runHistorySearch(autoOpenFlagged = false) {
     const flaggedRecords = lastHistoryResults.filter(
       (r) => Object.values(r.answers || {}).filter((a) => a.value === "no").length > 0
     );
-    // Only one submission actually has flags in this range — jump straight
-    // to it instead of making the admin find and tap it themselves. With
-    // more than one, there's no single record to guess, so leave the
-    // filtered list for them to pick from.
-    if (flaggedRecords.length === 1) openHistoryRecord(flaggedRecords[0], { expandFlagged: true });
+    // Straight to the flagged items themselves, across every submission
+    // in this range that has any — not to this filtered History list
+    // (still here underneath, reachable by closing the modal).
+    if (flaggedRecords.length > 0) openFlaggedOnly(flaggedRecords);
   }
 }
 

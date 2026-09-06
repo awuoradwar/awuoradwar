@@ -271,6 +271,7 @@ tr:last-child td { border-bottom: none; }
 .detail-row-flagged .detail-item-text { color: var(--danger); }
 .detail-row-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .detail-row-body.collapsed { display: none; }
+.detail-flagged-date { color: var(--text-muted); font-weight: 400; }
 
 .hint-banner { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--text-muted); }
 
