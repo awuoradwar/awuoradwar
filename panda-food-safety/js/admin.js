@@ -354,11 +354,18 @@ async function renderWeeklyTab() {
     })
     .sort((a, b) => a.doneDays - b.doneDays || b.flagged - a.flagged || Number(a.store.number) - Number(b.store.number));
 
+  const totalPossibleDays = storesCache.length * 7;
+  const totalDoneDays = rows.reduce((sum, r) => sum + r.doneDays, 0);
+  const percentComplete = totalPossibleDays > 0 ? Math.round((totalDoneDays / totalPossibleDays) * 100) : 0;
+
   content.innerHTML = `
     <div class="card">
       <div class="week-nav-row">
         <button class="btn btn-sm btn-secondary" id="btn-week-prev">${t("previousWeek")}</button>
-        <strong class="week-range-label">${escapeHtml(formatWeekRangeLabel(from, to))}</strong>
+        <div class="week-center">
+          <span class="week-range-label">${escapeHtml(formatWeekRangeLabel(from, to))}</span>
+          <span class="week-percent">${percentComplete}%</span>
+        </div>
         <button class="btn btn-sm btn-secondary" id="btn-week-next" ${weeklyOffset === 0 ? "disabled" : ""}>${t("nextWeek")}</button>
       </div>
     </div>
