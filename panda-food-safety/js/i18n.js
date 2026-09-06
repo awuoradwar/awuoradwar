@@ -49,6 +49,7 @@ const STRINGS = {
   loginButton: { en: "Log In", es: "Iniciar Sesión" },
   logoutButton: { en: "Log Out", es: "Cerrar Sesión" },
   loginError: { en: "Incorrect email or password.", es: "Correo electrónico o contraseña incorrectos." },
+  requestTimedOut: { en: "This is taking too long. Check your internet connection and try again.", es: "Esto está tardando demasiado. Verifique su conexión a internet e intente de nuevo." },
   emailAlreadyInUse: { en: "An account already exists for this email. Try logging in instead — use \"Forgot password?\" on the login screen if you don't remember it.", es: "Ya existe una cuenta con este correo. Intente iniciar sesión — use \"¿Olvidó su contraseña?\" en la pantalla de inicio de sesión si no la recuerda." },
   forgotPassword: { en: "Forgot password?", es: "¿Olvidó su contraseña?" },
   forgotPasswordNeedsEmail: { en: "Enter your email above first, then tap \"Forgot password?\" again.", es: "Ingrese su correo electrónico arriba primero, luego toque \"¿Olvidó su contraseña?\" de nuevo." },

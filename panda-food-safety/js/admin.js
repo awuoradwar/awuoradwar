@@ -192,6 +192,18 @@ function ensureAutoDateRefresh() {
   }, 60000);
 }
 
+// A blocked or very slow network (store wifi filtering Google's auth
+// endpoints, a dead connection, etc.) can leave a Firebase Auth call
+// pending indefinitely — with no built-in timeout, the button is stuck
+// on "Loading..." forever with no way to know why. This bounds any
+// such call so the UI always recovers with a clear message instead.
+function withTimeout(promise, ms = 20000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ]);
+}
+
 function friendlySignUpError(err) {
   if (err.code === "auth/email-already-in-use") return t("emailAlreadyInUse");
   return err.message;
@@ -228,10 +240,14 @@ function renderLoginScreen(mode, message, messageIsError = true) {
     btn.disabled = true;
     btn.textContent = t("loadingButton");
     try {
-      if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
-      else await signInWithEmailAndPassword(auth, email, password);
+      if (isSignUp) await withTimeout(createUserWithEmailAndPassword(auth, email, password));
+      else await withTimeout(signInWithEmailAndPassword(auth, email, password));
     } catch (err) {
-      renderLoginScreen(mode, isSignUp ? friendlySignUpError(err) : t("loginError"));
+      if (err.message === "timeout") {
+        renderLoginScreen(mode, t("requestTimedOut"));
+      } else {
+        renderLoginScreen(mode, isSignUp ? friendlySignUpError(err) : t("loginError"));
+      }
     }
   });
   const forgotBtn = root.querySelector("#btn-forgot-password");
@@ -243,9 +259,14 @@ function renderLoginScreen(mode, message, messageIsError = true) {
         return;
       }
       try {
-        await sendPasswordResetEmail(auth, email);
+        await withTimeout(sendPasswordResetEmail(auth, email));
       } catch (err) {
-        // Don't reveal whether the email has an account either way.
+        // A real timeout is worth surfacing; anything else (including
+        // "no such account") stays silent so existence isn't revealed.
+        if (err.message === "timeout") {
+          renderLoginScreen(mode, t("requestTimedOut"));
+          return;
+        }
       }
       renderLoginScreen(mode, t("passwordResetSent", { email }), false);
     });

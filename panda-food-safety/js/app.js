@@ -19,6 +19,7 @@ let initialized = false;
 let root;
 let stores = [];
 let storesLoaded = false;
+let storesLoadError = null;
 
 // Current in-progress submission, once a walkthrough is started.
 let session = null; // { docId, storeNumber, storeName, conductedBy, answers, additionalNotes }
@@ -39,7 +40,17 @@ export async function initAssociateApp() {
   // Reading the store list requires being signed in (even anonymously) —
   // has to happen before subscribing, not just before "Start Walkthrough",
   // or the very first read is rejected and the dropdown never populates.
-  await ensureAuth();
+  // A blocked/dead network (store wifi filtering Google's auth
+  // endpoints, no signal, etc.) can otherwise leave this pending forever
+  // with the store field stuck disabled and no explanation, so bound it
+  // and show a visible error instead of hanging silently.
+  try {
+    await withTimeout(ensureAuth());
+  } catch (err) {
+    storesLoadError = err.message === "timeout" ? t("requestTimedOut") : String(err.message || err);
+    renderSetupScreen();
+    return;
+  }
 
   onSnapshot(query(collection(db, "stores")), (snap) => {
     // number is a string field, so Firestore's own ordering would sort it
@@ -240,13 +251,15 @@ function renderSetupScreen() {
         <div class="field">
           <label>${t("storeLabel")}</label>
           ${
-            storesLoaded && stores.length === 0
-              ? `<div class="hint-banner">${t("noStoresConfigured")}</div>`
-              : `<div class="store-combo">
-                  <input type="text" id="store-select-input" autocomplete="off" placeholder="${t("storeSelectPlaceholder")}" ${storesLoaded ? "" : "disabled"} />
-                  <input type="hidden" id="store-select" value="" />
-                  <div class="store-combo-list" id="store-select-list" hidden></div>
-                </div>`
+            storesLoadError
+              ? `<div class="hint-banner">${escapeHtml(storesLoadError)}<br/><button type="button" class="btn btn-sm btn-secondary" style="margin-top:8px;" onclick="location.reload()">${t("reloadButton")}</button></div>`
+              : storesLoaded && stores.length === 0
+                ? `<div class="hint-banner">${t("noStoresConfigured")}</div>`
+                : `<div class="store-combo">
+                    <input type="text" id="store-select-input" autocomplete="off" placeholder="${t("storeSelectPlaceholder")}" ${storesLoaded ? "" : "disabled"} />
+                    <input type="hidden" id="store-select" value="" />
+                    <div class="store-combo-list" id="store-select-list" hidden></div>
+                  </div>`
           }
           <div id="weekly-summary-toggle"></div>
         </div>
@@ -338,6 +351,17 @@ function renderSetupScreen() {
       startBtn.textContent = t("startButton");
     }
   });
+}
+
+// A blocked or very slow network can leave a Firebase call pending
+// indefinitely — with no built-in timeout, whatever depends on it (the
+// store dropdown, an in-progress save) is stuck with no explanation.
+// This bounds any such call so the UI always recovers with a message.
+function withTimeout(promise, ms = 20000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ]);
 }
 
 async function ensureAuth() {
