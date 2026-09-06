@@ -203,3 +203,35 @@ export function getSubmissionsForDate(storeId: string, date: string): ProcedureS
     )
     .all(storeId, date) as ProcedureSubmission[];
 }
+
+/** Every submission for one area across a date range, inclusive -- the raw
+ * material for the per-station week view (who covered Opening/Closing each
+ * day). A day can have more than one submission for the same shift (two
+ * associates split a station, or a genuine re-submit); the caller groups
+ * these by date+shift_type rather than assuming exactly one. */
+export function getSubmissionsForAreaInRange(areaId: string, storeId: string, startDate: string, endDate: string): ProcedureSubmission[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT * FROM procedure_submissions WHERE area_id = ? AND store_id = ? AND submitted_date BETWEEN ? AND ? ORDER BY created_at ASC`
+    )
+    .all(areaId, storeId, startDate, endDate) as ProcedureSubmission[];
+}
+
+/** Which of this store's active areas had NO submission for a given
+ * shift_type on a given (already-past) date -- the "flagged as missed"
+ * signal on the area list itself, so a manager sees a problem without
+ * drilling into every station. Only ever called with a date that has
+ * already fully happened (yesterday, not today -- today's closing simply
+ * hasn't happened yet, which is not the same thing as missed). */
+export function getMissedAreasForDate(storeId: string, date: string, shiftType: ProcedureShiftType): string[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT a.id FROM procedure_areas a
+       WHERE a.store_id = ? AND a.active = 1
+       AND NOT EXISTS (SELECT 1 FROM procedure_submissions s WHERE s.area_id = a.id AND s.shift_type = ? AND s.submitted_date = ?)`
+    )
+    .all(storeId, shiftType, date) as Array<{ id: string }>;
+  return rows.map((r) => r.id);
+}
