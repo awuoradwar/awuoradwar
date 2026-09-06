@@ -166,6 +166,7 @@ const en = {
   more_meal_replacements: "Meal Replacements",
   more_weekly_summary: "Weekly Summary",
   more_training: "New Associate Training",
+  more_procedures: "Opening/Closing Procedures",
   more_inventory: "Inventory & Maintenance",
   more_catering: "Catering",
   more_borrowed_items: "Borrowed / Lent",

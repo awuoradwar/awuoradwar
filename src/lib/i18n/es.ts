@@ -168,6 +168,7 @@ const es: Record<DictKeys, string> = {
   more_meal_replacements: "Reemplazos de Comida",
   more_weekly_summary: "Resumen Semanal",
   more_training: "Capacitación de Nuevos Asociados",
+  more_procedures: "Procedimientos de Apertura/Cierre",
   more_inventory: "Inventario y Mantenimiento",
   more_catering: "Catering",
   more_borrowed_items: "Préstamos",

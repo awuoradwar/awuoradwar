@@ -49,6 +49,10 @@ create table stores (
   gem_accuracy_goal numeric,
   gem_updated_by uuid, -- fk to users(id) added below, once that table exists
   gem_updated_at timestamptz,
+  -- Long random token embedding this store into the public opening/closing
+  -- procedures link -- null until a GM generates one. Regenerating
+  -- invalidates the old link/QR code entirely.
+  procedures_token text unique,
   created_at timestamptz not null default now()
 );
 
@@ -323,6 +327,49 @@ create table cleaning_tasks (
   last_due_date text, -- store-local YYYY-MM-DD this task's current open occurrence became due; drives missed-occurrence detection on the next reset
   created_at timestamptz not null default now()
 );
+
+-- Opening/closing station procedures -- separate from cleaning_areas/
+-- cleaning_tasks above (the weekly deep-clean rotation); this is a
+-- per-shift, every-day checklist an associate self-reports through the
+-- public link/QR at stores.procedures_token, no login.
+create table procedure_areas (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  name text not null,
+  category text not null check (category in ('FOH','BOH','PATIO_WINDOWS')),
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  created_by uuid references users(id),
+  created_at timestamptz not null default now()
+);
+
+create table procedure_items (
+  id uuid primary key default gen_random_uuid(),
+  area_id uuid not null references procedure_areas(id),
+  shift_type text not null check (shift_type in ('OPENING','CLOSING')),
+  text text not null,
+  text_es text,
+  sort_order integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- One associate's self-reported completion, submitted through the public
+-- link -- this row IS the completion record (no PIC verification step).
+-- items_json is a frozen snapshot of exactly what was checked, so a later
+-- edit to procedure_items never rewrites what was actually submitted.
+create table procedure_submissions (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references stores(id),
+  area_id uuid not null references procedure_areas(id),
+  shift_type text not null check (shift_type in ('OPENING','CLOSING')),
+  associate_name text not null,
+  items_json jsonb not null,
+  notes text,
+  submitted_date date not null,
+  created_at timestamptz not null default now()
+);
+create index idx_procedure_submissions_store_date on procedure_submissions(store_id, submitted_date);
 
 create table attendance_events (
   id uuid primary key default gen_random_uuid(),
@@ -742,6 +789,9 @@ alter table task_events enable row level security;
 alter table task_notes enable row level security;
 alter table cleaning_areas enable row level security;
 alter table cleaning_tasks enable row level security;
+alter table procedure_areas enable row level security;
+alter table procedure_items enable row level security;
+alter table procedure_submissions enable row level security;
 alter table attendance_events enable row level security;
 alter table guest_recoveries enable row level security;
 alter table borrowed_items enable row level security;
@@ -800,6 +850,25 @@ create policy store_member_all on cleaning_areas for all using (is_store_member(
 create policy store_member_all on cleaning_tasks for all using (
   exists (select 1 from cleaning_areas a where a.id = area_id and is_store_member(a.store_id))
 );
+-- Areas/checklist items are GM-managed, store-member-readable, same shape
+-- as training_items. Submissions come in through the public link, which
+-- runs as a server action validated against stores.procedures_token, not a
+-- client-side query bound by RLS -- these policies cover any logged-in
+-- reader/writer, and future direct-client access if that ever changes.
+create policy store_member_read on procedure_areas for select using (is_store_member(store_id));
+create policy gm_manage_procedure_areas on procedure_areas for insert with check (is_store_gm(store_id));
+create policy gm_update_procedure_areas on procedure_areas for update using (is_store_gm(store_id));
+create policy store_member_read on procedure_items for select using (
+  exists (select 1 from procedure_areas a where a.id = area_id and is_store_member(a.store_id))
+);
+create policy gm_manage_procedure_items on procedure_items for insert with check (
+  exists (select 1 from procedure_areas a where a.id = area_id and is_store_gm(a.store_id))
+);
+create policy gm_update_procedure_items on procedure_items for update using (
+  exists (select 1 from procedure_areas a where a.id = area_id and is_store_gm(a.store_id))
+);
+create policy store_member_read on procedure_submissions for select using (is_store_member(store_id));
+create policy store_member_insert on procedure_submissions for insert with check (is_store_member(store_id));
 create policy store_member_all on attendance_events for all using (is_store_member(store_id));
 create policy store_member_all on guest_recoveries for all using (is_store_member(store_id));
 create policy store_member_all on borrowed_items for all using (is_store_member(store_id));

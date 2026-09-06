@@ -17,6 +17,7 @@ export default async function MorePage() {
         { href: "/more/work-orders", key: "more_work_orders", icon: "wrench" },
         { href: "/more/meal-replacements", key: "more_meal_replacements", icon: "utensils" },
         { href: "/more/cleaning", key: "more_cleaning", icon: "sparkle" },
+        { href: "/more/procedures", key: "more_procedures", icon: "fileText" },
         { href: "/more/acknowledgements", key: "more_acknowledgements", icon: "checkCircle" },
         { href: "/more/training", key: "more_training", icon: "graduationCap" },
         { href: "/more/inventory", key: "more_inventory", icon: "box" },

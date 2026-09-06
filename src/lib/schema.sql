@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS stores (
   gem_accuracy_goal REAL,
   gem_updated_by TEXT REFERENCES users(id),
   gem_updated_at TEXT,
+  -- Long random token embedding this store into the public opening/closing
+  -- procedures link (src/app/procedures/[token]) -- NULL until a GM
+  -- generates one from More > Procedures. Regenerating invalidates the old
+  -- link/QR code entirely (anyone who still has the old one gets "link no
+  -- longer valid"), for when a printed QR code needs to be retired.
+  procedures_token TEXT UNIQUE,
   created_at TEXT NOT NULL
 );
 
@@ -359,6 +365,59 @@ CREATE TABLE IF NOT EXISTS cleaning_task_items (
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+
+-- Opening/closing station procedures -- deliberately separate from the
+-- cleaning_areas/cleaning_tasks above (that's the weekly deep-clean
+-- rotation); this is a per-shift, every-day checklist an associate
+-- self-reports through the public link/QR code at procedures_token, no
+-- login. GM-defined station list, grouped into the three categories
+-- associates actually think in.
+CREATE TABLE IF NOT EXISTS procedure_areas (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  name TEXT NOT NULL,
+  category TEXT NOT NULL, -- FOH | BOH | PATIO_WINDOWS
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL
+);
+
+-- The checklist steps for one area, specific to whichever shift (opening
+-- vs. closing looks after genuinely different things even for the same
+-- station) -- GM-editable, same add/reorder/deactivate shape as
+-- training_items.
+CREATE TABLE IF NOT EXISTS procedure_items (
+  id TEXT PRIMARY KEY,
+  area_id TEXT NOT NULL REFERENCES procedure_areas(id),
+  shift_type TEXT NOT NULL, -- OPENING | CLOSING
+  text TEXT NOT NULL,
+  text_es TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
+
+-- One associate's self-reported completion of one area's checklist for one
+-- shift, submitted through the public link -- this row IS the completion
+-- record (no separate PIC verification step, by design: the point is
+-- taking the knock-on-the-office-door check-in out of a busy manager's
+-- hands, not adding a second step back in). items_json is a frozen
+-- snapshot of exactly what was checked at submission time, so a later edit
+-- to procedure_items can never rewrite what an associate actually
+-- submitted that day.
+CREATE TABLE IF NOT EXISTS procedure_submissions (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES stores(id),
+  area_id TEXT NOT NULL REFERENCES procedure_areas(id),
+  shift_type TEXT NOT NULL, -- OPENING | CLOSING
+  associate_name TEXT NOT NULL,
+  items_json TEXT NOT NULL, -- JSON array of {text, textEs, checked}
+  notes TEXT,
+  submitted_date TEXT NOT NULL, -- YYYY-MM-DD store-local, the shift day this was for
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_procedure_submissions_store_date ON procedure_submissions(store_id, submitted_date);
 
 CREATE TABLE IF NOT EXISTS attendance_events (
   id TEXT PRIMARY KEY,
