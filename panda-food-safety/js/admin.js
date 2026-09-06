@@ -2,6 +2,7 @@ import {
   auth,
   db,
   OWNER_EMAIL,
+  persistenceReady,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -246,6 +247,7 @@ function renderLoginScreen(mode, message, messageIsError = true) {
     btn.disabled = true;
     btn.textContent = t("loadingButton");
     try {
+      await persistenceReady;
       if (isSignUp) await withTimeout(createUserWithEmailAndPassword(auth, email, password));
       else await withTimeout(signInWithEmailAndPassword(auth, email, password));
     } catch (err) {

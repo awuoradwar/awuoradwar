@@ -53,17 +53,22 @@ const db = getFirestore(app);
 // time they open the app, short of explicitly logging out or the
 // browser clearing its own site data.
 //
-// Must be awaited (top-level await — every importer of this module
-// waits for it) before any consumer calls signInAnonymously/
-// signInWithEmailAndPassword/etc: Firebase has a documented race where
-// a sign-in call issued while setPersistence() is still pending can
-// silently fail.
-await setPersistence(auth, browserLocalPersistence).catch(() => {});
+// Exported as a promise rather than awaited at the top level of this
+// module: top-level await is a parser-level feature — on a browser old
+// enough not to support it, the whole module (and everything that
+// imports it) fails to even load, with no error visible to whoever's
+// holding the phone, just a blank page. Every consumer that signs in
+// awaits this first instead, which needs nothing beyond ordinary
+// async/await inside a function — supported everywhere ES modules are.
+// It guards against a real, documented Firebase race: a sign-in call
+// issued while setPersistence() is still pending can silently fail.
+const persistenceReady = setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 export {
   auth,
   db,
   OWNER_EMAIL,
+  persistenceReady,
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,

@@ -1,6 +1,7 @@
 import {
   auth,
   db,
+  persistenceReady,
   signInAnonymously,
   onAuthStateChanged,
   doc,
@@ -366,6 +367,7 @@ function withTimeout(promise, ms = 20000) {
 
 async function ensureAuth() {
   if (auth.currentUser) return auth.currentUser;
+  await persistenceReady;
   return new Promise((resolve, reject) => {
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user) {
