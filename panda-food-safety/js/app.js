@@ -31,6 +31,40 @@ const saveTimers = {};
 // open at a time). Set to the first incomplete section whenever a
 // walkthrough starts/resumes; null means every section is complete.
 let expandedSectionId = null;
+let autoResumeAttempted = false;
+
+// Remembers which store/name a walkthrough is in progress for, so a
+// page reload (including the "new version available" reload prompt)
+// can drop someone straight back into it instead of back at Setup —
+// the actual answers already live in Firestore either way (this is
+// only a pointer to which draft to reopen, not the data itself).
+const ACTIVE_SESSION_KEY = "pfs-active-session";
+
+function saveActiveSessionRef(storeNumber, conductedBy) {
+  try {
+    localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({ storeNumber, conductedBy, date: todayDateString() }));
+  } catch {}
+}
+
+function loadActiveSessionRef() {
+  try {
+    const raw = localStorage.getItem(ACTIVE_SESSION_KEY);
+    if (!raw) return null;
+    const ref = JSON.parse(raw);
+    // A reference from a previous business day would otherwise silently
+    // reopen an old, already-finished walkthrough instead of Setup.
+    if (ref.date !== todayDateString()) return null;
+    return ref;
+  } catch {
+    return null;
+  }
+}
+
+function clearActiveSessionRef() {
+  try {
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
+  } catch {}
+}
 
 export async function initAssociateApp() {
   if (initialized) return;
@@ -58,6 +92,20 @@ export async function initAssociateApp() {
     // lexicographically ("100" before "99") — sort numerically instead.
     stores = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => Number(a.number) - Number(b.number));
     storesLoaded = true;
+    if (!session && !autoResumeAttempted) {
+      autoResumeAttempted = true;
+      const ref = loadActiveSessionRef();
+      const store = ref && stores.find((s) => String(s.number) === String(ref.storeNumber));
+      if (store) {
+        root.innerHTML = `${topBarHtml()}<main><div class="card">${t("loadingButton")}</div></main>`;
+        beginWalkthrough(store, ref.conductedBy).catch((err) => {
+          console.error(err);
+          storesLoadError = String(err.message || err);
+          renderSetupScreen();
+        });
+        return;
+      }
+    }
     if (!session) renderSetupScreen();
   });
 
@@ -99,7 +147,10 @@ function wireStoreCombo({ inputEl, hiddenEl, listEl, stores, allLabel, valueKey 
 
   function renderList(filterText) {
     const q = filterText.trim();
-    const matches = currentMatches(filterText).slice(0, 8);
+    // The list scrolls (max-height + overflow-y in CSS), so there's no
+    // need to truncate — capping here just hid real stores past the
+    // 8th once a business has more locations than that.
+    const matches = currentMatches(filterText);
 
     const allRow = q || !allLabel ? "" : `<button type="button" class="store-combo-item store-combo-all" data-all="1">${escapeHtml(allLabel)}</button>`;
     listEl.innerHTML =
@@ -407,6 +458,11 @@ async function beginWalkthrough(store, conductedBy) {
   const date = todayDateString();
   const docId = `${store.number}_${date}`;
   const ref = doc(db, "submissions", docId);
+  // Saved before knowing which screen this leads to (in-progress,
+  // already-submitted, etc.) — replaying this same call on reload is
+  // what actually decides that, so it just needs to point at the right
+  // store/day.
+  saveActiveSessionRef(store.number, conductedBy);
   const snap = await getDoc(ref);
 
   if (snap.exists() && snap.data().submitted) {
@@ -466,6 +522,7 @@ function renderAlreadySubmittedScreen(store, docId, data) {
   wireLangToggle(() => renderAlreadySubmittedScreen(store, docId, data));
   root.querySelector("#btn-start-over").addEventListener("click", () => {
     session = null;
+    clearActiveSessionRef();
     renderSetupScreen();
   });
   root.querySelector("#btn-edit-anyway").addEventListener("click", async () => {
@@ -873,6 +930,7 @@ function renderConfirmScreen(flaggedCount) {
   wireLangToggle(() => renderConfirmScreen(flaggedCount));
   root.querySelector("#btn-done").addEventListener("click", () => {
     session = null;
+    clearActiveSessionRef();
     renderSetupScreen();
   });
 }

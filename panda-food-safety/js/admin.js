@@ -28,9 +28,28 @@ import {
 // once today reaches the date, so it's safe to leave in place after launch.
 const LAUNCH_DATE = "2026-09-07";
 
+// Remembers which tab was open across a reload (including the "new
+// version available" reload prompt), so it lands back where it was
+// instead of always resetting to Today's Status.
+const ACTIVE_TAB_KEY = "pfs-admin-active-tab";
+
+function loadActiveTab() {
+  try {
+    return localStorage.getItem(ACTIVE_TAB_KEY) || "today";
+  } catch {
+    return "today";
+  }
+}
+
+function saveActiveTab(tab) {
+  try {
+    localStorage.setItem(ACTIVE_TAB_KEY, tab);
+  } catch {}
+}
+
 let initialized = false;
 let root;
-let activeTab = "today";
+let activeTab = loadActiveTab();
 let storesCache = [];
 let storesUnsub = null;
 let lastHistoryResults = [];
@@ -88,7 +107,10 @@ function wireStoreCombo({ inputEl, hiddenEl, listEl, stores, allLabel, valueKey 
 
   function renderList(filterText) {
     const q = filterText.trim();
-    const matches = currentMatches(filterText).slice(0, 8);
+    // The list scrolls (max-height + overflow-y in CSS), so there's no
+    // need to truncate — capping here just hid real stores past the
+    // 8th once a business has more locations than that.
+    const matches = currentMatches(filterText);
 
     const allRow = q || !allLabel ? "" : `<button type="button" class="store-combo-item store-combo-all" data-all="1">${escapeHtml(allLabel)}</button>`;
     listEl.innerHTML =
@@ -366,6 +388,7 @@ function renderDashboard() {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.tab;
       if (activeTab === "weekly") weeklyOffset = 0;
+      saveActiveTab(activeTab);
       renderDashboard();
     });
   });
