@@ -210,8 +210,10 @@ function renderNotAdminScreen() {
 
 function ensureStoresSubscription() {
   if (storesUnsub) return;
-  storesUnsub = onSnapshot(query(collection(db, "stores"), orderBy("number")), (snap) => {
-    storesCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  storesUnsub = onSnapshot(query(collection(db, "stores")), (snap) => {
+    // number is a string field, so Firestore's own ordering would sort it
+    // lexicographically ("100" before "99") — sort numerically instead.
+    storesCache = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => Number(a.number) - Number(b.number));
     if (activeTab === "today") renderTodayTab();
     if (activeTab === "stores") renderManageStoresTab();
   });
@@ -341,7 +343,7 @@ async function renderWeeklyTab() {
       const b = byStore[s.number] || { doneDays: new Set(), flagged: 0, lastSubmittedAt: null };
       return { store: s, doneDays: b.doneDays.size, flagged: b.flagged, lastSubmittedAt: b.lastSubmittedAt };
     })
-    .sort((a, b) => a.doneDays - b.doneDays || b.flagged - a.flagged);
+    .sort((a, b) => a.doneDays - b.doneDays || b.flagged - a.flagged || Number(a.store.number) - Number(b.store.number));
 
   content.innerHTML = `
     <div class="card">

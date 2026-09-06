@@ -9,7 +9,6 @@ import {
   updateDoc,
   collection,
   onSnapshot,
-  orderBy,
   where,
   query,
   getDocs,
@@ -42,8 +41,10 @@ export async function initAssociateApp() {
   // or the very first read is rejected and the dropdown never populates.
   await ensureAuth();
 
-  onSnapshot(query(collection(db, "stores"), orderBy("number")), (snap) => {
-    stores = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  onSnapshot(query(collection(db, "stores")), (snap) => {
+    // number is a string field, so Firestore's own ordering would sort it
+    // lexicographically ("100" before "99") — sort numerically instead.
+    stores = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => Number(a.number) - Number(b.number));
     storesLoaded = true;
     if (!session) renderSetupScreen();
   });
