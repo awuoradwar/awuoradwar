@@ -194,10 +194,35 @@ stores.
   lot. That's deliberate, to stay safely under Firestore's 1 MiB
   per-document limit.
 
-## Editing the checklist or wording
+## Editing the checklist
 
-- `js/checklist-data.js` — the 65 items and section headers, English and
-  Spanish, transcribed from the paper form. Each item's `id` is also its
-  Firestore field key, so don't renumber existing items — add new ones
-  with new ids instead.
-- `js/i18n.js` — every other UI label/button, English and Spanish.
+Any admin can edit the live checklist from **Manage Checklist** —
+no code change or redeploy needed. Per question, you can:
+
+- **Hide** it — removes it from the next walkthrough someone starts.
+  Past submissions that already answered it are unaffected: the admin
+  detail view and CSV export still show that answer, just labeled as no
+  longer on the checklist. Hiding is reversible (tap **Show** to bring
+  it back) — it never deletes historical data.
+- **Edit** its wording (English and Spanish) or change whether it needs
+  a photo (never / only on a "No" / always).
+- **Add** a brand-new question to any section, with its own English and
+  Spanish wording. This is the tool to use to trim the walkthrough down
+  — pare each section to what's actually necessary, remove anything
+  duplicated elsewhere, and reword anything unclear, aiming for however
+  long you want the walkthrough to take.
+
+`js/checklist-data.js` is still the starting-point list the app ships
+with (the original 65 items transcribed from the paper form) — it's
+what Manage Checklist edits are layered on top of, not something you
+need to hand-edit day to day. `js/i18n.js` holds every other UI label.
+
+**One-time setup after first deploying this feature:** the
+`checklistOverrides` collection needs a Firestore rule allowing admins
+to write to it and everyone signed in to read it (already in
+`firestore.rules` in this repo) — but rule changes aren't part of the
+GitHub Actions auto-deploy (that only redeploys Hosting; see "First
+composite-index search" below for why). Copy the contents of
+`firestore.rules` into the Firebase Console under **Firestore Database
+→ Rules** and click **Publish** once. Skip this and Manage Checklist
+will show permission-denied errors instead of saving.

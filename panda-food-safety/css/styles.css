@@ -165,6 +165,17 @@ textarea { resize: vertical; min-height: 70px; }
 .item-number { color: var(--text-muted); font-weight: 600; margin-right: 4px; }
 
 .segmented { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+.checklist-item-row {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--surface);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.checklist-item-row.inactive { opacity: 0.55; }
+.checklist-item-row.checklist-item-editing { flex-direction: column; align-items: stretch; }
+.checklist-item-main { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
+.checklist-item-text { font-size: 14px; }
+.checklist-item-meta { display: flex; gap: 6px; flex-wrap: wrap; }
+.checklist-item-actions { display: flex; gap: 6px; flex-wrap: wrap; flex-shrink: 0; }
 .segmented button {
   border: 2px solid var(--border); background: var(--surface); color: var(--text);
   border-radius: 8px; padding: 12px 8px; font-weight: 600; font-size: 15px; cursor: pointer; min-height: 48px;

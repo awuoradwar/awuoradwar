@@ -37,6 +37,9 @@ let isOwnerSession = false;
 let editingStoreId = null;
 let adminsCache = [];
 let adminsUnsub = null;
+let expandedChecklistSectionId = null;
+let editingChecklistItemId = null;
+let addingItemToSectionId = null;
 let weeklyOffset = 0;
 
 export function initAdminApp() {
@@ -160,6 +163,7 @@ async function handleAuthChange(user) {
     }
   }
   ensureStoresSubscription();
+  ensureChecklistSubscription();
   renderDashboard();
 }
 
@@ -250,6 +254,18 @@ function ensureStoresSubscription() {
   });
 }
 
+let checklistUnsub = null;
+
+function ensureChecklistSubscription() {
+  if (checklistUnsub) return;
+  checklistUnsub = onSnapshot(collection(db, "checklistOverrides"), (snap) => {
+    const overridesMap = {};
+    snap.forEach((d) => (overridesMap[d.id] = d.data()));
+    applyChecklistOverrides(overridesMap);
+    if (activeTab === "checklist") renderManageChecklistTab();
+  });
+}
+
 // ---------- Dashboard shell ----------
 
 function renderDashboard() {
@@ -265,6 +281,7 @@ function renderDashboard() {
         <button class="btn btn-sm ${activeTab === "weekly" ? "btn-primary" : "btn-secondary"}" data-tab="weekly">${t("weeklySummaryTitle")}</button>
         <button class="btn btn-sm ${activeTab === "history" ? "btn-primary" : "btn-secondary"}" data-tab="history">${t("historyTitle")}</button>
         <button class="btn btn-sm ${activeTab === "stores" ? "btn-primary" : "btn-secondary"}" data-tab="stores">${t("manageStoresTitle")}</button>
+        <button class="btn btn-sm ${activeTab === "checklist" ? "btn-primary" : "btn-secondary"}" data-tab="checklist">${t("manageChecklistTitle")}</button>
         ${isOwnerSession ? `<button class="btn btn-sm ${activeTab === "admins" ? "btn-primary" : "btn-secondary"}" data-tab="admins">${t("manageAdminsTitle")}</button>` : ""}
       </div>
       <div id="tab-content"></div>
@@ -283,6 +300,7 @@ function renderDashboard() {
   if (activeTab === "today") renderTodayTab();
   else if (activeTab === "weekly") renderWeeklyTab();
   else if (activeTab === "history") renderHistoryTab();
+  else if (activeTab === "checklist") renderManageChecklistTab();
   else if (activeTab === "admins" && isOwnerSession) renderManageAdminsTab();
   else renderManageStoresTab();
 }
@@ -559,14 +577,17 @@ function renderFlaggedItemsModal(records) {
   backdrop.className = "modal-backdrop";
   const multi = records.length > 1;
 
+  // Reads answer keys directly (with findItemDefinitionById for the
+  // wording) rather than walking the live CHECKLIST_GROUPS, so a flagged
+  // answer for a since-hidden or since-reworded question still shows up
+  // here — the aggregate flagged count elsewhere already counts it too.
   const flaggedRows = [];
   for (const record of records) {
-    for (const group of CHECKLIST_GROUPS) {
-      for (const section of group.sections) {
-        for (const item of section.items) {
-          const a = record.answers?.[item.id];
-          if (a?.value === "no") flaggedRows.push({ record, item, a });
-        }
+    for (const id of Object.keys(record.answers || {})) {
+      const a = record.answers[id];
+      if (a?.value === "no") {
+        const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}` };
+        flaggedRows.push({ record, item, a });
       }
     }
   }
@@ -577,7 +598,7 @@ function renderFlaggedItemsModal(records) {
           ({ record, item, a }) => `
           <div class="detail-row detail-row-flagged">
             <div class="detail-row-main">
-              <span class="detail-item-text">${multi ? `<span class="detail-flagged-date">${escapeHtml(record.date)}</span> — ` : ""}${item.id}. ${escapeHtml(tf(item))}</span>
+              <span class="detail-item-text">${multi ? `<span class="detail-flagged-date">${escapeHtml(record.date)}</span> — ` : ""}${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
               <span class="badge badge-danger">${t("no")}</span>
             </div>
             <div class="detail-row-body">
@@ -723,35 +744,54 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
   let firstFlaggedId = null;
 
   let sectionsHtml = "";
+  const renderedItemIds = new Set();
+
+  function renderDetailRow(item) {
+    renderedItemIds.add(String(item.id));
+    const a = record.answers?.[item.id] || {};
+    const value = a.value || null;
+    const isNo = value === "no";
+    const badgeClass = value === "yes" ? "badge-success" : value === "no" ? "badge-danger" : "badge-neutral";
+    const badgeLabel = value === "yes" ? t("yes") : value === "no" ? t("no") : value === "na" ? t("na") : "—";
+    const proofPhoto = item.alwaysPhoto && value === "yes" && a.photoUrl;
+    if (isNo && firstFlaggedId === null) firstFlaggedId = item.id;
+    return `
+      <div class="detail-row ${isNo ? "detail-row-flagged" : ""}" ${isNo ? `data-toggle-detail="${item.id}"` : ""} id="detail-row-${item.id}">
+        <div class="detail-row-main">
+          <span class="detail-item-text">${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
+          <span class="badge ${badgeClass}">${badgeLabel}</span>
+        </div>
+        ${
+          isNo
+            ? `<div class="detail-row-body ${expandFlagged ? "" : "collapsed"}" id="detail-body-${item.id}">
+                ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
+                ${a.note ? `<div class="detail-note"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}</div>` : ""}
+              </div>`
+            : proofPhoto
+              ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />`
+              : ""
+        }
+      </div>`;
+  }
+
   for (const group of CHECKLIST_GROUPS) {
     for (const section of group.sections) {
       sectionsHtml += `<div class="detail-section-title">${escapeHtml(tf(section))}</div>`;
       for (const item of section.items) {
-        const a = record.answers?.[item.id] || {};
-        const value = a.value || null;
-        const isNo = value === "no";
-        const badgeClass = value === "yes" ? "badge-success" : value === "no" ? "badge-danger" : "badge-neutral";
-        const badgeLabel = value === "yes" ? t("yes") : value === "no" ? t("no") : value === "na" ? t("na") : "—";
-        const proofPhoto = item.alwaysPhoto && value === "yes" && a.photoUrl;
-        if (isNo && firstFlaggedId === null) firstFlaggedId = item.id;
-        sectionsHtml += `
-          <div class="detail-row ${isNo ? "detail-row-flagged" : ""}" ${isNo ? `data-toggle-detail="${item.id}"` : ""} id="detail-row-${item.id}">
-            <div class="detail-row-main">
-              <span class="detail-item-text">${item.id}. ${escapeHtml(tf(item))}</span>
-              <span class="badge ${badgeClass}">${badgeLabel}</span>
-            </div>
-            ${
-              isNo
-                ? `<div class="detail-row-body ${expandFlagged ? "" : "collapsed"}" id="detail-body-${item.id}">
-                    ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
-                    ${a.note ? `<div class="detail-note"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}</div>` : ""}
-                  </div>`
-                : proofPhoto
-                  ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />`
-                  : ""
-            }
-          </div>`;
+        sectionsHtml += renderDetailRow(item);
       }
+    }
+  }
+
+  // A question hidden or reworded *after* this submission was recorded
+  // still has its answer in Firestore — show it in its own section
+  // rather than silently dropping historical data.
+  const leftoverIds = Object.keys(record.answers || {}).filter((id) => !renderedItemIds.has(String(id)));
+  if (leftoverIds.length > 0) {
+    sectionsHtml += `<div class="detail-section-title">${t("retiredQuestionsTitle")}</div>`;
+    for (const id of leftoverIds) {
+      const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}` };
+      sectionsHtml += renderDetailRow(item);
     }
   }
 
@@ -827,7 +867,19 @@ function openLightbox(url) {
 
 function exportCsv(rows) {
   if (!rows || rows.length === 0) return;
-  const itemIds = CHECKLIST_ITEMS_FLAT.map((it) => it.id);
+  // Union of today's checklist items and anything answered in these rows
+  // — a question removed after some of these submissions were recorded
+  // still gets its own column instead of silently losing that data.
+  const itemIds = [...CHECKLIST_ITEMS_FLAT.map((it) => it.id)];
+  const seen = new Set(itemIds.map(String));
+  for (const r of rows) {
+    for (const id of Object.keys(r.answers || {})) {
+      if (!seen.has(String(id))) {
+        seen.add(String(id));
+        itemIds.push(id);
+      }
+    }
+  }
   const header = ["date", "storeNumber", "storeName", "conductedBy", "submitted", ...itemIds.map((id) => `item_${id}`)];
   const csvRows = [header.join(",")];
   for (const r of rows) {
@@ -935,6 +987,244 @@ function renderManageStoresTab() {
       }
       editingStoreId = null;
       renderManageStoresTab();
+    });
+  });
+}
+
+// ---------- Manage Checklist ----------
+
+const PHOTO_TIER_NONE = "none";
+const PHOTO_TIER_ONFAIL = "onfail";
+const PHOTO_TIER_ALWAYS = "always";
+
+function photoTierOf(item) {
+  if (item.alwaysPhoto) return PHOTO_TIER_ALWAYS;
+  if (item.requiresPhoto) return PHOTO_TIER_ONFAIL;
+  return PHOTO_TIER_NONE;
+}
+
+function photoTierLabel(tier) {
+  if (tier === PHOTO_TIER_ALWAYS) return t("photoTierAlways");
+  if (tier === PHOTO_TIER_ONFAIL) return t("photoTierOnFail");
+  return t("photoTierNone");
+}
+
+// All items for a section, base + custom, including hidden ones — the
+// editor needs to show what's hidden so it can be turned back on, unlike
+// the effective (associate-facing) checklist which filters those out.
+function allItemsForSection(section) {
+  const baseItems = section.items.map((item) => {
+    const o = CHECKLIST_OVERRIDES_MAP[item.id] || {};
+    return {
+      id: item.id,
+      en: o.en || item.en,
+      es: o.es || item.es,
+      requiresPhoto: "requiresPhoto" in o ? o.requiresPhoto : !!item.requiresPhoto,
+      alwaysPhoto: "alwaysPhoto" in o ? o.alwaysPhoto : !!item.alwaysPhoto,
+      active: o.active !== false,
+      isCustom: false,
+    };
+  });
+  const customItems = Object.entries(CHECKLIST_OVERRIDES_MAP)
+    .filter(([, o]) => o.custom && o.sectionId === section.id)
+    .sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))
+    .map(([id, o]) => ({
+      id,
+      en: o.en,
+      es: o.es || o.en,
+      requiresPhoto: !!o.requiresPhoto,
+      alwaysPhoto: !!o.alwaysPhoto,
+      active: o.active !== false,
+      isCustom: true,
+    }));
+  return [...baseItems, ...customItems];
+}
+
+function renderChecklistItemRow(item) {
+  if (editingChecklistItemId === item.id) {
+    const tier = photoTierOf(item);
+    return `
+      <div class="checklist-item-row checklist-item-editing" data-item-row="${escapeHtml(item.id)}">
+        <div class="field"><label>${t("questionEnglishLabel")}</label><textarea class="edit-item-en" rows="2">${escapeHtml(item.en)}</textarea></div>
+        <div class="field"><label>${t("questionSpanishLabel")}</label><textarea class="edit-item-es" rows="2">${escapeHtml(item.es || "")}</textarea></div>
+        <div class="field">
+          <label>${t("photoTierLabel")}</label>
+          <select class="edit-item-tier">
+            <option value="${PHOTO_TIER_NONE}" ${tier === PHOTO_TIER_NONE ? "selected" : ""}>${t("photoTierNone")}</option>
+            <option value="${PHOTO_TIER_ONFAIL}" ${tier === PHOTO_TIER_ONFAIL ? "selected" : ""}>${t("photoTierOnFail")}</option>
+            <option value="${PHOTO_TIER_ALWAYS}" ${tier === PHOTO_TIER_ALWAYS ? "selected" : ""}>${t("photoTierAlways")}</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-primary" data-save-item="${escapeHtml(item.id)}">${t("saveButton")}</button>
+          <button class="btn btn-sm btn-secondary" data-cancel-item-edit="1">${t("cancelButton")}</button>
+        </div>
+      </div>`;
+  }
+  return `
+    <div class="checklist-item-row ${item.active ? "" : "inactive"}">
+      <div class="checklist-item-main">
+        <span class="checklist-item-text">${!item.isCustom ? `${escapeHtml(item.id)}. ` : ""}${escapeHtml(item.en)}</span>
+        <div class="checklist-item-meta">
+          <span class="badge badge-neutral">${photoTierLabel(photoTierOf(item))}</span>
+          ${!item.active ? `<span class="badge badge-danger">${t("hiddenBadge")}</span>` : ""}
+        </div>
+      </div>
+      <div class="checklist-item-actions">
+        <button class="btn btn-sm btn-secondary" data-edit-item="${escapeHtml(item.id)}">${t("editButton")}</button>
+        <button class="btn btn-sm ${item.active ? "btn-secondary" : "btn-primary"}" data-toggle-item="${escapeHtml(item.id)}">${item.active ? t("hideQuestion") : t("showQuestion")}</button>
+        ${item.isCustom ? `<button class="btn btn-sm btn-danger" data-delete-item="${escapeHtml(item.id)}">${t("deleteButton")}</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderChecklistSectionBlock(group, section) {
+  const items = allItemsForSection(section);
+  const expanded = expandedChecklistSectionId === section.id;
+  return `
+    <div class="section-block">
+      <button type="button" class="section-toggle" data-toggle-checklist-section="${section.id}">
+        <span class="section-name">${escapeHtml(tf(section))}</span>
+        <span class="badge badge-neutral">${items.length}</span>
+      </button>
+      <div class="section-body ${expanded ? "" : "collapsed"}">
+        ${items.map(renderChecklistItemRow).join("")}
+        ${
+          addingItemToSectionId === section.id
+            ? `
+          <div class="checklist-item-row checklist-item-editing">
+            <div class="field"><label>${t("questionEnglishLabel")}</label><textarea id="new-item-en" rows="2"></textarea></div>
+            <div class="field"><label>${t("questionSpanishLabel")}</label><textarea id="new-item-es" rows="2"></textarea></div>
+            <div class="field">
+              <label>${t("photoTierLabel")}</label>
+              <select id="new-item-tier">
+                <option value="${PHOTO_TIER_NONE}">${t("photoTierNone")}</option>
+                <option value="${PHOTO_TIER_ONFAIL}">${t("photoTierOnFail")}</option>
+                <option value="${PHOTO_TIER_ALWAYS}">${t("photoTierAlways")}</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-sm btn-primary" data-save-new-item="${group.id}|${section.id}">${t("saveButton")}</button>
+              <button class="btn btn-sm btn-secondary" data-cancel-new-item="1">${t("cancelButton")}</button>
+            </div>
+          </div>`
+            : `<button type="button" class="text-link" data-add-item="${group.id}|${section.id}" style="padding-left:0;">${t("addQuestion")}</button>`
+        }
+      </div>
+    </div>`;
+}
+
+function renderManageChecklistTab() {
+  const content = root.querySelector("#tab-content");
+  if (!content) return;
+
+  content.innerHTML = `
+    <div class="card"><p style="margin:0; color:var(--text-muted); font-size:13px;">${t("checklistEditorNote")}</p></div>
+    ${BASE_CHECKLIST_GROUPS.map(
+      (group) => `
+      <div class="card">
+        <div class="detail-section-title" style="margin-top:0;">${escapeHtml(tf(group))}</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          ${group.sections.map((section) => renderChecklistSectionBlock(group, section)).join("")}
+        </div>
+      </div>`
+    ).join("")}
+  `;
+
+  content.querySelectorAll("[data-toggle-checklist-section]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.toggleChecklistSection;
+      expandedChecklistSectionId = expandedChecklistSectionId === id ? null : id;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-toggle-item]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.toggleItem;
+      const items = BASE_CHECKLIST_GROUPS.flatMap((g) => g.sections.flatMap((s) => allItemsForSection(s)));
+      const current = items.find((it) => String(it.id) === String(id));
+      await setDoc(doc(db, "checklistOverrides", String(id)), { active: !current.active }, { merge: true });
+    });
+  });
+
+  content.querySelectorAll("[data-edit-item]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingChecklistItemId = /^\d+$/.test(btn.dataset.editItem) ? Number(btn.dataset.editItem) : btn.dataset.editItem;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-cancel-item-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      editingChecklistItemId = null;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-save-item]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.saveItem;
+      const row = btn.closest("[data-item-row]");
+      const en = row.querySelector(".edit-item-en").value.trim();
+      const es = row.querySelector(".edit-item-es").value.trim();
+      const tier = row.querySelector(".edit-item-tier").value;
+      if (!en) return;
+      await setDoc(
+        doc(db, "checklistOverrides", String(id)),
+        { en, es, requiresPhoto: tier === PHOTO_TIER_ONFAIL, alwaysPhoto: tier === PHOTO_TIER_ALWAYS },
+        { merge: true }
+      );
+      editingChecklistItemId = null;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-delete-item]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(t("confirmDeleteQuestion"))) return;
+      await deleteDoc(doc(db, "checklistOverrides", btn.dataset.deleteItem));
+    });
+  });
+
+  content.querySelectorAll("[data-add-item]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const [, sectionId] = btn.dataset.addItem.split("|");
+      addingItemToSectionId = sectionId;
+      expandedChecklistSectionId = sectionId;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-cancel-new-item]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      addingItemToSectionId = null;
+      renderManageChecklistTab();
+    });
+  });
+
+  content.querySelectorAll("[data-save-new-item]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const [groupId, sectionId] = btn.dataset.saveNewItem.split("|");
+      const en = content.querySelector("#new-item-en").value.trim();
+      const es = content.querySelector("#new-item-es").value.trim();
+      const tier = content.querySelector("#new-item-tier").value;
+      if (!en) return;
+      const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      await setDoc(doc(db, "checklistOverrides", id), {
+        custom: true,
+        groupId,
+        sectionId,
+        en,
+        es,
+        requiresPhoto: tier === PHOTO_TIER_ONFAIL,
+        alwaysPhoto: tier === PHOTO_TIER_ALWAYS,
+        active: true,
+        order: Date.now(),
+        createdAt: serverTimestamp(),
+      });
+      addingItemToSectionId = null;
+      renderManageChecklistTab();
     });
   });
 }

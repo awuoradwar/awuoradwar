@@ -3,8 +3,17 @@
 // Each item's `id` is the item number on the paper form (1-65) and is
 // used as the Firestore field key under `answers`, so it must stay
 // stable even if wording is edited later.
+//
+// This is the built-in starting point, not necessarily what associates
+// see today — admins can hide items, reword them, or add new ones from
+// Manage Checklist. Those live edits are layered on top of this base at
+// runtime by applyChecklistOverrides() below; CHECKLIST_GROUPS below is
+// reassigned to the *effective* checklist, so every other file in the
+// app can keep reading CHECKLIST_GROUPS/CHECKLIST_ITEMS_FLAT/
+// CHECKLIST_TOTAL_ITEMS exactly as before without knowing overrides
+// exist at all.
 
-const CHECKLIST_GROUPS = [
+const BASE_CHECKLIST_GROUPS = [
   {
     id: "front_of_house",
     en: "Front of the House",
@@ -207,10 +216,61 @@ const CHECKLIST_GROUPS = [
   },
 ];
 
-// Flat list of every item, in form order — used for progress counting,
-// validation, and lookups by id.
-const CHECKLIST_ITEMS_FLAT = CHECKLIST_GROUPS.flatMap((g) =>
-  g.sections.flatMap((s) => s.items.map((it) => ({ ...it, sectionId: s.id, groupId: g.id })))
-);
+function flattenChecklist(groups) {
+  return groups.flatMap((g) => g.sections.flatMap((s) => s.items.map((it) => ({ ...it, sectionId: s.id, groupId: g.id }))));
+}
 
-const CHECKLIST_TOTAL_ITEMS = CHECKLIST_ITEMS_FLAT.length; // 65
+// overridesMap: { [itemId]: { active?, en?, es?, requiresPhoto?, alwaysPhoto?,
+// custom?, groupId?, sectionId?, order? } } — one Firestore doc per key,
+// from the `checklistOverrides` collection. active:false hides a base
+// item; en/es/requiresPhoto/alwaysPhoto reword or retier an existing
+// item; custom:true entries are admin-added items, appended to the end
+// of their target section in `order`.
+function computeEffectiveChecklist(overridesMap) {
+  const groups = BASE_CHECKLIST_GROUPS.map((group) => ({
+    ...group,
+    sections: group.sections.map((section) => {
+      const items = [];
+      for (const item of section.items) {
+        const o = overridesMap[item.id];
+        if (o?.active === false) continue;
+        items.push(o ? { ...item, ...(o.en ? { en: o.en } : {}), ...(o.es ? { es: o.es } : {}), ...("requiresPhoto" in o ? { requiresPhoto: o.requiresPhoto } : {}), ...("alwaysPhoto" in o ? { alwaysPhoto: o.alwaysPhoto } : {}) } : item);
+      }
+      const customItems = Object.entries(overridesMap)
+        .filter(([, o]) => o.custom && o.sectionId === section.id && o.active !== false)
+        .sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))
+        .map(([id, o]) => ({ id, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto }));
+      return { ...section, items: [...items, ...customItems] };
+    }),
+  }));
+  return groups;
+}
+
+let CHECKLIST_GROUPS = BASE_CHECKLIST_GROUPS;
+let CHECKLIST_ITEMS_FLAT = flattenChecklist(CHECKLIST_GROUPS);
+let CHECKLIST_TOTAL_ITEMS = CHECKLIST_ITEMS_FLAT.length;
+let CHECKLIST_OVERRIDES_MAP = {};
+
+// Called once per live update from the `checklistOverrides` Firestore
+// collection (app.js and admin.js both subscribe). Reassigns the globals
+// above in place so every existing reference to them just sees the
+// current, edited checklist.
+function applyChecklistOverrides(overridesMap) {
+  CHECKLIST_OVERRIDES_MAP = overridesMap;
+  CHECKLIST_GROUPS = computeEffectiveChecklist(overridesMap);
+  CHECKLIST_ITEMS_FLAT = flattenChecklist(CHECKLIST_GROUPS);
+  CHECKLIST_TOTAL_ITEMS = CHECKLIST_ITEMS_FLAT.length;
+}
+
+// Looks up an item's definition even if it's currently hidden — the base
+// wording for a retired base item, or the stored wording for a retired
+// custom item — so historical submissions never lose their question
+// text just because the item was later removed from the live checklist.
+function findItemDefinitionById(itemId) {
+  const flatBase = flattenChecklist(BASE_CHECKLIST_GROUPS);
+  const found = flatBase.find((it) => String(it.id) === String(itemId));
+  if (found) return found;
+  const o = CHECKLIST_OVERRIDES_MAP[itemId];
+  if (o?.custom) return { id: itemId, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto };
+  return null;
+}

@@ -48,6 +48,12 @@ export async function initAssociateApp() {
     storesLoaded = true;
     if (!session) renderSetupScreen();
   });
+
+  onSnapshot(collection(db, "checklistOverrides"), (snap) => {
+    const overridesMap = {};
+    snap.forEach((d) => (overridesMap[d.id] = d.data()));
+    applyChecklistOverrides(overridesMap);
+  });
 }
 
 function escapeHtml(str) {

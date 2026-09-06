@@ -38,6 +38,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Live checklist edits (hide/reword a built-in question, add a new
+    // one). Associates need to read this to build their walkthrough;
+    // only admins can change it.
+    match /checklistOverrides/{itemId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // Daily submissions: any signed-in viewer (anonymous associates
     // included) can create/update — they need to submit their store's
     // walkthrough without an admin in the loop. Reads are signed-in-only
