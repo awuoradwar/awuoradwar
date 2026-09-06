@@ -162,7 +162,13 @@ async function handleAuthChange(user) {
   }
   isOwnerSession = user.email === OWNER_EMAIL;
   if (!isOwnerSession) {
-    const adminDoc = await getDoc(doc(db, "admins", user.email));
+    let adminDoc;
+    try {
+      adminDoc = await withTimeout(getDoc(doc(db, "admins", user.email)));
+    } catch (err) {
+      renderAuthCheckErrorScreen();
+      return;
+    }
     if (!adminDoc.exists()) {
       renderNotAdminScreen();
       return;
@@ -271,6 +277,25 @@ function renderLoginScreen(mode, message, messageIsError = true) {
       renderLoginScreen(mode, t("passwordResetSent", { email }), false);
     });
   }
+}
+
+// The admin-roster check (getDoc on /admins/{email}) runs right after
+// sign-in, before anything else renders — if it hangs on a bad network,
+// the screen would otherwise be stuck on the login button's "Loading…"
+// state forever with no way out. This gives a dead end a way out
+// (logout, then retry) instead.
+function renderAuthCheckErrorScreen() {
+  root.innerHTML = `
+    ${topBarHtml()}
+    <main>
+      <div class="card" style="text-align:center;">
+        <p>${t("requestTimedOut")}</p>
+        <button class="btn btn-secondary" id="btn-logout">${t("logoutButton")}</button>
+      </div>
+    </main>
+  `;
+  wireLangToggle(renderAuthCheckErrorScreen);
+  root.querySelector("#btn-logout").addEventListener("click", () => signOut(auth));
 }
 
 function renderNotAdminScreen() {
