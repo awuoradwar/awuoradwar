@@ -309,7 +309,7 @@ async function renderTodayTab() {
     cardEl.addEventListener("click", async () => {
       const record = byStoreNumber[cardEl.dataset.viewToday];
       const hydrated = await hydrateRecordPhotos(record);
-      renderDetailModal(hydrated);
+      renderDetailModal(hydrated, { expandFlagged: true });
     });
   });
 }
