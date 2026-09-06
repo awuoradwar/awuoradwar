@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { addManagerActivityAction, removeManagerActivityAction } from "@/app/actions/scheduleActions";
 import { Field, inputClass, selectClass } from "./forms/FormShell";
 import { Language } from "@/lib/types";
+import AwayIcon from "./AwayIcon";
 
 interface ManagerOption {
   id: string;
@@ -25,12 +26,6 @@ interface ActivityEntry {
   start_time?: string | null;
   end_time?: string | null;
 }
-
-/** The one symbol used everywhere this "working, not covering" status
- * shows up (this list, the grid dot's tooltip) -- a briefcase reads
- * unambiguously as "working, just not here" at a glance, which a plain
- * dot or generic icon doesn't. */
-const AWAY_ICON = "🧳";
 
 function timeRange(a: ActivityEntry): string | null {
   if (!a.start_time && !a.end_time) return null;
@@ -86,7 +81,7 @@ export default function ManagerActivitiesSection({
   return (
     <section>
       <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
-        {lang === "es" ? "Trabajando, pero no en tienda" : "Working, Not Covering the Store"}
+        {lang === "es" ? "Trabajando Fuera" : "Working Elsewhere"}
       </h2>
       <p className="mb-2 text-xs text-muted">{lang === "es" ? "Capacitación, juntas de área, etc." : "Training, area meetings, etc."}</p>
       {activities.length > 0 && (
@@ -95,14 +90,19 @@ export default function ManagerActivitiesSection({
             const day = days.find((d) => d.date === a.date);
             return (
               <div key={a.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    <span aria-hidden>{AWAY_ICON}</span> {a.user_name} · {a.label}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {day?.label ?? a.date}
-                    {timeRange(a) && ` · ${timeRange(a)}`}
-                  </p>
+                <div className="flex min-w-0 items-start gap-2">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                    <AwayIcon className="h-3 w-3" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {a.user_name} · {a.label}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {day?.label ?? a.date}
+                      {timeRange(a) && ` · ${timeRange(a)}`}
+                    </p>
+                  </div>
                 </div>
                 {canEdit && (
                   <button
@@ -168,10 +168,10 @@ export default function ManagerActivitiesSection({
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label={`${lang === "es" ? "Hora de inicio" : "Start time"} (${lang === "es" ? "opcional" : "optional"})`}>
+            <Field label={lang === "es" ? "Inicio" : "Start"}>
               <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputClass} />
             </Field>
-            <Field label={`${lang === "es" ? "Hora de fin" : "End time"} (${lang === "es" ? "opcional" : "optional"})`}>
+            <Field label={lang === "es" ? "Fin" : "End"}>
               <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={inputClass} />
             </Field>
           </div>

@@ -6,6 +6,7 @@ import { setManagerShiftAction, removeManagerShiftAction } from "@/app/actions/s
 import { ShiftType } from "@/lib/services/scheduleService";
 import { Language } from "@/lib/types";
 import { buildManagerColorMap } from "@/lib/managerColor";
+import AwayIcon from "./AwayIcon";
 
 // Every option a manager's day could be, picked directly from a native
 // select instead of a cycle a manager had to tap through repeatedly to
@@ -46,11 +47,6 @@ interface ActivityEntry {
   start_time?: string | null;
   end_time?: string | null;
 }
-
-/** The one symbol used everywhere this "working, not covering" status
- * shows up (ManagerActivitiesSection's list, this grid) -- a briefcase
- * reads unambiguously as "working, just not here" at a glance. */
-const AWAY_ICON = "🧳";
 
 export default function ShiftScheduleGrid({
   managers,
@@ -177,9 +173,9 @@ export default function ShiftScheduleGrid({
                         <span
                           aria-hidden
                           title={activityLabel}
-                          className="pointer-events-none absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning text-[10px] leading-none ring-2 ring-card"
+                          className="pointer-events-none absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-accent-foreground ring-2 ring-card"
                         >
-                          {AWAY_ICON}
+                          <AwayIcon className="h-2.5 w-2.5" />
                         </span>
                       )}
                     </div>
@@ -190,14 +186,12 @@ export default function ShiftScheduleGrid({
           </div>
         );
       })}
-      <p className="px-3 py-2 text-xs text-muted">
-        {lang === "es"
-          ? "M = Mañana (hasta 5pm) · E = Tarde/Noche (5pm en adelante) · D = Ambos (cubre todo el día -- incluye un turno que empieza a medio día y llega hasta el cierre)"
-          : "M = Morning (through 5pm) · E = Evening (5pm on) · D = Both (covers the whole day -- this is what a midday-start-through-close shift counts as, whatever its exact start time)"}
-        {" · "}
-        <span aria-hidden>{AWAY_ICON}</span>
-        {lang === "es" ? " trabajando, no cubriendo la tienda" : " working, not covering the store"}
-        {canEdit ? (lang === "es" ? " · toca para elegir" : " · tap to pick") : ""}
+      <p className="flex flex-wrap items-center gap-x-1 px-3 py-2 text-xs text-muted">
+        {lang === "es" ? "M = Mañana · E = Tarde/Noche · D = Día completo" : "M = Morning · E = Evening · D = Full day"}
+        <span>·</span>
+        <AwayIcon className="h-3 w-3 shrink-0" />
+        {lang === "es" ? "trabajando fuera" : "working elsewhere"}
+        {canEdit && <span>{lang === "es" ? "· toca para elegir" : "· tap to pick"}</span>}
       </p>
     </div>
   );
