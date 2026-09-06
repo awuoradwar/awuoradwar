@@ -11,6 +11,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
   getAuth,
+  setPersistence,
+  browserLocalPersistence,
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -41,6 +43,16 @@ import { firebaseConfig, OWNER_EMAIL } from "./firebase-config.js";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Explicit rather than relying on the SDK's default: keeps a signed-in
+// admin/associate logged in across page reloads and browser restarts on
+// this device, instead of a session that ends when the tab closes.
+// Firebase's own refresh tokens don't expire on a fixed schedule (no
+// native "log out after 30 days" setting exists on the free Auth tier) —
+// this is what keeps someone from having to re-enter a password every
+// time they open the app, short of explicitly logging out or the
+// browser clearing its own site data.
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 export {
   auth,
