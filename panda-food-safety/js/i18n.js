@@ -52,6 +52,7 @@ const STRINGS = {
   requestTimedOut: { en: "This is taking too long. Check your internet connection and try again.", es: "Esto está tardando demasiado. Verifique su conexión a internet e intente de nuevo." },
   emailAlreadyInUse: { en: "An account already exists for this email. Try logging in instead — use \"Forgot password?\" on the login screen if you don't remember it.", es: "Ya existe una cuenta con este correo. Intente iniciar sesión — use \"¿Olvidó su contraseña?\" en la pantalla de inicio de sesión si no la recuerda." },
   forgotPassword: { en: "Forgot password?", es: "¿Olvidó su contraseña?" },
+  resetPasswordButton: { en: "Reset Password", es: "Restablecer Contraseña" },
   forgotPasswordNeedsEmail: { en: "Enter your email above first, then tap \"Forgot password?\" again.", es: "Ingrese su correo electrónico arriba primero, luego toque \"¿Olvidó su contraseña?\" de nuevo." },
   passwordResetSent: { en: "If an account exists for {email}, a password reset link has been sent to it.", es: "Si existe una cuenta para {email}, se ha enviado un enlace para restablecer la contraseña." },
   notAnAdmin: { en: "This account isn't authorized as an admin yet. Ask the owner to add your email under Manage Admins first.", es: "Esta cuenta aún no está autorizada como administrador. Pida al propietario que agregue su correo en Administrar Administradores primero." },

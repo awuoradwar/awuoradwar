@@ -49,6 +49,7 @@ function saveActiveTab(tab) {
 
 let initialized = false;
 let root;
+let currentUserEmail = null;
 let activeTab = loadActiveTab();
 let storesCache = [];
 let storesUnsub = null;
@@ -180,9 +181,11 @@ function wireLangToggle(rerender) {
 
 async function handleAuthChange(user) {
   if (!user || !user.email) {
+    currentUserEmail = null;
     renderLoginScreen("login");
     return;
   }
+  currentUserEmail = user.email;
   isOwnerSession = user.email === OWNER_EMAIL;
   if (!isOwnerSession) {
     let adminDoc;
@@ -369,8 +372,12 @@ function renderDashboard() {
     <main>
       <div class="admin-account-row">
         <a class="text-link" href="#/">${t("backToChecklist")}</a>
-        <button class="text-link" id="btn-logout">${t("logoutButton")}</button>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="text-link" id="btn-reset-password">${t("resetPasswordButton")}</button>
+          <button class="text-link" id="btn-logout">${t("logoutButton")}</button>
+        </div>
       </div>
+      <div id="reset-password-msg" class="hint-banner" hidden></div>
       <div class="admin-tabs">
         <button class="btn btn-sm ${activeTab === "today" ? "btn-primary" : "btn-secondary"}" data-tab="today">${t("todayStatusTitle")}</button>
         <button class="btn btn-sm ${activeTab === "weekly" ? "btn-primary" : "btn-secondary"}" data-tab="weekly">${t("weeklySummaryTitle")}</button>
@@ -384,6 +391,23 @@ function renderDashboard() {
   `;
   wireLangToggle(renderDashboard);
   root.querySelector("#btn-logout").addEventListener("click", () => signOut(auth));
+  root.querySelector("#btn-reset-password").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    const msgEl = root.querySelector("#reset-password-msg");
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = t("loadingButton");
+    try {
+      await withTimeout(sendPasswordResetEmail(auth, currentUserEmail));
+      msgEl.textContent = t("passwordResetSent", { email: currentUserEmail });
+    } catch (err) {
+      msgEl.textContent = err.message === "timeout" ? t("requestTimedOut") : String(err.message || err);
+    } finally {
+      msgEl.hidden = false;
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
   root.querySelectorAll("button[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.tab;
