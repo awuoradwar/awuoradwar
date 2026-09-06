@@ -5,6 +5,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   doc,
   getDoc,
@@ -164,14 +165,19 @@ async function handleAuthChange(user) {
   renderDashboard();
 }
 
-function renderLoginScreen(mode, errorMsg) {
+function friendlySignUpError(err) {
+  if (err.code === "auth/email-already-in-use") return t("emailAlreadyInUse");
+  return err.message;
+}
+
+function renderLoginScreen(mode, message, messageIsError = true) {
   const isSignUp = mode === "signup";
   root.innerHTML = `
     ${topBarHtml()}
     <main>
       <div class="card" style="max-width:360px; margin:40px auto;">
         <h2 style="margin-top:0;">${isSignUp ? t("signUpTitle") : t("loginTitle")}</h2>
-        ${errorMsg ? `<div class="hint-banner" style="color:var(--danger); border-color:var(--danger);">${escapeHtml(errorMsg)}</div>` : ""}
+        ${message ? `<div class="hint-banner" ${messageIsError ? 'style="color:var(--danger); border-color:var(--danger);"' : ""}>${escapeHtml(message)}</div>` : ""}
         <div class="field">
           <label>${t("emailLabel")}</label>
           <input type="email" id="login-email" autocomplete="username" />
@@ -182,10 +188,11 @@ function renderLoginScreen(mode, errorMsg) {
         </div>
         <button class="btn btn-primary btn-block" id="btn-submit-auth">${isSignUp ? t("signUpButton") : t("loginButton")}</button>
         <button class="text-link" id="btn-toggle-mode" style="display:block; margin:10px auto 0;">${isSignUp ? t("switchToLogin") : t("switchToSignUp")}</button>
+        ${!isSignUp ? `<button class="text-link" id="btn-forgot-password" style="display:block; margin:4px auto 0;">${t("forgotPassword")}</button>` : ""}
       </div>
     </main>
   `;
-  wireLangToggle(() => renderLoginScreen(mode, errorMsg));
+  wireLangToggle(() => renderLoginScreen(mode, message, messageIsError));
   root.querySelector("#btn-toggle-mode").addEventListener("click", () => renderLoginScreen(isSignUp ? "login" : "signup"));
   root.querySelector("#btn-submit-auth").addEventListener("click", async () => {
     const email = root.querySelector("#login-email").value.trim();
@@ -194,9 +201,25 @@ function renderLoginScreen(mode, errorMsg) {
       if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
       else await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      renderLoginScreen(mode, isSignUp ? err.message : t("loginError"));
+      renderLoginScreen(mode, isSignUp ? friendlySignUpError(err) : t("loginError"));
     }
   });
+  const forgotBtn = root.querySelector("#btn-forgot-password");
+  if (forgotBtn) {
+    forgotBtn.addEventListener("click", async () => {
+      const email = root.querySelector("#login-email").value.trim();
+      if (!email) {
+        renderLoginScreen(mode, t("forgotPasswordNeedsEmail"));
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+      } catch (err) {
+        // Don't reveal whether the email has an account either way.
+      }
+      renderLoginScreen(mode, t("passwordResetSent", { email }), false);
+    });
+  }
 }
 
 function renderNotAdminScreen() {
