@@ -43,6 +43,8 @@ let addingItemToSectionId = null;
 let editingChecklistSectionId = null;
 let addingSectionToGroupId = null;
 let weeklyOffset = 0;
+let autoDateRefreshStarted = false;
+let lastKnownDate = null;
 
 export function initAdminApp() {
   if (initialized) return;
@@ -119,14 +121,16 @@ function wireStoreCombo({ inputEl, hiddenEl, listEl, stores, allLabel, valueKey 
 }
 
 function todayDateString() {
-  const d = new Date();
+  const d = nowInBusinessTZ();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function formatDateTime(ts) {
   if (!ts) return "";
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleString(getLang() === "es" ? "es-US" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return d.toLocaleString(getLang() === "es" ? "es-US" : "en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: BUSINESS_TIMEZONE,
+  });
 }
 
 function topBarHtml() {
@@ -166,7 +170,26 @@ async function handleAuthChange(user) {
   }
   ensureStoresSubscription();
   ensureChecklistSubscription();
+  ensureAutoDateRefresh();
   renderDashboard();
+}
+
+// A tab left open across a midnight (or Sunday) boundary otherwise keeps
+// showing whatever day/week it loaded with until someone happens to
+// click something — this polls the business-timezone date and
+// re-renders the current tab the moment it rolls over, so Today's
+// Status and Weekly Summary flip on their own, without a manual reload.
+function ensureAutoDateRefresh() {
+  if (autoDateRefreshStarted) return;
+  autoDateRefreshStarted = true;
+  lastKnownDate = todayDateString();
+  setInterval(() => {
+    const current = todayDateString();
+    if (current !== lastKnownDate) {
+      lastKnownDate = current;
+      refreshCurrentTab();
+    }
+  }, 60000);
 }
 
 function friendlySignUpError(err) {
@@ -485,22 +508,25 @@ function todayDateStringFor(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Rolling 7-day windows shared by Weekly Summary and History's quick
-// filters: weeksAgo=0 is "this week" (today back 6 days), weeksAgo=1 is
-// the 7 days before that, and so on — not calendar (Mon-Sun) weeks.
+// True Sun-Sat calendar weeks, anchored to the business timezone (not
+// each device's own local zone) so "today"/"this week" means the same
+// thing no matter where an admin happens to be. weeksAgo=0 is the
+// calendar week containing today; weeksAgo=1 is the week before that,
+// and so on.
 function weekRangeDates(weeksAgo) {
-  const to = new Date();
-  to.setDate(to.getDate() - weeksAgo * 7);
-  const from = new Date(to);
-  from.setDate(from.getDate() - 6);
-  return { from: todayDateStringFor(from), to: todayDateStringFor(to) };
+  const now = nowInBusinessTZ();
+  const start = new Date(now);
+  start.setDate(start.getDate() - start.getDay() - weeksAgo * 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return { from: todayDateStringFor(start), to: todayDateStringFor(end) };
 }
 
 function renderHistoryTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
   const today = todayDateString();
-  const monthAgo = new Date();
+  const monthAgo = nowInBusinessTZ();
   monthAgo.setDate(monthAgo.getDate() - 30);
   const fromDefault = todayDateStringFor(monthAgo);
   const toDefault = today;

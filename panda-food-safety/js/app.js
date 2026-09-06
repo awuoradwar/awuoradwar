@@ -120,7 +120,7 @@ function wireStoreCombo({ inputEl, hiddenEl, listEl, stores, allLabel, valueKey 
   });
 }
 
-function todayDateString(d = new Date()) {
+function todayDateString(d = nowInBusinessTZ()) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -130,17 +130,20 @@ function todayDateString(d = new Date()) {
 function formatDateTime(d = new Date()) {
   return d.toLocaleString(getLang() === "es" ? "es-US" : "en-US", {
     weekday: "short", year: "numeric", month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+    timeZone: BUSINESS_TIMEZONE,
   });
 }
 
-// Rolling 7-day window ending today, oldest first — not a Mon-Sun
-// calendar week, so it always has a full 7 days of context regardless
-// of what day someone checks it.
-function lastNDates(n) {
+// The Sun-Sat calendar week containing today, in business-timezone
+// terms — same week boundaries the admin Weekly Summary uses.
+function currentWeekDates() {
+  const now = nowInBusinessTZ();
+  const start = new Date(now);
+  start.setDate(start.getDate() - start.getDay());
   const dates = [];
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
     dates.push(todayDateString(d));
   }
   return dates;
@@ -148,7 +151,7 @@ function lastNDates(n) {
 
 async function fetchStoreWeeklySubmissions(storeNumber) {
   await ensureAuth();
-  const days = lastNDates(7);
+  const days = currentWeekDates();
   const snap = await getDocs(
     query(
       collection(db, "submissions"),
@@ -161,7 +164,7 @@ async function fetchStoreWeeklySubmissions(storeNumber) {
 }
 
 function renderWeeklySummaryPanel(submissions) {
-  const days = lastNDates(7);
+  const days = currentWeekDates();
   const byDate = {};
   submissions.forEach((s) => {
     byDate[s.date] = s;
@@ -201,7 +204,9 @@ function renderWeeklySummaryPanel(submissions) {
 function formatTime(d) {
   if (!d) return "";
   const date = d.toDate ? d.toDate() : new Date(d);
-  return date.toLocaleTimeString(getLang() === "es" ? "es-US" : "en-US", { hour: "numeric", minute: "2-digit" });
+  return date.toLocaleTimeString(getLang() === "es" ? "es-US" : "en-US", {
+    hour: "numeric", minute: "2-digit", timeZone: BUSINESS_TIMEZONE,
+  });
 }
 
 function topBarHtml() {
