@@ -291,13 +291,8 @@ tr:last-child td { border-bottom: none; }
 
 .hint-banner { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--text-muted); }
 
-.update-banner {
-  position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 70;
-  background: var(--accent-dark); color: var(--accent-contrast); border-radius: var(--radius);
-  padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  box-shadow: var(--shadow); font-size: 14px;
-}
-.update-banner .btn { flex-shrink: 0; }
+.update-banner-backdrop { align-items: center; z-index: 80; }
+.update-banner-modal { max-width: 360px; text-align: center; font-size: 15px; }
 
 .center-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
 

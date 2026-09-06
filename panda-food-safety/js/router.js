@@ -39,12 +39,19 @@ async function fetchVersion() {
 
 function showUpdateBanner() {
   if (document.getElementById("update-banner")) return;
-  const bar = document.createElement("div");
-  bar.id = "update-banner";
-  bar.className = "update-banner";
-  bar.innerHTML = `<span>${t("updateAvailableLabel")}</span><button class="btn btn-sm btn-primary" id="btn-reload-update">${t("reloadButton")}</button>`;
-  document.body.appendChild(bar);
-  bar.querySelector("#btn-reload-update").addEventListener("click", () => location.reload());
+  // Centered and covering the screen, not a bottom bar someone can miss
+  // while looking at the top of a form — already-checked answers are
+  // saved as they go, so a forced pause here doesn't lose anything.
+  const backdrop = document.createElement("div");
+  backdrop.id = "update-banner";
+  backdrop.className = "modal-backdrop update-banner-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal update-banner-modal">
+      <p style="margin:0 0 16px;">${t("updateAvailableLabel")}</p>
+      <button class="btn btn-primary btn-block" id="btn-reload-update">${t("reloadButton")}</button>
+    </div>`;
+  document.body.appendChild(backdrop);
+  backdrop.querySelector("#btn-reload-update").addEventListener("click", () => location.reload());
 }
 
 async function checkForUpdate() {
