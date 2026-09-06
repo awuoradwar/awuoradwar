@@ -192,9 +192,12 @@ function renderLoginScreen(mode, message, messageIsError = true) {
   `;
   wireLangToggle(() => renderLoginScreen(mode, message, messageIsError));
   root.querySelector("#btn-toggle-mode").addEventListener("click", () => renderLoginScreen(isSignUp ? "login" : "signup"));
-  root.querySelector("#btn-submit-auth").addEventListener("click", async () => {
+  root.querySelector("#btn-submit-auth").addEventListener("click", async (e) => {
     const email = root.querySelector("#login-email").value.trim().toLowerCase();
     const password = root.querySelector("#login-password").value;
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = t("loadingButton");
     try {
       if (isSignUp) await createUserWithEmailAndPassword(auth, email, password);
       else await signInWithEmailAndPassword(auth, email, password);
