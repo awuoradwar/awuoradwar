@@ -272,6 +272,11 @@ tr:last-child td { border-bottom: none; }
 .detail-row-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .detail-row-body.collapsed { display: none; }
 .detail-flagged-date { color: var(--text-muted); font-weight: 400; }
+.detail-note {
+  background: var(--surface-alt); border-left: 3px solid var(--accent); border-radius: 6px;
+  padding: 8px 10px; font-style: italic; color: var(--text-muted);
+}
+.detail-note-label { font-style: normal; font-weight: 600; color: var(--text); }
 
 .hint-banner { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--text-muted); }
 

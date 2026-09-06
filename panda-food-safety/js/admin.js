@@ -563,7 +563,7 @@ function renderFlaggedItemsModal(records) {
             </div>
             <div class="detail-row-body">
               ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
-              ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
+              ${a.note ? `<div class="detail-note"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}</div>` : ""}
             </div>
           </div>`
         )
@@ -735,7 +735,7 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
               isNo
                 ? `<div class="detail-row-body ${expandFlagged ? "" : "collapsed"}" id="detail-body-${item.id}">
                     ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
-                    ${a.note ? `<div>${escapeHtml(a.note)}</div>` : ""}
+                    ${a.note ? `<div class="detail-note"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}</div>` : ""}
                   </div>`
                 : proofPhoto
                   ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />`
