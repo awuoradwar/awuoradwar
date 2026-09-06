@@ -12,16 +12,26 @@ export default async function MorePage() {
 
   const groups: Array<{ label: string; items: Array<{ href: string; key: string; icon: string }> }> = [
     {
-      label: lang === "es" ? "Operaciones diarias" : "Daily Operations",
+      label: lang === "es" ? "Operaciones" : "Operations",
       items: [
         { href: "/more/work-orders", key: "more_work_orders", icon: "wrench" },
         { href: "/more/meal-replacements", key: "more_meal_replacements", icon: "utensils" },
+        { href: "/more/inventory", key: "more_inventory", icon: "box" },
+      ],
+    },
+    {
+      label: lang === "es" ? "Limpieza y procedimientos" : "Cleaning & Procedures",
+      items: [
         { href: "/more/cleaning", key: "more_cleaning", icon: "sparkle" },
         { href: "/more/procedures", key: "more_procedures", icon: "fileText" },
-        { href: "/more/acknowledgements", key: "more_acknowledgements", icon: "checkCircle" },
+      ],
+    },
+    {
+      label: lang === "es" ? "Personal" : "Staffing",
+      items: [
         { href: "/more/training", key: "more_training", icon: "graduationCap" },
-        { href: "/more/inventory", key: "more_inventory", icon: "box" },
         { href: "/more/scheduling", key: "more_scheduling", icon: "calendar" },
+        { href: "/more/acknowledgements", key: "more_acknowledgements", icon: "checkCircle" },
       ],
     },
     {
