@@ -317,7 +317,7 @@ export default async function MyShiftPage() {
         >
           <div className="flex flex-col gap-2">
             {cateringToday.map((order) => (
-              <CateringOrderRow key={order.id} order={order} lang={user.language} emphasized />
+              <CateringOrderRow key={order.id} order={order} lang={user.language} emphasized linkFrom="/my-shift" />
             ))}
             {borrowedDueToday.map((item) => (
               <BorrowedItemRow key={item.id} item={item} lang={user.language} storeId={user.storeId} from="/my-shift" />

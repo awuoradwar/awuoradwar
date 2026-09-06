@@ -29,7 +29,7 @@ function Section({ title, sub, rows, lang, collapsible }: { title: string; sub?:
     ) : (
       <div className={collapsible ? "flex flex-col gap-2 border-t border-border p-3" : "flex flex-col gap-2"}>
         {rows.map((o) => (
-          <CateringOrderRow key={o.id} order={o} lang={lang} />
+          <CateringOrderRow key={o.id} order={o} lang={lang} linkFrom="/more/catering" />
         ))}
       </div>
     );
@@ -96,7 +96,7 @@ export default async function CateringPage() {
           getDate={(item) => item.due_date}
           keyOf={(item) => item.id}
           storeId={user.storeId}
-          renderItem={(item) => <CateringOrderRow order={item} lang={lang} />}
+          renderItem={(item) => <CateringOrderRow order={item} lang={lang} linkFrom="/more/catering" />}
           renderSubtitle={(items) => weekSubtitle(items, lang)}
           lang={lang}
           emptyLabel={t(lang, "all_clear")}

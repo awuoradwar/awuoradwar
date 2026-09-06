@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   updateCateringOrderAction,
   completeCateringOrderAction,
@@ -12,6 +13,7 @@ import {
 import { Language } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import { cateringChannelLabel } from "@/lib/cateringLabels";
+import { withFrom } from "@/lib/backHref";
 import StatusBadge from "./StatusBadge";
 import { Field, inputClass, selectClass, textareaClass, btnPrimary, btnOutline, btnDanger, btnNeutral } from "./forms/FormShell";
 import DateField from "./forms/DateField";
@@ -97,10 +99,42 @@ function EditCateringForm({ order, lang, onDone }: { order: CateringOrderData; l
   );
 }
 
+/** The info block shared by every context this row renders in -- pulled out
+ * so the two places that link to the detail page (list views) and the one
+ * place that doesn't (the detail page itself, which would otherwise link to
+ * itself) can wrap the exact same markup differently. */
+function OrderInfo({ order, lang, emphasized }: { order: CateringOrderData; lang: Language; emphasized?: boolean }) {
+  return (
+    <div>
+      <p className={`text-sm ${emphasized ? "font-bold" : "font-medium"}`}>
+        {order.number_of_people ? `${order.number_of_people} ${lang === "es" ? "personas" : "people"}` : lang === "es" ? "Catering" : "Catering"}
+        {order.customer_name ? ` · ${order.customer_name}` : ""}
+      </p>
+      <p className="text-sm text-muted">
+        {order.pickup_time ? `${lang === "es" ? "Recoge" : "Pickup"} ${order.pickup_time}` : lang === "es" ? "Sin hora fijada" : "No time set"}
+        {" · "}
+        {cateringChannelLabel(order.channel, lang)}
+      </p>
+      {order.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{order.notes}</p>}
+      {order.completed_by_name && order.status !== "OPEN" && (
+        <p className="mt-1 text-xs text-muted">
+          {order.status === "CANCELLED" ? (lang === "es" ? "Cancelado por" : "Cancelled by") : lang === "es" ? "Completado por" : "Completed by"}{" "}
+          {order.completed_by_name}
+        </p>
+      )}
+      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+        <StatusBadge status={order.status} lang={lang} />
+        <StatusBadge status={order.paid ? "PAID" : "UNPAID"} lang={lang} />
+      </div>
+    </div>
+  );
+}
+
 export default function CateringOrderRow({
   order,
   lang,
   emphasized,
+  linkFrom,
 }: {
   order: CateringOrderData;
   lang: Language;
@@ -109,6 +143,12 @@ export default function CateringOrderRow({
    * anywhere else in the app. Only meant for My Shift's "This Shift"
    * section; the Catering page and history stay at the ordinary weight. */
   emphasized?: boolean;
+  /** The calling page's own path -- when set, the info block opens
+   * /catering/[id] (full detail + activity log), carrying this along as
+   * ?from= so the detail page's back button returns here (see backHref.ts).
+   * Left unset on the detail page's own rendering of this row, which would
+   * otherwise link to the page it's already on. */
+  linkFrom?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -132,28 +172,13 @@ export default function CateringOrderRow({
 
   return (
     <div className="card flex flex-col gap-2 p-3">
-      <div>
-        <p className={`text-sm ${emphasized ? "font-bold" : "font-medium"}`}>
-          {order.number_of_people ? `${order.number_of_people} ${lang === "es" ? "personas" : "people"}` : lang === "es" ? "Catering" : "Catering"}
-          {order.customer_name ? ` · ${order.customer_name}` : ""}
-        </p>
-        <p className="text-sm text-muted">
-          {order.pickup_time ? `${lang === "es" ? "Recoge" : "Pickup"} ${order.pickup_time}` : lang === "es" ? "Sin hora fijada" : "No time set"}
-          {" · "}
-          {cateringChannelLabel(order.channel, lang)}
-        </p>
-        {order.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{order.notes}</p>}
-        {order.completed_by_name && order.status !== "OPEN" && (
-          <p className="mt-1 text-xs text-muted">
-            {order.status === "CANCELLED" ? (lang === "es" ? "Cancelado por" : "Cancelled by") : lang === "es" ? "Completado por" : "Completed by"}{" "}
-            {order.completed_by_name}
-          </p>
-        )}
-        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          <StatusBadge status={order.status} lang={lang} />
-          <StatusBadge status={order.paid ? "PAID" : "UNPAID"} lang={lang} />
-        </div>
-      </div>
+      {linkFrom ? (
+        <Link href={withFrom(`/catering/${order.id}`, linkFrom)} className="block">
+          <OrderInfo order={order} lang={lang} emphasized={emphasized} />
+        </Link>
+      ) : (
+        <OrderInfo order={order} lang={lang} emphasized={emphasized} />
+      )}
       <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
         {order.status === "OPEN" ? (
           <button disabled={pending} onClick={() => run(() => completeCateringOrderAction(order.id))} className={btnPrimary}>

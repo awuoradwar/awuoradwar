@@ -7,9 +7,11 @@ import { t } from "@/lib/i18n";
 import CateringOrderRow from "@/components/CateringOrderRow";
 import ActivityLog from "@/components/ActivityLog";
 import PageHeader from "@/components/PageHeader";
+import { resolveBackHref } from "@/lib/backHref";
 
-export default async function CateringDetailPage({ params }: PageProps<"/catering/[id]">) {
+export default async function CateringDetailPage({ params, searchParams }: PageProps<"/catering/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
@@ -22,7 +24,7 @@ export default async function CateringDetailPage({ params }: PageProps<"/caterin
 
   return (
     <div className="mx-auto max-w-md px-4 py-5">
-      <PageHeader backHref="/more/catering" lang={user.language} title={t(user.language, "catering_title")} />
+      <PageHeader backHref={resolveBackHref(sp.from, "/more/catering")} lang={user.language} title={t(user.language, "catering_title")} />
       <p className="mt-2 text-xs text-muted">{fmt(order.created_at)}</p>
 
       <div className="mt-4">
