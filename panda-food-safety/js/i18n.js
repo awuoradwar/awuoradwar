@@ -61,7 +61,6 @@ const STRINGS = {
   storesSubmittedCount: { en: "{done} of {total} stores submitted today", es: "{done} de {total} tiendas enviaron hoy" },
   submittedStatus: { en: "Submitted", es: "Enviado" },
   missingStatus: { en: "Missing", es: "Falta" },
-  notLaunchedYet: { en: "Official rollout starts {date} — today's numbers won't count against any store.", es: "El lanzamiento oficial comienza el {date} — los números de hoy no cuentan en contra de ninguna tienda." },
   historyTitle: { en: "History", es: "Historial" },
   weeklySummaryTitle: { en: "Weekly Summary", es: "Resumen Semanal" },
   last7DaysLabel: { en: "Last 7 days", es: "Últimos 7 días" },

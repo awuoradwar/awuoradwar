@@ -282,13 +282,11 @@ async function renderTodayTab() {
     weekday: "short", month: "short", day: "numeric", year: "numeric",
   });
   const notYetLaunched = today < LAUNCH_DATE;
-  const launchLabel = new Date(`${LAUNCH_DATE}T00:00:00`).toLocaleDateString(dateLocale, { month: "short", day: "numeric" });
 
   content.innerHTML = `
     <div class="card">
       <strong>${t("storesSubmittedCount", { done: doneCount, total: storesCache.length })}</strong>
       <div style="color:var(--text-muted); font-size:13px;">${todayLabel}</div>
-      ${notYetLaunched ? `<div class="hint-banner" style="margin-top:10px;">${t("notLaunchedYet", { date: launchLabel })}</div>` : ""}
     </div>
     <div class="admin-grid">
       ${storesCache
