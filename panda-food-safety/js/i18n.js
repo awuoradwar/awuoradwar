@@ -109,6 +109,8 @@ const STRINGS = {
   sectionSpanishLabel: { en: "Section name (Spanish, optional)", es: "Nombre de sección (Español, opcional)" },
   sectionOptionsLabel: { en: "This section", es: "Esta sección" },
   confirmDeleteSection: { en: "Permanently delete this section and its questions? This can't be undone.", es: "¿Eliminar esta sección y sus preguntas permanentemente? Esto no se puede deshacer." },
+  updateAvailableLabel: { en: "A new version is available.", es: "Hay una nueva versión disponible." },
+  reloadButton: { en: "Reload", es: "Recargar" },
   addStore: { en: "Add Store", es: "Agregar Tienda" },
   storeNumberLabel: { en: "Store number", es: "Número de tienda" },
   storeNameLabel: { en: "Store name / location", es: "Nombre de tienda / ubicación" },
