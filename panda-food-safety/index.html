@@ -4,6 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>Panda Food Safety Checklist</title>
+  <!-- Without these, "Add to Home Screen" on iOS creates a plain
+       bookmark instead of a real standalone app — on some iOS versions
+       that means each launch doesn't reliably reuse the same storage,
+       which shows up as being logged out every single time. -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Food Safety" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
