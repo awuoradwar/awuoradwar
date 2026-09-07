@@ -367,25 +367,53 @@ function ensureChecklistSubscription() {
 
 // ---------- Dashboard shell ----------
 
+const PRIMARY_TABS = [
+  ["today", "todayStatusTitle"],
+  ["weekly", "weeklySummaryTitle"],
+  ["history", "historyTitle"],
+];
+
+function secondaryTabs() {
+  const tabs = [
+    ["stores", "manageStoresTitle"],
+    ["checklist", "manageChecklistTitle"],
+  ];
+  if (isOwnerSession) tabs.push(["admins", "manageAdminsTitle"]);
+  return tabs;
+}
+
 function renderDashboard() {
+  const isSecondaryActive = secondaryTabs().some(([key]) => key === activeTab);
   root.innerHTML = `
     ${topBarHtml()}
     <main>
       <div class="admin-account-row">
         <a class="text-link" href="#/">${t("backToChecklist")}</a>
-        <div style="display:flex; align-items:center; gap:12px;">
-          <button class="text-link" id="btn-reset-password">${t("resetPasswordButton")}</button>
-          <button class="text-link" id="btn-logout">${t("logoutButton")}</button>
+        <div class="dropdown-wrap">
+          <button type="button" class="btn btn-sm btn-secondary" id="btn-account-menu">⚙ ${t("accountMenuLabel")}</button>
+          <div class="dropdown-menu" id="account-dropdown" hidden>
+            <button type="button" class="dropdown-item" id="btn-reset-password">${t("resetPasswordButton")}</button>
+            <button type="button" class="dropdown-item" id="btn-logout">${t("logoutButton")}</button>
+          </div>
         </div>
       </div>
       <div id="reset-password-msg" class="hint-banner" hidden></div>
-      <div class="admin-tabs">
-        <button class="btn btn-sm ${activeTab === "today" ? "btn-primary" : "btn-secondary"}" data-tab="today">${t("todayStatusTitle")}</button>
-        <button class="btn btn-sm ${activeTab === "weekly" ? "btn-primary" : "btn-secondary"}" data-tab="weekly">${t("weeklySummaryTitle")}</button>
-        <button class="btn btn-sm ${activeTab === "history" ? "btn-primary" : "btn-secondary"}" data-tab="history">${t("historyTitle")}</button>
-        <button class="btn btn-sm ${activeTab === "stores" ? "btn-primary" : "btn-secondary"}" data-tab="stores">${t("manageStoresTitle")}</button>
-        <button class="btn btn-sm ${activeTab === "checklist" ? "btn-primary" : "btn-secondary"}" data-tab="checklist">${t("manageChecklistTitle")}</button>
-        ${isOwnerSession ? `<button class="btn btn-sm ${activeTab === "admins" ? "btn-primary" : "btn-secondary"}" data-tab="admins">${t("manageAdminsTitle")}</button>` : ""}
+      <div class="admin-tabs-wrap">
+        <div class="admin-tabs">
+          ${PRIMARY_TABS.map(
+            ([key, labelKey]) =>
+              `<button class="btn btn-sm ${activeTab === key ? "btn-primary" : "btn-secondary"}" data-tab="${key}">${t(labelKey)}</button>`
+          ).join("")}
+          <button type="button" class="btn btn-sm ${isSecondaryActive ? "btn-primary" : "btn-secondary"}" id="btn-more-tabs">${t("moreTabsLabel")} ▾</button>
+        </div>
+        <div class="dropdown-menu" id="more-tabs-dropdown" hidden>
+          ${secondaryTabs()
+            .map(
+              ([key, labelKey]) =>
+                `<button type="button" class="dropdown-item ${activeTab === key ? "dropdown-item-active" : ""}" data-tab="${key}">${t(labelKey)}</button>`
+            )
+            .join("")}
+        </div>
       </div>
       <div id="tab-content"></div>
     </main>
@@ -407,8 +435,30 @@ function renderDashboard() {
       msgEl.hidden = false;
       btn.disabled = false;
       btn.textContent = original;
+      root.querySelector("#account-dropdown").hidden = true;
     }
   });
+
+  function closeDropdowns() {
+    root.querySelector("#account-dropdown").hidden = true;
+    root.querySelector("#more-tabs-dropdown").hidden = true;
+  }
+  root.querySelector("#btn-account-menu").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const menu = root.querySelector("#account-dropdown");
+    const willOpen = menu.hidden;
+    closeDropdowns();
+    menu.hidden = !willOpen;
+  });
+  root.querySelector("#btn-more-tabs").addEventListener("click", (e) => {
+    e.stopPropagation();
+    const menu = root.querySelector("#more-tabs-dropdown");
+    const willOpen = menu.hidden;
+    closeDropdowns();
+    menu.hidden = !willOpen;
+  });
+  document.addEventListener("click", closeDropdowns);
+
   root.querySelectorAll("button[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.tab;

@@ -230,9 +230,23 @@ textarea { resize: vertical; min-height: 70px; }
 .confirm-icon { font-size: 48px; }
 
 /* --- Admin --- */
+.admin-tabs-wrap { position: relative; }
 .admin-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
 .admin-tabs .btn { flex-shrink: 0; }
 .admin-account-row { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; border-top: 1px solid var(--border); }
+.dropdown-wrap { position: relative; flex-shrink: 0; }
+.dropdown-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 30; min-width: 170px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 4px; display: flex; flex-direction: column;
+}
+.dropdown-menu[hidden] { display: none; }
+.dropdown-item {
+  display: block; width: 100%; text-align: left; padding: 10px 12px; border: none; background: none;
+  color: var(--text); font-size: 14px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+}
+.dropdown-item:hover, .dropdown-item:focus { background: var(--surface-alt); }
+.dropdown-item-active { color: var(--accent); font-weight: 600; }
 .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
 .store-status-card {
   border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--surface);
