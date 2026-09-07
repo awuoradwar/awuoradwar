@@ -459,6 +459,14 @@ async function renderTodayTab() {
           const submitted = Boolean(sub?.submitted);
           const inProgress = Boolean(sub) && !submitted;
           const penalize = !submitted && !inProgress && !notYetLaunched;
+          // Missing first (needs the most attention), then In Progress,
+          // then Submitted — store number order is kept within each
+          // group rather than interleaving all three by number.
+          const statusRank = submitted ? 2 : inProgress ? 1 : 0;
+          return { s, submitted, inProgress, penalize, statusRank };
+        })
+        .sort((a, b) => a.statusRank - b.statusRank || Number(a.s.number) - Number(b.s.number))
+        .map(({ s, submitted, inProgress, penalize }) => {
           const clickable = submitted || inProgress;
           const badgeClass = submitted ? "badge-success" : inProgress ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
           const badgeLabel = submitted ? t("submittedStatus") : inProgress ? t("inProgressStatus") : t("missingStatus");
