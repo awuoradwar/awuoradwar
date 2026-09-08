@@ -250,26 +250,35 @@ function renderLoginScreen(mode, message, messageIsError = true) {
       <div class="card" style="max-width:360px; margin:40px auto;">
         <h2 style="margin-top:0;">${isSignUp ? t("signUpTitle") : t("loginTitle")}</h2>
         ${message ? `<div class="hint-banner" ${messageIsError ? 'style="color:var(--danger); border-color:var(--danger);"' : ""}>${escapeHtml(message)}</div>` : ""}
-        <div class="field">
-          <label>${t("emailLabel")}</label>
-          <input type="email" id="login-email" autocomplete="username" />
-        </div>
-        <div class="field">
-          <label>${t("passwordLabel")}</label>
-          <input type="password" id="login-password" autocomplete="${isSignUp ? "new-password" : "current-password"}" />
-        </div>
-        <button class="btn btn-primary btn-block" id="btn-submit-auth">${isSignUp ? t("signUpButton") : t("loginButton")}</button>
-        <button class="text-link" id="btn-toggle-mode" style="display:block; margin:10px auto 0;">${isSignUp ? t("switchToLogin") : t("switchToSignUp")}</button>
-        ${!isSignUp ? `<button class="text-link" id="btn-forgot-password" style="display:block; margin:4px auto 0;">${t("forgotPassword")}</button>` : ""}
+        <form id="login-form">
+          <div class="field">
+            <label>${t("emailLabel")}</label>
+            <input type="email" id="login-email" name="email" autocomplete="username" required />
+          </div>
+          <div class="field">
+            <label>${t("passwordLabel")}</label>
+            <input type="password" id="login-password" name="password" autocomplete="${isSignUp ? "new-password" : "current-password"}" required />
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="btn-submit-auth">${isSignUp ? t("signUpButton") : t("loginButton")}</button>
+          <button type="button" class="text-link" id="btn-toggle-mode" style="display:block; margin:10px auto 0;">${isSignUp ? t("switchToLogin") : t("switchToSignUp")}</button>
+          ${!isSignUp ? `<button type="button" class="text-link" id="btn-forgot-password" style="display:block; margin:4px auto 0;">${t("forgotPassword")}</button>` : ""}
+        </form>
       </div>
     </main>
   `;
   wireLangToggle(() => renderLoginScreen(mode, message, messageIsError));
   root.querySelector("#btn-toggle-mode").addEventListener("click", () => renderLoginScreen(isSignUp ? "login" : "signup"));
-  root.querySelector("#btn-submit-auth").addEventListener("click", async (e) => {
+  // A real <form> with a type="submit" button (rather than a bare button
+  // wired only via a click listener) is what lets Safari's Keychain
+  // reliably offer to save this password and refill it with Face ID/Touch
+  // ID next time — the previous floating-inputs markup made that
+  // unreliable. It also gets Enter-to-submit on the password field for
+  // free.
+  root.querySelector("#login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
     const email = root.querySelector("#login-email").value.trim().toLowerCase();
     const password = root.querySelector("#login-password").value;
-    const btn = e.currentTarget;
+    const btn = root.querySelector("#btn-submit-auth");
     btn.disabled = true;
     btn.textContent = t("loadingButton");
     try {
