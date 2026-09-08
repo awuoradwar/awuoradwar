@@ -867,29 +867,27 @@ async function runHistorySearch() {
     return;
   }
 
+  const dateLocale = getLang() === "es" ? "es-US" : "en-US";
   resultsEl.innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>${t("dateColumn")}</th><th>${t("filterStore")}</th><th>${t("conductedByColumn")}</th>
-          <th>${t("statusColumn")}</th><th>${t("flaggedItems")}</th><th></th>
-        </tr></thead>
-        <tbody>
-          ${lastHistoryResults
-            .map((r) => {
-              const flaggedCount = Object.values(r.answers || {}).filter((a) => a.value === "no").length;
-              return `<tr>
-                <td>${escapeHtml(r.date)}</td>
-                <td>${escapeHtml(storeLabel(r.storeNumber, r.storeName))}</td>
-                <td>${escapeHtml(r.conductedBy)}</td>
-                <td><span class="badge ${r.submitted ? "badge-success" : "badge-info"}">${r.submitted ? t("submittedStatus") : t("inProgressStatus")}</span></td>
-                <td>${flaggedCount > 0 ? `<button class="btn btn-sm btn-danger" data-view-flagged="${r.id}">${flaggedCount}</button>` : flaggedCount}</td>
-                <td><button class="btn btn-sm btn-secondary" data-view="${r.id}">${t("viewDetail")}</button></td>
-              </tr>`;
-            })
-            .join("")}
-        </tbody>
-      </table>
+    <div class="history-list">
+      ${lastHistoryResults
+        .map((r) => {
+          const flaggedCount = Object.values(r.answers || {}).filter((a) => a.value === "no").length;
+          const dateLabel = new Date(`${r.date}T00:00:00`).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" });
+          return `
+          <div class="history-card">
+            <div class="history-card-top">
+              <strong>${escapeHtml(storeLabel(r.storeNumber, r.storeName))}</strong>
+              <span class="badge ${r.submitted ? "badge-success" : "badge-info"}">${r.submitted ? t("submittedStatus") : t("inProgressStatus")}</span>
+            </div>
+            <div class="history-card-meta">${escapeHtml(dateLabel)} · ${escapeHtml(r.conductedBy)}</div>
+            <div class="history-card-actions">
+              ${flaggedCount > 0 ? `<button class="btn btn-sm btn-danger" data-view-flagged="${r.id}">${t("flaggedItems")}: ${flaggedCount}</button>` : `<span class="history-flagged-none">${t("flaggedItems")}: 0</span>`}
+              <button class="btn btn-sm btn-secondary" data-view="${r.id}">${t("viewDetail")}</button>
+            </div>
+          </div>`;
+        })
+        .join("")}
     </div>
   `;
   resultsEl.querySelectorAll("button[data-view], button[data-view-flagged]").forEach((btn) => {
