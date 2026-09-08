@@ -45,7 +45,11 @@ export default async function AttendancePage() {
       <PageHeader backHref="/add" lang={lang} title={lang === "es" ? "Avisos e Impuntualidad" : "Call-in / Late"} />
 
       {thisWeekCallIns > 0 && (
-        <div className={`rounded-xl px-3 py-2 text-sm font-semibold ${thisWeekFlagged ? "bg-critical/10 text-critical" : "bg-card-subtle text-muted"}`}>
+        <div
+          className={`rounded-xl px-3 py-2 text-sm font-semibold ${
+            thisWeekFlagged ? "bg-critical/10 text-critical" : "border border-accent/30 bg-accent/5 text-accent"
+          }`}
+        >
           {thisWeekFlagged ? "⚠ " : ""}
           {lang === "es"
             ? `${thisWeekCallIns} avisos esta semana`
