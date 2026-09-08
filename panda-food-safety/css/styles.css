@@ -120,6 +120,8 @@ input[type="text"], input[type="email"], input[type="password"], input[type="dat
 textarea { resize: vertical; min-height: 70px; }
 .field { margin-bottom: 16px; }
 .readonly-field { background: var(--surface-alt); border-radius: 8px; padding: 12px 14px; font-variant-numeric: tabular-nums; }
+.shift-picker-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.shift-picker-row .btn { flex: 1; min-width: 90px; padding: 10px 12px; font-size: 14px; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -264,6 +266,26 @@ textarea { resize: vertical; min-height: 70px; }
 .history-card-meta { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
 .history-card-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
 .history-flagged-none { color: var(--text-muted); font-size: 13px; }
+.view-mode-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.view-mode-row[hidden] { display: none; }
+.hist-date-row { display: flex; gap: 12px; }
+.hist-date-row .field { flex: 1; }
+.hist-actions-row { display: flex; gap: 8px; }
+.history-week-toggle {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer; text-align: left;
+  font: inherit; color: var(--text);
+}
+.history-week-toggle-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.history-week-caret { color: var(--text-muted); font-size: 12px; }
+.history-week-days { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.hist-filters-toggle {
+  display: flex; justify-content: space-between; align-items: center; width: 100%;
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  font: inherit; font-weight: 600; color: var(--text);
+}
+.hist-filters-caret { color: var(--text-muted); font-size: 13px; font-weight: 400; }
+.hist-filters-body { margin-top: 16px; }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -317,6 +339,7 @@ tr:last-child td { border-bottom: none; }
   padding: 8px 10px; font-style: italic; color: var(--text-muted);
 }
 .detail-note-label { font-style: normal; font-weight: 600; color: var(--text); }
+.detail-note-translation { margin-top: 6px; font-style: italic; color: var(--text-muted); }
 
 .hint-banner { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--text-muted); }
 

@@ -485,12 +485,18 @@ async function renderTodayTab() {
 
   const today = todayDateString();
   const snap = await getDocs(query(collection(db, "submissions"), where("date", "==", today)));
-  const byStoreNumber = {};
+  const docsByStoreNumber = {};
   snap.docs.forEach((d) => {
-    byStoreNumber[d.data().storeNumber] = { id: d.id, ...d.data() };
+    const data = { id: d.id, ...d.data() };
+    (docsByStoreNumber[data.storeNumber] ||= []).push(data);
   });
 
-  const doneCount = storesCache.filter((s) => byStoreNumber[s.number]?.submitted).length;
+  const coveredByStoreNumber = {};
+  storesCache.forEach((s) => {
+    coveredByStoreNumber[s.number] = shiftsCoveredForDay(docsByStoreNumber[s.number] || []);
+  });
+
+  const doneCount = storesCache.filter((s) => coveredByStoreNumber[s.number].doneCount === 3).length;
   const dateLocale = getLang() === "es" ? "es-US" : "en-US";
   const todayLabel = new Date(`${today}T00:00:00`).toLocaleDateString(dateLocale, {
     weekday: "short", month: "short", day: "numeric", year: "numeric",
@@ -505,25 +511,24 @@ async function renderTodayTab() {
     <div class="admin-grid">
       ${storesCache
         .map((s) => {
-          const sub = byStoreNumber[s.number];
-          const submitted = Boolean(sub?.submitted);
-          const inProgress = Boolean(sub) && !submitted;
-          const penalize = !submitted && !inProgress && !notYetLaunched;
-          // Missing first (needs the most attention), then In Progress,
-          // then Submitted — store number order is kept within each
-          // group rather than interleaving all three by number.
-          const statusRank = submitted ? 2 : inProgress ? 1 : 0;
-          return { s, submitted, inProgress, penalize, statusRank };
+          const covered = coveredByStoreNumber[s.number];
+          const anyInProgress = (docsByStoreNumber[s.number] || []).some((d) => !d.submitted);
+          const complete = covered.doneCount === 3;
+          const started = covered.doneCount > 0 || anyInProgress;
+          const penalize = !complete && !started && !notYetLaunched;
+          // Missing first (needs the most attention), then partially
+          // started, then all 3 shifts complete — store number order is
+          // kept within each group rather than interleaving all three.
+          const statusRank = complete ? 2 : started ? 1 : 0;
+          return { s, covered, complete, started, penalize, statusRank };
         })
         .sort((a, b) => a.statusRank - b.statusRank || Number(a.s.number) - Number(b.s.number))
-        .map(({ s, submitted, inProgress, penalize }) => {
-          const clickable = submitted || inProgress;
-          const badgeClass = submitted ? "badge-success" : inProgress ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
-          const badgeLabel = submitted ? t("submittedStatus") : inProgress ? t("inProgressStatus") : t("missingStatus");
+        .map(({ s, covered, complete, started, penalize }) => {
+          const badgeClass = complete ? "badge-success" : started ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
           return `
-          <div class="store-status-card ${penalize ? "missing" : ""} ${clickable ? "clickable" : ""}" ${clickable ? `data-view-today="${escapeHtml(s.number)}"` : ""}>
+          <div class="store-status-card ${penalize ? "missing" : ""} clickable" data-view-today="${escapeHtml(s.number)}">
             <span class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</span>
-            <span class="badge ${badgeClass}">${badgeLabel}</span>
+            <span class="badge ${badgeClass}">${covered.doneCount} / 3</span>
           </div>`;
         })
         .join("")}
@@ -531,11 +536,70 @@ async function renderTodayTab() {
   `;
 
   content.querySelectorAll("[data-view-today]").forEach((cardEl) => {
-    cardEl.addEventListener("click", async () => {
-      const record = byStoreNumber[cardEl.dataset.viewToday];
-      const hydrated = await hydrateRecordPhotos(record);
-      renderDetailModal(hydrated, { expandFlagged: true });
+    cardEl.addEventListener("click", () => {
+      const storeNumber = cardEl.dataset.viewToday;
+      const store = storesCache.find((s) => s.number === storeNumber);
+      renderDayShiftsModal(store, docsByStoreNumber[storeNumber] || [], coveredByStoreNumber[storeNumber]);
     });
+  });
+}
+
+// Drill-down from a store's "X / 3" card on Today's Status: shows each of
+// the 3 shifts' status for today (or, for a legacy pre-shift-feature
+// submission, the single day-covering submission it came from) with a
+// way to open the full detail for any that were actually submitted.
+function renderDayShiftsModal(store, docs, covered) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  const today = todayDateString();
+
+  const bodyHtml = covered.legacy
+    ? `
+      <div class="detail-row">
+        <div class="detail-row-main">
+          <span class="detail-item-text">${escapeHtml(t("submittedStatus"))} · ${escapeHtml(covered.opening.conductedBy)}</span>
+          <button class="btn btn-sm btn-secondary" data-view-shift-doc="${covered.opening.id}">${t("viewDetail")}</button>
+        </div>
+      </div>`
+    : SHIFTS.map((shiftKey) => {
+        const submittedDoc = covered[shiftKey];
+        const inProgressDoc = docs.find((d) => d.id === shiftDocId(store.number, today, shiftKey) && !d.submitted);
+        const activeDoc = submittedDoc || inProgressDoc;
+        const badgeClass = submittedDoc ? "badge-success" : inProgressDoc ? "badge-info" : "badge-neutral";
+        const badgeLabel = submittedDoc ? t("submittedStatus") : inProgressDoc ? t("inProgressStatus") : t("missingStatus");
+        return `
+        <div class="detail-row">
+          <div class="detail-row-main">
+            <span class="detail-item-text">${escapeHtml(t("shift_" + shiftKey))}${activeDoc ? ` · ${escapeHtml(activeDoc.conductedBy)}` : ""}</span>
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
+          </div>
+          ${submittedDoc ? `<div class="detail-row-body"><button class="btn btn-sm btn-secondary" data-view-shift-doc="${submittedDoc.id}">${t("viewDetail")}</button></div>` : ""}
+        </div>`;
+      }).join("");
+
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3 style="margin:0;">${escapeHtml(storeLabel(store.number, store.name))} — ${escapeHtml(today)}</h3>
+        <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
+      </div>
+      ${bodyHtml}
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+  backdrop.addEventListener("click", async (e) => {
+    if (e.target === backdrop) {
+      backdrop.remove();
+      return;
+    }
+    const viewBtn = e.target.closest("[data-view-shift-doc]");
+    if (!viewBtn) return;
+    const record = docs.find((d) => d.id === viewBtn.dataset.viewShiftDoc);
+    if (!record) return;
+    const hydrated = await hydrateRecordPhotos(record);
+    backdrop.remove();
+    renderDetailModal(hydrated, { expandFlagged: true });
   });
 }
 
@@ -562,20 +626,23 @@ async function renderWeeklyTab() {
 
   const byStore = {};
   snap.docs.forEach((d) => {
-    const data = d.data();
-    const bucket = (byStore[data.storeNumber] ||= { doneDays: new Set(), flagged: 0, lastSubmittedAt: null });
+    const data = { id: d.id, ...d.data() };
+    const bucket = (byStore[data.storeNumber] ||= { docsByDate: {}, flagged: 0, lastSubmittedAt: null });
     if (data.submitted) {
-      bucket.doneDays.add(data.date);
+      (bucket.docsByDate[data.date] ||= []).push(data);
       bucket.flagged += Object.values(data.answers || {}).filter((a) => a.value === "no").length;
       const ts = data.submittedAt?.toMillis ? data.submittedAt.toMillis() : 0;
       if (!bucket.lastSubmittedAt || ts > bucket.lastSubmittedAt) bucket.lastSubmittedAt = ts;
     }
   });
 
+  // A day only counts as done once all 3 shifts (or one legacy
+  // pre-shift-feature submission) are submitted for it.
   const rows = storesCache
     .map((s) => {
-      const b = byStore[s.number] || { doneDays: new Set(), flagged: 0, lastSubmittedAt: null };
-      return { store: s, doneDays: b.doneDays.size, flagged: b.flagged, lastSubmittedAt: b.lastSubmittedAt };
+      const b = byStore[s.number] || { docsByDate: {}, flagged: 0, lastSubmittedAt: null };
+      const doneDays = Object.values(b.docsByDate).filter((docsForDay) => shiftsCoveredForDay(docsForDay).doneCount === 3).length;
+      return { store: s, doneDays, flagged: b.flagged, lastSubmittedAt: b.lastSubmittedAt };
     })
     .sort((a, b) => a.doneDays - b.doneDays || b.flagged - a.flagged || Number(a.store.number) - Number(b.store.number));
 
@@ -595,24 +662,22 @@ async function renderWeeklyTab() {
       </div>
     </div>
     <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>${t("filterStore")}</th><th>${t("weeklyDaysColumn")}</th><th>${t("weeklyFlaggedColumn")}</th><th>${t("weeklyLastSubmission")}</th>
-          </tr></thead>
-          <tbody>
-            ${rows
-              .map(
-                (r) => `<tr>
-              <td>${escapeHtml(storeLabel(r.store.number, r.store.name))}</td>
-              <td><span class="badge ${r.doneDays === 7 ? "badge-success" : r.doneDays === 0 ? "badge-danger" : "badge-neutral"}">${r.doneDays} / 7</span></td>
-              <td>${r.flagged > 0 ? `<button class="btn btn-sm btn-danger" data-view-weekly-flagged="${escapeHtml(r.store.number)}">${r.flagged}</button>` : r.flagged}</td>
-              <td>${r.lastSubmittedAt ? formatDateTime({ toDate: () => new Date(r.lastSubmittedAt) }) : t("weeklyNever")}</td>
-            </tr>`
-              )
-              .join("")}
-          </tbody>
-        </table>
+      <div class="history-list">
+        ${rows
+          .map((r) => {
+            const doneDaysBadgeClass = r.doneDays === 7 ? "badge-success" : r.doneDays === 0 ? "badge-danger" : "badge-neutral";
+            const lastSub = r.lastSubmittedAt ? formatDateTime({ toDate: () => new Date(r.lastSubmittedAt) }) : t("weeklyNever");
+            return `
+            <div class="history-card">
+              <div class="history-card-top">
+                <strong>${escapeHtml(storeLabel(r.store.number, r.store.name))}</strong>
+                <span class="badge ${doneDaysBadgeClass}">${r.doneDays} / 7</span>
+              </div>
+              <div class="history-card-meta">${escapeHtml(t("weeklyLastSubmission"))}: ${escapeHtml(lastSub)}</div>
+              ${r.flagged > 0 ? `<div class="history-card-actions"><button class="btn btn-sm btn-danger" data-view-weekly-flagged="${escapeHtml(r.store.number)}">${escapeHtml(t("weeklyFlaggedColumn"))}: ${r.flagged}</button></div>` : ""}
+            </div>`;
+          })
+          .join("")}
       </div>
     </div>
   `;
@@ -680,6 +745,17 @@ function weekRangeDates(weeksAgo) {
   return { from: todayDateStringFor(start), to: todayDateStringFor(end) };
 }
 
+// "weekly" only ever applies with a single store selected — an all-
+// stores weekly rollup already exists as its own tab (Weekly Summary),
+// so History's Weekly view stays scoped to "check one store's past".
+let histViewMode = "daily";
+let expandedHistoryWeek = null;
+// Collapsed by default — the filter form (quick ranges, store, date
+// range, actions) was taking up most of the screen before any results
+// even showed. Stays expanded/collapsed across tab switches once an
+// admin has touched it, same as histViewMode.
+let histFiltersExpanded = false;
+
 function renderHistoryTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
@@ -691,14 +767,18 @@ function renderHistoryTab() {
 
   content.innerHTML = `
     <div class="card">
-      <div class="quick-range-row">
-        <span class="quick-range-label">${t("quickRangeLabel")}</span>
-        <button class="btn btn-sm btn-secondary" data-weeks-ago="0">${t("thisWeek")}</button>
-        <button class="btn btn-sm btn-secondary" data-weeks-ago="1">${t("lastWeek")}</button>
-        <button class="btn btn-sm btn-secondary" data-weeks-ago="2">${t("weeksAgo", { n: 2 })}</button>
-        <button class="btn btn-sm btn-secondary" data-weeks-ago="3">${t("weeksAgo", { n: 3 })}</button>
-      </div>
-      <div class="filters-row">
+      <button type="button" class="hist-filters-toggle" id="btn-toggle-filters">
+        <span id="hist-filters-summary"></span>
+        <span class="hist-filters-caret">${t("filtersLabel")} ${histFiltersExpanded ? "▲" : "▼"}</span>
+      </button>
+      <div class="hist-filters-body" id="hist-filters-body" ${histFiltersExpanded ? "" : "hidden"}>
+        <div class="quick-range-row">
+          <span class="quick-range-label">${t("quickRangeLabel")}</span>
+          <button class="btn btn-sm btn-secondary" data-weeks-ago="0">${t("thisWeek")}</button>
+          <button class="btn btn-sm btn-secondary" data-weeks-ago="1">${t("lastWeek")}</button>
+          <button class="btn btn-sm btn-secondary" data-weeks-ago="2">${t("weeksAgo", { n: 2 })}</button>
+          <button class="btn btn-sm btn-secondary" data-weeks-ago="3">${t("weeksAgo", { n: 3 })}</button>
+        </div>
         <div class="field">
           <label>${t("filterStore")}</label>
           <div class="store-combo">
@@ -707,20 +787,40 @@ function renderHistoryTab() {
             <div class="store-combo-list" id="hist-store-list" hidden></div>
           </div>
         </div>
-        <div class="field">
-          <label>${t("filterFrom")}</label>
-          <input type="date" id="hist-from" value="${fromDefault}" />
+        <div class="view-mode-row" id="hist-view-mode-row" hidden>
+          <button type="button" class="btn btn-sm ${histViewMode === "daily" ? "btn-primary" : "btn-secondary"}" data-view-mode="daily">${t("dailyViewLabel")}</button>
+          <button type="button" class="btn btn-sm ${histViewMode === "weekly" ? "btn-primary" : "btn-secondary"}" data-view-mode="weekly">${t("weeklyViewLabel")}</button>
         </div>
-        <div class="field">
-          <label>${t("filterTo")}</label>
-          <input type="date" id="hist-to" value="${toDefault}" />
+        <div class="hist-date-row">
+          <div class="field">
+            <label>${t("filterFrom")}</label>
+            <input type="date" id="hist-from" value="${fromDefault}" />
+          </div>
+          <div class="field">
+            <label>${t("filterTo")}</label>
+            <input type="date" id="hist-to" value="${toDefault}" />
+          </div>
         </div>
-        <button class="btn btn-secondary" id="btn-hist-search">${t("historyTitle")}</button>
-        <button class="btn btn-secondary" id="btn-hist-export">${t("exportCsv")}</button>
+        <div class="hist-actions-row">
+          <button class="btn btn-secondary" id="btn-hist-search">${t("searchButton")}</button>
+          <button class="btn btn-secondary" id="btn-hist-export">${t("exportCsv")}</button>
+        </div>
       </div>
     </div>
-    <div class="card" id="hist-results"><div class="table-wrap"></div></div>
+    <div class="card" id="hist-results"></div>
   `;
+
+  function updateViewModeVisibility() {
+    const storeNumber = content.querySelector("#hist-store").value;
+    content.querySelector("#hist-view-mode-row").hidden = !storeNumber;
+    if (!storeNumber) histViewMode = "daily";
+  }
+
+  content.querySelector("#btn-toggle-filters").addEventListener("click", () => {
+    histFiltersExpanded = !histFiltersExpanded;
+    content.querySelector("#hist-filters-body").hidden = !histFiltersExpanded;
+    content.querySelector(".hist-filters-caret").textContent = `${t("filtersLabel")} ${histFiltersExpanded ? "▲" : "▼"}`;
+  });
 
   wireStoreCombo({
     inputEl: content.querySelector("#hist-store-input"),
@@ -728,7 +828,16 @@ function renderHistoryTab() {
     listEl: content.querySelector("#hist-store-list"),
     stores: storesCache,
     allLabel: t("filterAllStores"),
+    onSelect: () => {
+      // A newly picked (or cleared) store must re-query Firestore, not
+      // just re-render whatever was already fetched — otherwise Weekly
+      // view could silently aggregate another store's data in until
+      // Search was also pressed.
+      updateViewModeVisibility();
+      runHistorySearch();
+    },
   });
+  updateViewModeVisibility();
 
   content.querySelectorAll("[data-weeks-ago]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -739,9 +848,32 @@ function renderHistoryTab() {
     });
   });
 
+  content.querySelectorAll("[data-view-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      histViewMode = btn.dataset.viewMode;
+      expandedHistoryWeek = null;
+      content.querySelectorAll("[data-view-mode]").forEach((b) => {
+        b.classList.toggle("btn-primary", b.dataset.viewMode === histViewMode);
+        b.classList.toggle("btn-secondary", b.dataset.viewMode !== histViewMode);
+      });
+      renderHistoryResults();
+    });
+  });
+
   root.querySelector("#btn-hist-search").addEventListener("click", () => runHistorySearch());
   root.querySelector("#btn-hist-export").addEventListener("click", () => exportCsv(lastHistoryResults));
   runHistorySearch();
+}
+
+function updateHistFiltersSummary() {
+  const summaryEl = root.querySelector("#hist-filters-summary");
+  if (!summaryEl) return;
+  const from = root.querySelector("#hist-from").value;
+  const to = root.querySelector("#hist-to").value;
+  const storeNumber = root.querySelector("#hist-store").value;
+  const store = storesCache.find((s) => s.number === storeNumber);
+  const storeText = store ? storeLabel(store.number, store.name) : t("filterAllStores");
+  summaryEl.textContent = `${formatWeekRangeLabel(from, to)} · ${storeText}`;
 }
 
 async function openHistoryRecord(record) {
@@ -752,6 +884,29 @@ async function openHistoryRecord(record) {
 async function openFlaggedOnly(records) {
   const hydrated = await Promise.all(records.map((r) => hydrateRecordPhotos(r)));
   renderFlaggedItemsModal(hydrated);
+}
+
+// Adds an auto-translated line under any free-text note whose recorded
+// language doesn't match whatever the admin is currently viewing in —
+// never replaces the original (translateText itself is a no-op when
+// languages already match, or when the translation service has
+// nothing better to offer). Runs after the modal is already in the DOM
+// so a slow/unavailable translation never delays showing the record.
+async function translateNotesIn(container) {
+  const target = getLang();
+  const els = [...container.querySelectorAll("[data-translatable]")];
+  await Promise.all(
+    els.map(async (el) => {
+      const sourceLang = el.dataset.noteLang;
+      if (!sourceLang || sourceLang === target) return;
+      const translated = await translateText(el.dataset.noteText, sourceLang, target);
+      if (!translated) return;
+      const slot = el.querySelector(".detail-note-translation");
+      if (!slot) return;
+      slot.textContent = `🌐 ${t("translatedLabel")}: ${translated}`;
+      slot.hidden = false;
+    })
+  );
 }
 
 // Shows only the flagged ("No") rows, across one or more submissions —
@@ -789,7 +944,7 @@ function renderFlaggedItemsModal(records) {
             </div>
             <div class="detail-row-body">
               ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
-              ${a.note ? `<div class="detail-note"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}</div>` : ""}
+              ${a.note ? `<div class="detail-note" data-translatable data-note-text="${escapeHtml(a.note)}" data-note-lang="${escapeHtml(record.language || "")}"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}<div class="detail-note-translation" hidden></div></div>` : ""}
             </div>
           </div>`
         )
@@ -813,6 +968,7 @@ function renderFlaggedItemsModal(records) {
     </div>
   `;
   document.body.appendChild(backdrop);
+  translateNotesIn(backdrop);
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
   const deleteBtn = backdrop.querySelector("#modal-delete-submission");
   if (deleteBtn) {
@@ -850,6 +1006,7 @@ async function runHistorySearch() {
   const to = root.querySelector("#hist-to").value;
   const resultsEl = root.querySelector("#hist-results");
   resultsEl.innerHTML = `<div>${t("loadingButton")}</div>`;
+  updateHistFiltersSummary();
 
   const clauses = [where("date", ">=", from), where("date", "<=", to)];
   if (storeNumber) clauses.push(where("storeNumber", "==", storeNumber));
@@ -861,37 +1018,112 @@ async function runHistorySearch() {
     return;
   }
   lastHistoryResults = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  expandedHistoryWeek = null;
+  renderHistoryResults();
+}
 
+function renderHistoryResults() {
+  const resultsEl = root.querySelector("#hist-results");
+  if (!resultsEl) return;
   if (lastHistoryResults.length === 0) {
     resultsEl.innerHTML = `<div>${t("noSubmissionsFound")}</div>`;
     return;
   }
+  const storeNumber = root.querySelector("#hist-store")?.value;
+  if (histViewMode === "weekly" && storeNumber) renderWeeklyHistoryView(resultsEl);
+  else renderDailyHistoryView(resultsEl);
+}
 
+function historyDayCardHtml(r, dateLocale) {
+  const flaggedCount = Object.values(r.answers || {}).filter((a) => a.value === "no").length;
+  const dateLabel = new Date(`${r.date}T00:00:00`).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" });
+  return `
+    <div class="history-card">
+      <div class="history-card-top">
+        <strong>${escapeHtml(storeLabel(r.storeNumber, r.storeName))}</strong>
+        <span class="badge ${r.submitted ? "badge-success" : "badge-info"}">${r.submitted ? t("submittedStatus") : t("inProgressStatus")}</span>
+      </div>
+      <div class="history-card-meta">${escapeHtml(dateLabel)}${r.shift ? ` · ${escapeHtml(t("shift_" + r.shift))}` : ""} · ${escapeHtml(r.conductedBy)}</div>
+      <div class="history-card-actions">
+        ${flaggedCount > 0 ? `<button class="btn btn-sm btn-danger" data-view-flagged="${r.id}">${t("flaggedItems")}: ${flaggedCount}</button>` : `<span class="history-flagged-none">${t("flaggedItems")}: 0</span>`}
+        <button class="btn btn-sm btn-secondary" data-view="${r.id}">${t("viewDetail")}</button>
+      </div>
+    </div>`;
+}
+
+function renderDailyHistoryView(resultsEl) {
   const dateLocale = getLang() === "es" ? "es-US" : "en-US";
+  resultsEl.innerHTML = `<div class="history-list">${lastHistoryResults.map((r) => historyDayCardHtml(r, dateLocale)).join("")}</div>`;
+  wireHistoryResultButtons(resultsEl);
+}
+
+// Buckets records into Sun-Sat calendar weeks (matching the rest of the
+// app's week boundaries), newest week first — a pure regrouping of
+// whatever's already been fetched, so switching Daily/Weekly never
+// re-queries Firestore.
+function groupRecordsByWeek(records) {
+  const weeks = new Map();
+  for (const r of records) {
+    const d = new Date(`${r.date}T00:00:00`);
+    const start = new Date(d);
+    start.setDate(start.getDate() - start.getDay());
+    const key = todayDateStringFor(start);
+    if (!weeks.has(key)) {
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      weeks.set(key, { from: key, to: todayDateStringFor(end), records: [] });
+    }
+    weeks.get(key).records.push(r);
+  }
+  return [...weeks.values()].sort((a, b) => (a.from < b.from ? 1 : -1));
+}
+
+function renderWeeklyHistoryView(resultsEl) {
+  const dateLocale = getLang() === "es" ? "es-US" : "en-US";
+  const weeks = groupRecordsByWeek(lastHistoryResults);
   resultsEl.innerHTML = `
     <div class="history-list">
-      ${lastHistoryResults
-        .map((r) => {
-          const flaggedCount = Object.values(r.answers || {}).filter((a) => a.value === "no").length;
-          const dateLabel = new Date(`${r.date}T00:00:00`).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" });
+      ${weeks
+        .map((w) => {
+          const recordsByDate = {};
+          for (const r of w.records) (recordsByDate[r.date] ||= []).push(r);
+          const doneDays = Object.values(recordsByDate).filter((docsForDay) => shiftsCoveredForDay(docsForDay).doneCount === 3).length;
+          const flaggedTotal = w.records.reduce(
+            (sum, r) => sum + Object.values(r.answers || {}).filter((a) => a.value === "no").length,
+            0
+          );
+          const expanded = expandedHistoryWeek === w.from;
+          const sortedDays = [...w.records].sort((a, b) => (a.date < b.date ? 1 : -1));
           return `
           <div class="history-card">
-            <div class="history-card-top">
-              <strong>${escapeHtml(storeLabel(r.storeNumber, r.storeName))}</strong>
-              <span class="badge ${r.submitted ? "badge-success" : "badge-info"}">${r.submitted ? t("submittedStatus") : t("inProgressStatus")}</span>
-            </div>
-            <div class="history-card-meta">${escapeHtml(dateLabel)} · ${escapeHtml(r.conductedBy)}</div>
-            <div class="history-card-actions">
-              ${flaggedCount > 0 ? `<button class="btn btn-sm btn-danger" data-view-flagged="${r.id}">${t("flaggedItems")}: ${flaggedCount}</button>` : `<span class="history-flagged-none">${t("flaggedItems")}: 0</span>`}
-              <button class="btn btn-sm btn-secondary" data-view="${r.id}">${t("viewDetail")}</button>
-            </div>
+            <button type="button" class="history-week-toggle" data-week="${w.from}">
+              <span>${escapeHtml(formatWeekRangeLabel(w.from, w.to))}</span>
+              <span class="history-week-toggle-right">
+                <span class="badge ${doneDays === 7 ? "badge-success" : doneDays === 0 ? "badge-danger" : "badge-neutral"}">${doneDays} / 7</span>
+                ${flaggedTotal > 0 ? `<span class="badge badge-danger">${t("flaggedItems")}: ${flaggedTotal}</span>` : ""}
+                <span class="history-week-caret">${expanded ? "▲" : "▼"}</span>
+              </span>
+            </button>
+            ${expanded ? `<div class="history-week-days">${sortedDays.map((r) => historyDayCardHtml(r, dateLocale)).join("")}</div>` : ""}
           </div>`;
         })
         .join("")}
     </div>
   `;
-  resultsEl.querySelectorAll("button[data-view], button[data-view-flagged]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+  resultsEl.querySelectorAll("[data-week]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.week;
+      expandedHistoryWeek = expandedHistoryWeek === key ? null : key;
+      renderWeeklyHistoryView(resultsEl);
+    });
+  });
+  wireHistoryResultButtons(resultsEl);
+}
+
+function wireHistoryResultButtons(container) {
+  container.querySelectorAll("button[data-view], button[data-view-flagged]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
       const recordId = btn.dataset.view || btn.dataset.viewFlagged;
       const record = lastHistoryResults.find((r) => r.id === recordId);
       const originalLabel = btn.textContent;
@@ -949,7 +1181,7 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
           isNo
             ? `<div class="detail-row-body ${expandFlagged ? "" : "collapsed"}" id="detail-body-${item.id}">
                 ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
-                ${a.note ? `<div class="detail-note"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}</div>` : ""}
+                ${a.note ? `<div class="detail-note" data-translatable data-note-text="${escapeHtml(a.note)}" data-note-lang="${escapeHtml(record.language || "")}"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}<div class="detail-note-translation" hidden></div></div>` : ""}
               </div>`
             : proofPhoto
               ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />`
@@ -996,12 +1228,13 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
           <button type="button" class="btn btn-sm btn-secondary" id="btn-cancel-conducted-by">${t("cancelButton")}</button>
         </div>
       </div>
-      ${record.additionalNotes ? `<p><em>${escapeHtml(record.additionalNotes)}</em></p>` : ""}
+      ${record.additionalNotes ? `<div data-translatable data-note-text="${escapeHtml(record.additionalNotes)}" data-note-lang="${escapeHtml(record.language || "")}"><em>${escapeHtml(record.additionalNotes)}</em><div class="detail-note-translation" hidden></div></div>` : ""}
       ${sectionsHtml}
       <button type="button" class="text-link" id="modal-delete-submission" style="color:var(--danger); margin-top:14px;">${t("deleteSubmission")}</button>
     </div>
   `;
   document.body.appendChild(backdrop);
+  translateNotesIn(backdrop);
   if (expandFlagged && firstFlaggedId !== null) {
     // Mobile Safari can miscalculate scroll geometry for an element
     // queried in the same tick it was inserted — wait a couple of frames
@@ -1105,10 +1338,10 @@ function exportCsv(rows) {
       }
     }
   }
-  const header = ["date", "storeNumber", "storeName", "conductedBy", "submitted", ...itemIds.map((id) => `item_${id}`)];
+  const header = ["date", "shift", "storeNumber", "storeName", "conductedBy", "submitted", ...itemIds.map((id) => `item_${id}`)];
   const csvRows = [header.join(",")];
   for (const r of rows) {
-    const cells = [r.date, r.storeNumber, r.storeName, r.conductedBy, r.submitted ? "yes" : "no"];
+    const cells = [r.date, r.shift || "", r.storeNumber, r.storeName, r.conductedBy, r.submitted ? "yes" : "no"];
     for (const id of itemIds) {
       cells.push(r.answers?.[id]?.value || "");
     }

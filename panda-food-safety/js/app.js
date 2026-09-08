@@ -33,16 +33,20 @@ const saveTimers = {};
 let expandedSectionId = null;
 let autoResumeAttempted = false;
 
-// Remembers which store/name a walkthrough is in progress for, so a
-// page reload (including the "new version available" reload prompt)
+// Which of the 3 daily shifts is selected on the setup screen — reset
+// whenever the store selection changes, since shift status is per-store.
+let selectedShift = null;
+
+// Remembers which store/name/shift a walkthrough is in progress for, so
+// a page reload (including the "new version available" reload prompt)
 // can drop someone straight back into it instead of back at Setup —
 // the actual answers already live in Firestore either way (this is
 // only a pointer to which draft to reopen, not the data itself).
 const ACTIVE_SESSION_KEY = "pfs-active-session";
 
-function saveActiveSessionRef(storeNumber, conductedBy) {
+function saveActiveSessionRef(storeNumber, conductedBy, shiftKey) {
   try {
-    localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({ storeNumber, conductedBy, date: todayDateString() }));
+    localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({ storeNumber, conductedBy, shiftKey, date: todayDateString() }));
   } catch {}
 }
 
@@ -96,9 +100,11 @@ export async function initAssociateApp() {
       autoResumeAttempted = true;
       const ref = loadActiveSessionRef();
       const store = ref && stores.find((s) => String(s.number) === String(ref.storeNumber));
-      if (store) {
+      // A ref saved before this feature existed won't have a shiftKey —
+      // safer to just fall through to Setup than guess which shift.
+      if (store && ref.shiftKey) {
         root.innerHTML = `${topBarHtml()}<main><div class="card">${t("loadingButton")}</div></main>`;
-        beginWalkthrough(store, ref.conductedBy).catch((err) => {
+        beginWalkthrough(store, ref.conductedBy, ref.shiftKey).catch((err) => {
           console.error(err);
           storesLoadError = String(err.message || err);
           renderSetupScreen();
@@ -316,6 +322,7 @@ function renderSetupScreen() {
           <div id="weekly-summary-toggle"></div>
         </div>
         <div id="weekly-summary-panel"></div>
+        <div id="shift-picker"></div>
         <div class="field">
           <label>${t("conductedByLabel")}</label>
           <input type="text" id="conducted-by" placeholder="${t("conductedByPlaceholder")}" autocomplete="name" />
@@ -338,10 +345,68 @@ function renderSetupScreen() {
   const weeklyPanelEl = root.querySelector("#weekly-summary-panel");
 
   function refreshStartEnabled() {
-    const ok = storeSelect && storeSelect.value && nameInput.value.trim().length > 1;
+    const ok = storeSelect && storeSelect.value && nameInput.value.trim().length > 1 && selectedShift;
     startBtn.disabled = !ok;
   }
   nameInput.addEventListener("input", refreshStartEnabled);
+
+  let shiftCoverageForSelectedStore = null;
+
+  function renderShiftButtons() {
+    const shiftPickerEl = root.querySelector("#shift-picker");
+    if (!shiftPickerEl || !shiftCoverageForSelectedStore) return;
+    const covered = shiftCoverageForSelectedStore;
+    shiftPickerEl.innerHTML = `
+      <div class="field">
+        <label>${t("whichShiftLabel")}</label>
+        <div class="shift-picker-row">
+          ${SHIFTS.map(
+            (s) =>
+              `<button type="button" class="btn btn-sm ${selectedShift === s ? "btn-primary" : "btn-secondary"}" data-shift="${s}">${covered[s] ? "✓ " : ""}${t("shift_" + s)}</button>`
+          ).join("")}
+        </div>
+      </div>`;
+    shiftPickerEl.querySelectorAll("[data-shift]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedShift = btn.dataset.shift;
+        renderShiftButtons();
+        refreshStartEnabled();
+      });
+    });
+  }
+
+  // Fetched once per store selection (not on every shift-button click) —
+  // tells the picker which of today's 3 checks this store already has,
+  // so it can default to the next one not yet done and show a ✓ on the
+  // rest.
+  async function renderShiftPicker(store) {
+    const shiftPickerEl = root.querySelector("#shift-picker");
+    if (!shiftPickerEl) return;
+    if (!store) {
+      shiftPickerEl.innerHTML = "";
+      selectedShift = null;
+      shiftCoverageForSelectedStore = null;
+      return;
+    }
+    shiftPickerEl.innerHTML = `<div class="field"><label>${t("whichShiftLabel")}</label><div>${t("loadingButton")}</div></div>`;
+    const today = todayDateString();
+    let docsForDay = [];
+    try {
+      await ensureAuth();
+      const snap = await withTimeout(
+        getDocs(query(collection(db, "submissions"), where("storeNumber", "==", store.number), where("date", "==", today)))
+      );
+      docsForDay = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (err) {
+      console.error(err);
+    }
+    shiftCoverageForSelectedStore = shiftsCoveredForDay(docsForDay);
+    if (!selectedShift || shiftCoverageForSelectedStore[selectedShift]) {
+      selectedShift = SHIFTS.find((s) => !shiftCoverageForSelectedStore[s]) || SHIFTS[0];
+    }
+    renderShiftButtons();
+    refreshStartEnabled();
+  }
 
   function renderWeeklyToggle(expanded) {
     if (!storeSelect || !storeSelect.value) {
@@ -379,6 +444,7 @@ function renderSetupScreen() {
       onSelect: () => {
         refreshStartEnabled();
         renderWeeklyToggle(false);
+        renderShiftPicker(stores.find((s) => s.id === storeSelect.value) || null);
       },
     });
     renderWeeklyToggle(false);
@@ -395,7 +461,7 @@ function renderSetupScreen() {
     startBtn.textContent = t("loadingButton");
     const store = stores.find((s) => s.id === storeSelect.value);
     try {
-      await beginWalkthrough(store, nameInput.value.trim());
+      await beginWalkthrough(store, nameInput.value.trim(), selectedShift);
     } catch (err) {
       console.error(err);
       alert(err.message || String(err));
@@ -453,16 +519,16 @@ async function hydratePhotoUrls(docId, answers) {
   return merged;
 }
 
-async function beginWalkthrough(store, conductedBy) {
+async function beginWalkthrough(store, conductedBy, shiftKey) {
   await ensureAuth();
   const date = todayDateString();
-  const docId = `${store.number}_${date}`;
+  const docId = shiftDocId(store.number, date, shiftKey);
   const ref = doc(db, "submissions", docId);
   // Saved before knowing which screen this leads to (in-progress,
   // already-submitted, etc.) — replaying this same call on reload is
   // what actually decides that, so it just needs to point at the right
-  // store/day.
-  saveActiveSessionRef(store.number, conductedBy);
+  // store/day/shift.
+  saveActiveSessionRef(store.number, conductedBy, shiftKey);
   const snap = await getDoc(ref);
 
   if (snap.exists() && snap.data().submitted) {
@@ -491,6 +557,7 @@ async function beginWalkthrough(store, conductedBy) {
       storeName: store.name,
       conductedBy,
       date,
+      shift: shiftKey,
       language: getLang(),
       startedAt: serverTimestamp(),
       submitted: false,
@@ -506,6 +573,7 @@ async function beginWalkthrough(store, conductedBy) {
     storeNumber: store.number,
     storeName: store.name,
     conductedBy: data.conductedBy,
+    shift: data.shift || shiftKey,
     answers,
     additionalNotes: data.additionalNotes || "",
   };
@@ -519,7 +587,7 @@ function renderAlreadySubmittedScreen(store, docId, data) {
     <main>
       <div class="card" style="text-align:center;">
         <div style="font-size:40px;">✅</div>
-        <h2>${t("alreadySubmittedTitle")}</h2>
+        <h2>${t("alreadySubmittedTitle", { shift: data.shift ? t("shift_" + data.shift) : "" })}</h2>
         <p>${t("alreadySubmittedBody", { name: escapeHtml(data.conductedBy), time: formatTime(data.submittedAt) })}</p>
         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
           <button class="btn btn-secondary" id="btn-edit-anyway">${t("editAnyway")}</button>
@@ -540,6 +608,7 @@ function renderAlreadySubmittedScreen(store, docId, data) {
       storeNumber: store.number,
       storeName: store.name,
       conductedBy: data.conductedBy,
+      shift: data.shift,
       answers: await hydratePhotoUrls(docId, data.answers || {}),
       additionalNotes: data.additionalNotes || "",
     };
@@ -713,7 +782,7 @@ function renderChecklistScreen() {
     ${topBarHtml()}
     <main id="checklist-body">
       <div class="card">
-        <strong>${escapeHtml(storeLabel(session.storeNumber, session.storeName))}</strong>
+        <strong>${escapeHtml(storeLabel(session.storeNumber, session.storeName))}${session.shift ? ` · ${escapeHtml(t("shift_" + session.shift))}` : ""}</strong>
         <div style="color:var(--text-muted); font-size:13px;">${escapeHtml(session.conductedBy)} · ${formatDateTime()}</div>
       </div>
       ${body}
