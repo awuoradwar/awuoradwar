@@ -28,16 +28,23 @@ function StepHeader({ step, total, label, lang }: { step: number; total: number;
 const bigTile =
   "tap-target flex w-full items-center justify-between rounded-2xl border-2 border-border bg-card px-5 py-4 text-left text-lg font-semibold transition-colors hover:border-accent hover:bg-accent/5 active:bg-accent/10";
 
-export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShift }: {
+export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShift, categories }: {
   token: string;
   storeName: string;
   areas: ProcedureArea[];
   itemsByAreaShift: Record<string, ProcedureItem[]>;
+  /** Only categories that currently have at least one active station --
+   * Back of House and Patio & Windows aren't built out yet, and a category
+   * that's only ever a dead end ("no areas set up") shouldn't be a tap on
+   * the very first screen. When there's exactly one, that whole step is
+   * skipped too, same reasoning as skipping the opening/closing tap. */
+  categories: ProcedureCategory[];
 }) {
+  const singleCategory = categories.length === 1 ? categories[0] : null;
   const [lang, setLang] = useState<Lang>("en");
   const es = lang === "es";
-  const [step, setStep] = useState<Step>("category");
-  const [category, setCategory] = useState<ProcedureCategory | null>(null);
+  const [step, setStep] = useState<Step>(singleCategory ? "area" : "category");
+  const [category, setCategory] = useState<ProcedureCategory | null>(singleCategory);
   const [area, setArea] = useState<ProcedureArea | null>(null);
   // Only closing procedures exist right now -- see the comment on `items`
   // below -- so this is fixed rather than a user choice. Kept as a real
@@ -62,9 +69,13 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
     return es && item.text_es ? item.text_es : item.text;
   }
 
+  const totalSteps = singleCategory ? 2 : 3;
+  const areaStepNum = singleCategory ? 1 : 2;
+  const checklistStepNum = singleCategory ? 2 : 3;
+
   function reset() {
-    setStep("category");
-    setCategory(null);
+    setStep(singleCategory ? "area" : "category");
+    setCategory(singleCategory);
     setArea(null);
     setName("");
     setChecked({});
@@ -111,9 +122,12 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
 
       {step === "category" && (
         <>
-          <StepHeader step={1} total={3} label={es ? "¿Para qué área es esto?" : "Which area is this for?"} lang={lang} />
+          <StepHeader step={1} total={totalSteps} label={es ? "¿Para qué área es esto?" : "Which area is this for?"} lang={lang} />
           <div className="flex flex-col gap-3">
-            {(["FOH", "BOH", "PATIO_WINDOWS"] as ProcedureCategory[]).map((c) => (
+            {categories.length === 0 && (
+              <p className="text-center text-sm text-muted">{es ? "Todavía no hay estaciones configuradas." : "No stations set up yet -- let your manager know."}</p>
+            )}
+            {categories.map((c) => (
               <button
                 key={c}
                 type="button"
@@ -133,7 +147,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
 
       {step === "area" && category && (
         <>
-          <StepHeader step={2} total={3} label={CATEGORY_LABEL[category][lang]} lang={lang} />
+          <StepHeader step={areaStepNum} total={totalSteps} label={CATEGORY_LABEL[category][lang]} lang={lang} />
           <div className="flex flex-col gap-3">
             {areasInCategory.length === 0 && (
               <p className="text-center text-sm text-muted">{es ? "Todavía no hay áreas para esta categoría." : "No areas set up for this category yet."}</p>
@@ -153,15 +167,17 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => setStep("category")} className="mt-6 text-sm font-medium text-muted">
-            {es ? "← Atrás" : "← Back"}
-          </button>
+          {!singleCategory && (
+            <button type="button" onClick={() => setStep("category")} className="mt-6 text-sm font-medium text-muted">
+              {es ? "← Atrás" : "← Back"}
+            </button>
+          )}
         </>
       )}
 
       {step === "checklist" && area && (
         <>
-          <StepHeader step={3} total={3} label={`${area.name} — ${es ? "Cierre" : "Closing"}`} lang={lang} />
+          <StepHeader step={checklistStepNum} total={totalSteps} label={`${area.name} — ${es ? "Cierre" : "Closing"}`} lang={lang} />
           <label className="mb-4 flex flex-col gap-1.5 text-sm font-medium">
             {es ? "Tu nombre" : "Your name"}
             <input

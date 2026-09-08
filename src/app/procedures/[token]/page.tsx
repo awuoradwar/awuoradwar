@@ -2,9 +2,12 @@ import {
   getStoreByProceduresToken,
   listActiveAreas,
   listItemsForArea,
+  ProcedureCategory,
   ProcedureShiftType,
 } from "@/lib/services/procedureService";
 import ProcedureKiosk from "@/components/ProcedureKiosk";
+
+const CATEGORY_ORDER: ProcedureCategory[] = ["FOH", "BOH", "PATIO_WINDOWS"];
 
 export default async function PublicProceduresPage({ params }: PageProps<"/procedures/[token]">) {
   const { token } = await params;
@@ -26,6 +29,10 @@ export default async function PublicProceduresPage({ params }: PageProps<"/proce
       itemsByAreaShift[`${area.id}:${shiftType}`] = listItemsForArea(area.id, shiftType);
     }
   }
+  // Only offer a category that actually has a station set up under it --
+  // Back of House and Patio & Windows aren't built out yet, so they'd only
+  // ever lead to a dead-end "no areas set up" screen.
+  const categories = CATEGORY_ORDER.filter((c) => areas.some((a) => a.category === c));
 
-  return <ProcedureKiosk token={token} storeName={store.name} areas={areas} itemsByAreaShift={itemsByAreaShift} />;
+  return <ProcedureKiosk token={token} storeName={store.name} areas={areas} itemsByAreaShift={itemsByAreaShift} categories={categories} />;
 }
