@@ -113,10 +113,15 @@ export default async function ProceduresPage() {
 
       {canManage && (
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{es ? "Enlace público" : "Public link"}</h2>
-          <div className="card p-4">
-            <ProceduresLinkCard link={link} qrDataUrl={qrDataUrl} lang={user.language} />
-          </div>
+          <details className="card overflow-hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Enlace público" : "Public link"}</span>
+              <span className="text-muted">→</span>
+            </summary>
+            <div className="border-t border-border p-4">
+              <ProceduresLinkCard link={link} qrDataUrl={qrDataUrl} lang={user.language} />
+            </div>
+          </details>
         </section>
       )}
 
