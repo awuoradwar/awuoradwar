@@ -13,6 +13,7 @@ import {
 } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
+import { pendingRequestCountsForTasks } from "@/lib/services/schedulingService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
 import { getCompletedThisShiftCount } from "@/lib/services/reportsService";
 import { getCleaningTasksDueToday } from "@/lib/services/cleaningService";
@@ -275,6 +276,11 @@ export default async function MyShiftPage() {
     handoffPrompt: handoffPrompts.get(task.id) ?? null,
     incomingHandoff: incomingHandoffs.get(task.id) ?? null,
   });
+  // Pending/approved schedule requests for the week a task like "Create and
+  // post schedule" is building -- surfaced as a count right on the row, so
+  // it's visible before a manager even opens the task (see task/[id]/page.tsx's
+  // "Requests for the week you're scheduling" box for the same data opened up).
+  const pendingRequestCounts = pendingRequestCountsForTasks(user.storeId, tasks);
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
@@ -358,7 +364,14 @@ export default async function MyShiftPage() {
                 <TaskCard
                   key={task.id}
                   lang={user.language}
-                  task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids), ...handoffOf(task) }}
+                  task={{
+                    ...task,
+                    blocked: isBlocked(task),
+                    dueLabel: dueLabelFor(task.due_at),
+                    ...supportOf(task.support_ids),
+                    ...handoffOf(task),
+                    pendingRequestCount: pendingRequestCounts.get(task.id) ?? 0,
+                  }}
                   managerColors={managerColors}
                   from="/my-shift"
                   endOfDayUrgent={endOfDayUrgent}
@@ -416,7 +429,14 @@ export default async function MyShiftPage() {
                       <CompactTaskRow
                         key={task.id}
                         lang={user.language}
-                        task={{ ...task, blocked: isBlocked(task), dueLabel: dueLabelFor(task.due_at), ...supportOf(task.support_ids), ...handoffOf(task) }}
+                        task={{
+                          ...task,
+                          blocked: isBlocked(task),
+                          dueLabel: dueLabelFor(task.due_at),
+                          ...supportOf(task.support_ids),
+                          ...handoffOf(task),
+                          pendingRequestCount: pendingRequestCounts.get(task.id) ?? 0,
+                        }}
                         managerColors={managerColors}
                         from="/my-shift"
                       />

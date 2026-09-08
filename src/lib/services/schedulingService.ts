@@ -2,6 +2,11 @@ import "server-only";
 import { getDb } from "../db";
 import { newId, nowIso, writeAudit } from "../audit";
 import { SessionUser } from "../types";
+import { weekStartOf } from "./recurrenceService";
+
+function addDaysStr(dateStr: string, days: number): string {
+  return new Date(new Date(dateStr + "T00:00:00Z").getTime() + days * 86400000).toISOString().slice(0, 10);
+}
 
 export function createScheduleRequest(params: {
   storeId: string;
@@ -176,6 +181,46 @@ export function getScheduleRequestsForWeek(storeId: string, weekStart: string, w
     swap_with_date: string | null;
     status: string;
   }>;
+}
+
+/** For each task whose template opts into linkScheduleRequests (see
+ * task/[id]/page.tsx's "Requests for the week you're scheduling" box): how
+ * many pending/approved requests exist for the week it's building, so that
+ * count can show up as a badge on the task's home-page row -- before it's
+ * even opened -- instead of only being visible once a manager has already
+ * tapped in. One templates query for the whole task list, not one per row,
+ * matching the pattern taskService.ts's handoff helpers already use. */
+export function pendingRequestCountsForTasks(
+  storeId: string,
+  tasks: Array<{ id: string; template_id: string | null; scheduled_date: string | null }>
+): Map<string, number> {
+  const out = new Map<string, number>();
+  const templateIds = [...new Set(tasks.map((t) => t.template_id).filter((id): id is string => !!id))];
+  if (templateIds.length === 0) return out;
+  const db = getDb();
+  const placeholders = templateIds.map(() => "?").join(",");
+  const templates = db
+    .prepare(`SELECT id, recurrence_config FROM task_templates WHERE id IN (${placeholders})`)
+    .all(...templateIds) as Array<{ id: string; recurrence_config: string | null }>;
+  const linkedTemplateIds = new Set<string>();
+  for (const t of templates) {
+    if (!t.recurrence_config) continue;
+    try {
+      if ((JSON.parse(t.recurrence_config) as { linkScheduleRequests?: boolean }).linkScheduleRequests) linkedTemplateIds.add(t.id);
+    } catch {
+      // malformed config -- treat as not linked rather than breaking the page
+    }
+  }
+  if (linkedTemplateIds.size === 0) return out;
+
+  for (const task of tasks) {
+    if (!task.template_id || !task.scheduled_date || !linkedTemplateIds.has(task.template_id)) continue;
+    const targetWeekStart = addDaysStr(weekStartOf(task.scheduled_date), 7);
+    const targetWeekEnd = addDaysStr(targetWeekStart, 6);
+    const count = getScheduleRequestsForWeek(storeId, targetWeekStart, targetWeekEnd).length;
+    if (count > 0) out.set(task.id, count);
+  }
+  return out;
 }
 
 /** Check a proposed shift date/time for an associate against approved requests & availability. */

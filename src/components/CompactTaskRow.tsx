@@ -57,6 +57,12 @@ export default function CompactTaskRow({ task, lang, managerColors, from }: { ta
               + <OwnerBadge name={task.support_name} ownerId={task.support_id ?? null} managerColors={managerColors} />
             </span>
           )}
+          {!!task.pendingRequestCount && (
+            <span className="font-semibold text-accent">
+              {" "}
+              · 📋 {task.pendingRequestCount} {lang === "es" ? "solicitud" + (task.pendingRequestCount === 1 ? "" : "es") : `request${task.pendingRequestCount === 1 ? "" : "s"}`}
+            </span>
+          )}
         </p>
       </Link>
       {canComplete && !askingNote && (

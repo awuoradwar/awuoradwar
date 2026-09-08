@@ -50,6 +50,11 @@ export interface TaskCardData {
   handoffPrompt?: { targetTitle: string } | null;
   /** A note handed to this task from an upstream one -- shown in red. */
   incomingHandoff?: { note: string; fromTitle: string } | null;
+  /** Pending/approved schedule requests for the week this task builds (only
+   * set on a template with linkScheduleRequests, e.g. "Create and post
+   * schedule") -- shown as a badge right on the row so it's visible before
+   * the task is even opened. */
+  pendingRequestCount?: number;
 }
 
 export default function TaskCard({
@@ -122,6 +127,11 @@ export default function TaskCard({
             </span>
           )}
           <span className="rounded bg-muted/10 px-1.5 py-0.5">{t(lang, `effort_${task.effort.toLowerCase()}` as never)}</span>
+          {!!task.pendingRequestCount && (
+            <span className="rounded bg-accent/10 px-1.5 py-0.5 font-semibold text-accent">
+              📋 {task.pendingRequestCount} {lang === "es" ? "solicitud" + (task.pendingRequestCount === 1 ? "" : "es") : `request${task.pendingRequestCount === 1 ? "" : "s"}`}
+            </span>
+          )}
           {task.blocked && (
             <span className="rounded bg-warning/10 px-1.5 py-0.5 text-warning">
               {lang === "es" ? "Bloqueado" : "Blocked"}
