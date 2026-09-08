@@ -67,6 +67,7 @@ export default function HistoryByWeek<T>({
   keyOf,
   renderItem,
   renderSubtitle,
+  flagWeek,
   lang,
   emptyLabel,
   storeId,
@@ -76,6 +77,11 @@ export default function HistoryByWeek<T>({
   keyOf: (item: T) => string;
   renderItem: (item: T) => React.ReactNode;
   renderSubtitle?: (items: T[]) => React.ReactNode;
+  /** When it returns true for a given week's items, that week's count badge
+   * turns critical-colored instead of the default accent -- a caller-supplied
+   * threshold (e.g. "more than 2 call-ins"), since what counts as worth
+   * flagging is domain-specific and this component stays generic. */
+  flagWeek?: (items: T[]) => boolean;
   lang: Language;
   emptyLabel: string;
   /** Required whenever getDate returns a full timestamp (created_at,
@@ -98,7 +104,13 @@ export default function HistoryByWeek<T>({
             <span className="text-sm font-bold uppercase tracking-wide text-accent">{fmtWeekRange(w.weekStart, w.weekEnd, locale)}</span>
             <span className="flex shrink-0 items-center gap-2">
               {renderSubtitle && <span className="text-xs text-muted">{renderSubtitle(w.items)}</span>}
-              <span className="shrink-0 rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-accent-foreground">{w.items.length}</span>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
+                  flagWeek?.(w.items) ? "bg-critical text-white" : "bg-accent text-accent-foreground"
+                }`}
+              >
+                {w.items.length}
+              </span>
             </span>
           </summary>
           <div className="divide-y divide-border">

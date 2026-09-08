@@ -2,9 +2,16 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getUpcomingCallInsAndLates, getPastCallInsAndLates, groupAttendanceDuplicates, AttendanceEventRow, AttendanceGroup } from "@/lib/services/attendanceService";
 import { storeToday } from "@/lib/storeTime";
+import { weekStartOf } from "@/lib/services/recurrenceService";
 import AttendanceRow from "@/components/AttendanceRow";
 import PageHeader from "@/components/PageHeader";
-import HistoryByWeek from "@/components/HistoryByWeek";
+import HistoryByWeek, { groupByWeek } from "@/components/HistoryByWeek";
+
+const CALL_IN_FLAG_THRESHOLD = 2;
+
+function callInCount(groups: AttendanceGroup<AttendanceEventRow>[]): number {
+  return groups.filter((g) => g.primary.type === "CALL_IN").length;
+}
 
 function weekSubtitle(groups: AttendanceGroup<AttendanceEventRow>[], lang: "en" | "es") {
   const callIns = groups.filter((g) => g.primary.type === "CALL_IN").length;
@@ -24,9 +31,28 @@ export default async function AttendancePage() {
   const upcoming = groupAttendanceDuplicates(getUpcomingCallInsAndLates(user.storeId, today));
   const past = groupAttendanceDuplicates(getPastCallInsAndLates(user.storeId, today));
 
+  // The week still in progress -- upcoming/past each only cover one side of
+  // today, so a call-in logged this morning (past) and one already booked
+  // for later this week (upcoming) both need combining to get this week's
+  // real running total.
+  const thisWeekStart = weekStartOf(today);
+  const weeksSoFar = groupByWeek([...upcoming, ...past], (g) => g.primary.event_date || g.primary.created_at, user.storeId);
+  const thisWeekCallIns = callInCount(weeksSoFar.find((w) => w.weekStart === thisWeekStart)?.items ?? []);
+  const thisWeekFlagged = thisWeekCallIns > CALL_IN_FLAG_THRESHOLD;
+
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 py-5">
       <PageHeader backHref="/add" lang={lang} title={lang === "es" ? "Avisos e Impuntualidad" : "Call-in / Late"} />
+
+      {thisWeekCallIns > 0 && (
+        <div className={`rounded-xl px-3 py-2 text-sm font-semibold ${thisWeekFlagged ? "bg-critical/10 text-critical" : "bg-card-subtle text-muted"}`}>
+          {thisWeekFlagged ? "⚠ " : ""}
+          {lang === "es"
+            ? `${thisWeekCallIns} avisos esta semana`
+            : `${thisWeekCallIns} call-in${thisWeekCallIns === 1 ? "" : "s"} this week`}
+          {thisWeekFlagged && (lang === "es" ? " -- más de lo usual" : " -- more than usual")}
+        </div>
+      )}
 
       <section>
         <div className="flex items-baseline justify-between">
@@ -61,6 +87,7 @@ export default async function AttendancePage() {
           storeId={user.storeId}
           renderItem={(g) => <AttendanceRow item={g.primary} duplicates={g.duplicates} lang={lang} from="/more/attendance" />}
           renderSubtitle={(groups) => weekSubtitle(groups, lang)}
+          flagWeek={(groups) => callInCount(groups) > CALL_IN_FLAG_THRESHOLD}
           lang={lang}
           emptyLabel={lang === "es" ? "Ninguno todavía." : "None yet."}
         />
