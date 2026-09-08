@@ -149,6 +149,15 @@ export function addItem(areaId: string, shiftType: ProcedureShiftType, text: str
   return { id };
 }
 
+export function updateItem(id: string, text: string, textEs: string | null, actor: SessionUser): { error?: string } {
+  const trimmed = text.trim();
+  if (!trimmed) return { error: "Step text is required." };
+  const db = getDb();
+  db.prepare(`UPDATE procedure_items SET text = ?, text_es = ? WHERE id = ?`).run(trimmed, textEs?.trim() || null, id);
+  writeAudit({ entityType: "procedure_item", entityId: id, actor, action: "EDITED", newValue: { text: trimmed } });
+  return {};
+}
+
 export function removeItem(id: string, actor: SessionUser) {
   const db = getDb();
   db.prepare(`UPDATE procedure_items SET active = 0 WHERE id = ?`).run(id);

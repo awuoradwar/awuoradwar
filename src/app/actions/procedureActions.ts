@@ -67,6 +67,14 @@ export async function addProcedureItemAction(areaId: string, shiftType: Procedur
   return result;
 }
 
+export async function updateProcedureItemAction(id: string, text: string, textEs: string): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
+  const result = procedureService.updateItem(id, text, textEs, user);
+  if (!result.error) refresh();
+  return result;
+}
+
 export async function removeProcedureItemAction(id: string) {
   const user = await requireCurrentUser();
   if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");

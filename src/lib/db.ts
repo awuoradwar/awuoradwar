@@ -90,7 +90,131 @@ function createConnection(): Database.Database {
   unassignStaleAutoAssignedTasks(db);
   splitWeeklyOpsSummaries(db);
   backfillDefaultFranchiseOrg(db);
+  seedFohClosingProcedures(db);
   return db;
+}
+
+/** Front of House closing checklist, transcribed from the store's own
+ * paper close-out sheet -- six stations (Lobby, Drink Station, Refreshers,
+ * OLO Restocker, Drive Thru Register, Drive Thru Runner), each worded as a
+ * post-clean verification ("X is done") rather than an instruction, since
+ * the whole point is a closer confirming coverage after cleaning, not being
+ * told what to do. Seeded into every store's existing procedure_areas/
+ * procedure_items tables (see procedureService.ts) rather than a parallel
+ * schema -- it's the same FOH-category/CLOSING-shift shape the Procedures
+ * feature already supports, just content instead of code. A GM can still
+ * reword, add to, or add whole new stations afterward from the Procedures
+ * management page. One-time per store, idempotent: skipped for any store
+ * that already has an area named "Lobby" in FOH (either from an earlier run
+ * of this seed, or because a GM already built their own). */
+function seedFohClosingProcedures(db: Database.Database) {
+  const FOH_CLOSING_STATIONS: Array<{ name: string; items: string[] }> = [
+    {
+      name: "Lobby",
+      items: [
+        "Tables are wiped down",
+        "Floor is swept and mopped twice",
+        "Area behind the trash can is swept",
+        "Trash is taken out",
+        "Black trays are clean and placed up front",
+        "Patio chairs and cones are brought inside",
+      ],
+    },
+    {
+      name: "Drink Station",
+      items: [
+        "Teas are cleaned with soap (no harsh chemicals)",
+        "Tea nozzles and station are cleaned",
+        "All area is restocked",
+        "Area is wiped down",
+        "Soda nozzles are left soaking",
+        "Soda area and wall are wiped down",
+        "Trash is taken out",
+        "DST cabinets are polished",
+      ],
+    },
+    {
+      name: "Refreshers",
+      items: [
+        "All remaining juices are stored in the walk-in cooler",
+        "All containers are cleaned with soap",
+        "Station is cleaned and wiped down",
+        "Cups and lids are restocked",
+        "Ice container is wiped down and stored in the freezer",
+        "Drain container is cleaned",
+      ],
+    },
+    {
+      name: "OLO Restocker",
+      items: [
+        "Windows and doors are cleaned",
+        "All sauces are neatly restocked",
+        "Cookie bags and the Panda plushie up front are restocked",
+        "Register area is wiped down and clean",
+        "Utensils and cookie drawer are restocked",
+        "Apple crisp and chopsticks are restocked",
+      ],
+    },
+    {
+      name: "Drive Thru Register",
+      items: [
+        "Sauces, drive-thru fridge, drink station, utensils, plates, and containers are restocked",
+        "Register area is wiped down",
+        "Window and register screen are cleaned",
+        "Steam table, walls, sink area, and drink station cabinets are wiped down",
+        "Window is turned off and locked at 11:00 PM",
+        "Teas are cleaned",
+        "Soda nozzles are removed and left soaking",
+        "Ice is melted and the ice container is cleaned",
+        "Floors are swept",
+        "Floors are scrubbed with soapy water",
+        "Floors are squeegeed with clean water",
+        "Drains are cleaned out and filled with ice overnight",
+      ],
+    },
+    {
+      name: "Drive Thru Runner",
+      items: [
+        "All rings are pulled and cleaned by 9:00 PM",
+        "Steam table is clean",
+        "Glass is clean",
+        "Steam table is restocked",
+        "Rice cooker is cleaned",
+        "Reach-in cooler counter is polished",
+        "Pans and spoons are cleaned and assembled",
+        "Black line counter is clean",
+        "Underneath the steam table is cleaned",
+        "OLO shelf is cleaned",
+      ],
+    },
+  ];
+
+  const stores = db
+    .prepare(
+      `SELECT id FROM stores WHERE NOT EXISTS (
+         SELECT 1 FROM procedure_areas WHERE store_id = stores.id AND category = 'FOH' AND name = 'Lobby'
+       )`
+    )
+    .all() as Array<{ id: string }>;
+  if (stores.length === 0) return;
+
+  const insertArea = db.prepare(
+    `INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, 'FOH', ?, 1, ?)`
+  );
+  const insertItem = db.prepare(
+    `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, NULL, ?, 1, ?)`
+  );
+
+  for (const store of stores) {
+    FOH_CLOSING_STATIONS.forEach((station, areaIndex) => {
+      const areaId = randomUUID();
+      const now = new Date().toISOString();
+      insertArea.run(areaId, store.id, station.name, areaIndex, now);
+      station.items.forEach((text, itemIndex) => {
+        insertItem.run(randomUUID(), areaId, text, itemIndex, now);
+      });
+    });
+  }
 }
 
 /** Every store needs an org_id once franchise_orgs exists, even a store that
