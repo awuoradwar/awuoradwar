@@ -46,8 +46,8 @@ export default async function AttendancePage() {
 
       {thisWeekCallIns > 0 && (
         <div
-          className={`rounded-xl px-3 py-2 text-sm font-semibold ${
-            thisWeekFlagged ? "bg-critical/10 text-critical" : "border border-accent/30 bg-accent/5 text-accent"
+          className={`rounded-xl px-3 py-2 text-sm font-semibold text-critical ${
+            thisWeekFlagged ? "bg-critical/10" : "border border-critical/30 bg-critical/5"
           }`}
         >
           {thisWeekFlagged ? "⚠ " : ""}
