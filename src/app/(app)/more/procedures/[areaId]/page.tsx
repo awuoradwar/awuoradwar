@@ -118,7 +118,6 @@ export default async function ProcedureAreaDetailPage({ params, searchParams }: 
               <p className="text-xs font-bold uppercase tracking-wide text-accent">
                 {dayNames[d.getUTCDay()]}, {d.toLocaleDateString(locale, { month: "short", day: "numeric" })}
               </p>
-              <ShiftCell label={es ? "Apertura" : "Opening"} submissions={forDay(date, "OPENING")} isPast={isPast} isToday={isToday} storeId={user.storeId} locale={locale} es={es} />
               <ShiftCell label={es ? "Cierre" : "Closing"} submissions={forDay(date, "CLOSING")} isPast={isPast} isToday={isToday} storeId={user.storeId} locale={locale} es={es} />
             </div>
           );

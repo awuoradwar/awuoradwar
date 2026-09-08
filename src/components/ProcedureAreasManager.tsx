@@ -172,14 +172,13 @@ function AreaCard({ area, items, lang }: { area: ProcedureArea; items: Procedure
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const es = lang === "es";
-  const opening = items.filter((i) => i.shift_type === "OPENING");
   const closing = items.filter((i) => i.shift_type === "CLOSING");
 
   return (
     <details className="card overflow-hidden">
       <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5">
         <span className={`text-sm font-semibold ${area.active ? "" : "text-muted line-through"}`}>{area.name}</span>
-        <span className="shrink-0 text-xs font-semibold text-muted">{opening.length + closing.length}</span>
+        <span className="shrink-0 text-xs font-semibold text-muted">{closing.length}</span>
       </summary>
       <div className="flex flex-col gap-4 border-t border-border p-3">
         {area.active === 1 && (
@@ -192,7 +191,10 @@ function AreaCard({ area, items, lang }: { area: ProcedureArea; items: Procedure
             {es ? "Desactivar estación" : "Deactivate area"}
           </button>
         )}
-        <ChecklistSection areaId={area.id} shiftType="OPENING" label={es ? "Lista de apertura" : "Opening checklist"} items={opening} lang={lang} />
+        {/* Opening checklists aren't in use yet -- only closing, for now
+         * (see ProcedureKiosk) -- so this only manages the closing list. Any
+         * opening items from before that decision stay in the database
+         * untouched, just not editable here until opening comes back. */}
         <ChecklistSection areaId={area.id} shiftType="CLOSING" label={es ? "Lista de cierre" : "Closing checklist"} items={closing} lang={lang} />
       </div>
     </details>

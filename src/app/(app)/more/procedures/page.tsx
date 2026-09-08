@@ -93,9 +93,9 @@ export default async function ProceduresPage() {
   const submissions = getRecentSubmissions(user.storeId, 100);
 
   // "Missed" only ever looks at a day that's fully over -- yesterday, not
-  // today, since today's closing simply hasn't happened yet.
+  // today, since today's closing simply hasn't happened yet. Opening isn't
+  // in use yet (see ProcedureKiosk), so only closing is checked here.
   const yesterday = addDaysStr(storeToday(user.storeId), -1);
-  const missedOpening = new Set(getMissedAreasForDate(user.storeId, yesterday, "OPENING"));
   const missedClosing = new Set(getMissedAreasForDate(user.storeId, yesterday, "CLOSING"));
   const stationsList = listActiveAreas(user.storeId);
   const stationsByCategory = (["FOH", "BOH", "PATIO_WINDOWS"] as ProcedureCategory[])
@@ -132,7 +132,7 @@ export default async function ProceduresPage() {
                 <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted">{CATEGORY_LABEL[group.category][user.language]}</h3>
                 <div className="card divide-y divide-border">
                   {group.areas.map((a) => {
-                    const flagged = missedOpening.has(a.id) || missedClosing.has(a.id);
+                    const flagged = missedClosing.has(a.id);
                     return (
                       <Link key={a.id} href={`/more/procedures/${a.id}`} className="tap-target flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium hover:bg-card-subtle">
                         <span>{a.name}</span>

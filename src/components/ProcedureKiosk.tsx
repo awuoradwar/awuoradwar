@@ -12,7 +12,7 @@ const CATEGORY_LABEL: Record<ProcedureCategory, Record<Lang, string>> = {
   PATIO_WINDOWS: { en: "Patio & Windows", es: "Patio y Ventanas" },
 };
 
-type Step = "category" | "area" | "shift" | "checklist" | "done";
+type Step = "category" | "area" | "checklist" | "done";
 
 function StepHeader({ step, total, label, lang }: { step: number; total: number; label: string; lang: Lang }) {
   return (
@@ -39,7 +39,11 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   const [step, setStep] = useState<Step>("category");
   const [category, setCategory] = useState<ProcedureCategory | null>(null);
   const [area, setArea] = useState<ProcedureArea | null>(null);
-  const [shiftType, setShiftType] = useState<ProcedureShiftType | null>(null);
+  // Only closing procedures exist right now -- see the comment on `items`
+  // below -- so this is fixed rather than a user choice. Kept as a real
+  // ProcedureShiftType value (not a literal sprinkled through submit/JSX) so
+  // opening support can come back later by turning this into a picker again.
+  const shiftType: ProcedureShiftType = "CLOSING";
   const [name, setName] = useState("");
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState("");
@@ -47,7 +51,10 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   const [pending, startTransition] = useTransition();
 
   const areasInCategory = useMemo(() => (category ? areas.filter((a) => a.category === category) : []), [areas, category]);
-  const items: ProcedureItem[] = area && shiftType ? itemsByAreaShift[`${area.id}:${shiftType}`] || [] : [];
+  // Only closing checklists exist right now -- opening procedures aren't
+  // built out yet -- so the kiosk skips straight from picking a station to
+  // its closing checklist instead of also asking opening-vs-closing.
+  const items: ProcedureItem[] = area ? itemsByAreaShift[`${area.id}:${shiftType}`] || [] : [];
   const allChecked = items.length > 0 && items.every((i) => checked[i.id]);
   const uncheckedCount = items.filter((i) => !checked[i.id]).length;
 
@@ -59,7 +66,6 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
     setStep("category");
     setCategory(null);
     setArea(null);
-    setShiftType(null);
     setName("");
     setChecked({});
     setNotes("");
@@ -67,7 +73,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   }
 
   function submit() {
-    if (!area || !shiftType) return;
+    if (!area) return;
     if (!name.trim()) {
       setError(es ? "Escribe tu nombre." : "Enter your name.");
       return;
@@ -105,7 +111,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
 
       {step === "category" && (
         <>
-          <StepHeader step={1} total={4} label={es ? "¿Para qué área es esto?" : "Which area is this for?"} lang={lang} />
+          <StepHeader step={1} total={3} label={es ? "¿Para qué área es esto?" : "Which area is this for?"} lang={lang} />
           <div className="flex flex-col gap-3">
             {(["FOH", "BOH", "PATIO_WINDOWS"] as ProcedureCategory[]).map((c) => (
               <button
@@ -127,7 +133,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
 
       {step === "area" && category && (
         <>
-          <StepHeader step={2} total={4} label={CATEGORY_LABEL[category][lang]} lang={lang} />
+          <StepHeader step={2} total={3} label={CATEGORY_LABEL[category][lang]} lang={lang} />
           <div className="flex flex-col gap-3">
             {areasInCategory.length === 0 && (
               <p className="text-center text-sm text-muted">{es ? "Todavía no hay áreas para esta categoría." : "No areas set up for this category yet."}</p>
@@ -139,7 +145,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
                 className={bigTile}
                 onClick={() => {
                   setArea(a);
-                  setStep("shift");
+                  setStep("checklist");
                 }}
               >
                 {a.name}
@@ -153,33 +159,9 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
         </>
       )}
 
-      {step === "shift" && area && (
+      {step === "checklist" && area && (
         <>
-          <StepHeader step={3} total={4} label={area.name} lang={lang} />
-          <div className="flex flex-col gap-3">
-            <button type="button" className={bigTile} onClick={() => { setShiftType("OPENING"); setStep("checklist"); }}>
-              🌅 {es ? "Apertura" : "Opening"}
-              <span className="text-muted">→</span>
-            </button>
-            <button type="button" className={bigTile} onClick={() => { setShiftType("CLOSING"); setStep("checklist"); }}>
-              🌙 {es ? "Cierre" : "Closing"}
-              <span className="text-muted">→</span>
-            </button>
-          </div>
-          <button type="button" onClick={() => setStep("area")} className="mt-6 text-sm font-medium text-muted">
-            {es ? "← Atrás" : "← Back"}
-          </button>
-        </>
-      )}
-
-      {step === "checklist" && area && shiftType && (
-        <>
-          <StepHeader
-            step={4}
-            total={4}
-            label={`${area.name} — ${shiftType === "OPENING" ? (es ? "Apertura" : "Opening") : es ? "Cierre" : "Closing"}`}
-            lang={lang}
-          />
+          <StepHeader step={3} total={3} label={`${area.name} — ${es ? "Cierre" : "Closing"}`} lang={lang} />
           <label className="mb-4 flex flex-col gap-1.5 text-sm font-medium">
             {es ? "Tu nombre" : "Your name"}
             <input
@@ -234,18 +216,18 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
           >
             {pending ? (es ? "Enviando…" : "Submitting…") : es ? "Enviar lista" : "Submit checklist"}
           </button>
-          <button type="button" onClick={() => setStep("shift")} disabled={pending} className="mt-4 text-sm font-medium text-muted">
+          <button type="button" onClick={() => setStep("area")} disabled={pending} className="mt-4 text-sm font-medium text-muted">
             {es ? "← Atrás" : "← Back"}
           </button>
         </>
       )}
 
-      {step === "done" && area && shiftType && (
+      {step === "done" && area && (
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-ok/10 text-3xl text-ok">✓</div>
           <h1 className="text-xl font-bold">{es ? "Enviado" : "Submitted"}</h1>
           <p className="mt-1 text-sm text-muted">
-            {area.name} · {shiftType === "OPENING" ? (es ? "Apertura" : "Opening") : es ? "Cierre" : "Closing"}
+            {area.name} · {es ? "Cierre" : "Closing"}
             {es ? " registrado para " : " checklist recorded for "}
             {name.trim()}.
           </p>
