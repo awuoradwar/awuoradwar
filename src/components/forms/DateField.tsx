@@ -69,6 +69,7 @@ function CalendarPopover({ initialValue, locale, lang, onCancel, onDone }: Calen
   const daysInMonth = new Date(Date.UTC(viewYear, viewMonth + 1, 0, 12)).getUTCDate();
   const cells: (number | null)[] = [...Array(firstWeekday).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
   const weekdays = weekdayInitials(locale);
+  const today = todayStr();
 
   function goMonth(delta: number) {
     let m = viewMonth + delta;
@@ -118,13 +119,18 @@ function CalendarPopover({ initialValue, locale, lang, onCancel, onDone }: Calen
             if (day === null) return <div key={i} />;
             const value = toDateStr(viewYear, viewMonth, day);
             const isSelected = value === selected;
+            const isToday = value === today;
             return (
               <button
                 key={i}
                 type="button"
                 onClick={() => setSelected(value)}
                 className={`tap-target flex aspect-square min-h-0 items-center justify-center rounded-full text-sm ${
-                  isSelected ? "bg-accent font-bold text-accent-foreground" : "text-foreground hover:bg-accent/10"
+                  isSelected
+                    ? "bg-accent font-bold text-accent-foreground"
+                    : isToday
+                      ? "font-bold text-accent ring-2 ring-inset ring-accent hover:bg-accent/10"
+                      : "text-foreground hover:bg-accent/10"
                 }`}
               >
                 {day}
