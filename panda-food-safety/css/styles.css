@@ -263,6 +263,8 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .dropdown-item:hover, .dropdown-item:focus { background: var(--surface-alt); }
 .dropdown-item-active { color: var(--accent); font-weight: 600; }
+.dropdown-section-label { padding: 6px 12px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.dropdown-divider { height: 1px; background: var(--border); margin: 4px 6px; }
 .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
 .store-status-card {
   border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; background: var(--surface);

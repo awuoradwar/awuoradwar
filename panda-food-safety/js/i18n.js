@@ -134,6 +134,8 @@ const STRINGS = {
   manageStoresTitle: { en: "Manage Stores", es: "Administrar Tiendas" },
   manageChecklistTitle: { en: "Manage Checklist", es: "Administrar Lista" },
   repeatViolationsTitle: { en: "Repeat Violations", es: "Violaciones Repetidas" },
+  reportsSectionLabel: { en: "Reports", es: "Informes" },
+  manageSectionLabel: { en: "Manage", es: "Administrar" },
   repeatViolationsCount: { en: "{count} of {total} stores have repeat violations this week", es: "{count} de {total} tiendas tienen violaciones repetidas esta semana" },
   noRepeatViolations: { en: "No stores have repeat violations this week.", es: "Ninguna tienda tiene violaciones repetidas esta semana." },
   criticalLabel: { en: "⚠ Critical", es: "⚠ Crítico" },

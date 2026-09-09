@@ -668,14 +668,23 @@ const PRIMARY_TABS = [
   ["history", "historyTitle"],
 ];
 
-function secondaryTabs() {
-  const tabs = [
+// Grouped so the "More" dropdown reads as two kinds of things rather
+// than one flat list: a report to check (Repeat Violations, alongside
+// Today/Weekly/History conceptually) vs. the "Manage X" setup screens.
+function secondaryTabGroups() {
+  const manageTabs = [
     ["stores", "manageStoresTitle"],
     ["checklist", "manageChecklistTitle"],
-    ["repeatViolations", "repeatViolationsTitle"],
   ];
-  if (isOwnerSession) tabs.push(["admins", "manageAdminsTitle"]);
-  return tabs;
+  if (isOwnerSession) manageTabs.push(["admins", "manageAdminsTitle"]);
+  return [
+    { labelKey: "reportsSectionLabel", tabs: [["repeatViolations", "repeatViolationsTitle"]] },
+    { labelKey: "manageSectionLabel", tabs: manageTabs },
+  ];
+}
+
+function secondaryTabs() {
+  return secondaryTabGroups().flatMap((g) => g.tabs);
 }
 
 function renderDashboard() {
@@ -706,10 +715,18 @@ function renderDashboard() {
           <button type="button" class="btn btn-sm ${isSecondaryActive ? "btn-primary" : "btn-secondary"}" id="btn-more-tabs">${t("moreTabsLabel")} ▾</button>
         </div>
         <div class="dropdown-menu" id="more-tabs-dropdown" hidden>
-          ${secondaryTabs()
+          ${secondaryTabGroups()
             .map(
-              ([key, labelKey]) =>
-                `<button type="button" class="dropdown-item ${activeTab === key ? "dropdown-item-active" : ""}" data-tab="${key}">${t(labelKey)}</button>`
+              (group, i) => `
+                ${i > 0 ? `<div class="dropdown-divider"></div>` : ""}
+                <div class="dropdown-section-label">${t(group.labelKey)}</div>
+                ${group.tabs
+                  .map(
+                    ([key, labelKey]) =>
+                      `<button type="button" class="dropdown-item ${activeTab === key ? "dropdown-item-active" : ""}" data-tab="${key}">${t(labelKey)}</button>`
+                  )
+                  .join("")}
+              `
             )
             .join("")}
         </div>
