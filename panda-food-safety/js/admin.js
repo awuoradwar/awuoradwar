@@ -146,6 +146,7 @@ let addingItemToSectionId = null;
 let editingChecklistSectionId = null;
 let addingSectionToGroupId = null;
 let weeklyOffset = 0;
+let repeatViolationsOffset = 0;
 let autoDateRefreshStarted = false;
 let lastKnownDate = null;
 
@@ -671,6 +672,7 @@ function secondaryTabs() {
   const tabs = [
     ["stores", "manageStoresTitle"],
     ["checklist", "manageChecklistTitle"],
+    ["repeatViolations", "repeatViolationsTitle"],
   ];
   if (isOwnerSession) tabs.push(["admins", "manageAdminsTitle"]);
   return tabs;
@@ -777,6 +779,7 @@ function renderDashboard() {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.tab;
       if (activeTab === "weekly") weeklyOffset = 0;
+      if (activeTab === "repeatViolations") repeatViolationsOffset = 0;
       renderDashboard();
     });
   });
@@ -785,6 +788,7 @@ function renderDashboard() {
   else if (activeTab === "weekly") renderWeeklyTab();
   else if (activeTab === "history") renderHistoryTab();
   else if (activeTab === "checklist") renderManageChecklistTab();
+  else if (activeTab === "repeatViolations") renderRepeatViolationsTab();
   else if (activeTab === "admins" && isOwnerSession) renderManageAdminsTab();
   else renderManageStoresTab();
 }
@@ -815,8 +819,8 @@ async function missingStreakBeforeToday(storeNumber, today) {
   const yesterday = addDaysToDateString(today, -1);
   if (yesterday < effectiveStart) return { streak: 0, hitWindowLimit: false };
 
-  const snap = await getDocs(
-    query(collection(db, "submissions"), where("storeNumber", "==", storeNumber), where("date", ">=", effectiveStart), where("date", "<=", yesterday))
+  const snap = await withTimeout(
+    getDocs(query(collection(db, "submissions"), where("storeNumber", "==", storeNumber), where("date", ">=", effectiveStart), where("date", "<=", yesterday)))
   );
   const docsByDate = {};
   snap.docs.forEach((d) => {
@@ -843,7 +847,13 @@ async function renderTodayTab() {
   const today = todayDateString();
   // Just today's docs, same single-field equality query as before the
   // streak feature existed — cheap, no composite index needed.
-  const snap = await getDocs(query(collection(db, "submissions"), where("date", "==", today)));
+  let snap;
+  try {
+    snap = await withTimeout(getDocs(query(collection(db, "submissions"), where("date", "==", today))));
+  } catch (err) {
+    content.innerHTML = `<div class="hint-banner">${escapeHtml(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err))}</div>`;
+    return;
+  }
 
   const docsByStoreNumber = {};
   snap.docs.forEach((d) => {
@@ -877,12 +887,21 @@ async function renderTodayTab() {
   });
 
   // Only stores actually missing today ever need the historical
-  // lookback — usually a handful, not the whole store list.
+  // lookback — usually a handful, not the whole store list. Each is its
+  // own try/catch: the streak label is a nice-to-have, so one store's
+  // lookback failing (timeout, transient error) never blocks the rest of
+  // the page — that store just shows without a streak label.
   await Promise.all(
     rows
       .filter((r) => r.penalize)
       .map(async (r) => {
-        const { streak, hitWindowLimit } = await missingStreakBeforeToday(r.s.number, today);
+        let streak, hitWindowLimit;
+        try {
+          ({ streak, hitWindowLimit } = await missingStreakBeforeToday(r.s.number, today));
+        } catch (err) {
+          console.error(err);
+          return;
+        }
         const totalDays = streak + 1;
         if (totalDays >= 2) r.streakLabel = t(hitWindowLimit ? "missingStreakCapped" : "missingStreakDays", { days: totalDays });
       })
@@ -974,6 +993,99 @@ function renderDayShiftsModal(store, docs, covered) {
     const hydrated = await hydrateRecordPhotos(record);
     backdrop.remove();
     renderDetailModal(hydrated, { expandFlagged: true });
+  });
+}
+
+// ---------- Repeat Violations ----------
+
+// Flags the same checklist item as a repeat violation once it's been
+// marked "no" 2+ times for a store within the selected calendar week —
+// reuses the same Sun-Sat week windows as Weekly Summary so "this week"
+// means the same thing across tabs.
+const REPEAT_VIOLATION_THRESHOLD = 2;
+const RISK_SORT_RANK = { high: 0, medium: 1, low: 2 };
+
+async function renderRepeatViolationsTab() {
+  const content = root.querySelector("#tab-content");
+  if (!content) return;
+  content.innerHTML = `<div class="card">${t("loadingButton")}</div>`;
+
+  const { from, to } = weekRangeDates(repeatViolationsOffset);
+  let snap;
+  try {
+    snap = await withTimeout(getDocs(query(collection(db, "submissions"), where("date", ">=", from), where("date", "<=", to))));
+  } catch (err) {
+    content.innerHTML = `<div class="hint-banner">${escapeHtml(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err))}</div>`;
+    return;
+  }
+
+  // storeNumber -> itemId -> { item, count, dates: [] }
+  const byStore = {};
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    if (!data.submitted) return;
+    const bucket = (byStore[data.storeNumber] ||= {});
+    for (const id of Object.keys(data.answers || {})) {
+      const a = data.answers[id];
+      if (a?.value !== "no") continue;
+      const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}`, category: "other", risk: "medium" };
+      const entry = (bucket[id] ||= { item, count: 0, dates: [] });
+      entry.count += 1;
+      entry.dates.push(data.date);
+    }
+  });
+
+  const storeRows = storesCache
+    .map((s) => {
+      const items = Object.values(byStore[s.number] || {}).filter((e) => e.count >= REPEAT_VIOLATION_THRESHOLD);
+      items.sort((a, b) => (RISK_SORT_RANK[a.item.risk] ?? 1) - (RISK_SORT_RANK[b.item.risk] ?? 1) || b.count - a.count);
+      return { store: s, items };
+    })
+    .filter((r) => r.items.length > 0)
+    .sort((a, b) => b.items.length - a.items.length || Number(a.store.number) - Number(b.store.number));
+
+  const lang = getLang();
+  content.innerHTML = `
+    <div class="card">
+      <div class="week-nav-row">
+        <button class="btn btn-sm btn-secondary" id="btn-repeat-week-prev">${t("previousWeek")}</button>
+        <div class="week-center"><span class="week-range-label">${escapeHtml(formatWeekRangeLabel(from, to))}</span></div>
+        <button class="btn btn-sm btn-secondary" id="btn-repeat-week-next" ${repeatViolationsOffset === 0 ? "disabled" : ""}>${t("nextWeek")}</button>
+      </div>
+    </div>
+    <div class="card">
+      <strong>${storeRows.length > 0 ? t("repeatViolationsCount", { count: storeRows.length, total: storesCache.length }) : t("noRepeatViolations")}</strong>
+    </div>
+    ${storeRows
+      .map(
+        ({ store, items }) => `
+      <div class="card">
+        <div class="detail-section-title" style="margin-top:0;">${escapeHtml(storeLabel(store.number, store.name))}</div>
+        ${items
+          .map(
+            (entry) => `
+          <div class="detail-row">
+            <div class="detail-row-main">
+              <span class="detail-item-text">${!String(entry.item.id).startsWith("custom-") ? `${entry.item.id}. ` : ""}${escapeHtml(tf(entry.item))}</span>
+              <span class="detail-row-badges">${riskBadgeHtml(entry.item.risk)}<span class="badge badge-neutral">${entry.count}×</span></span>
+            </div>
+            <div class="history-card-meta">${escapeHtml(categoryLabel(entry.item.category, lang))} · ${entry.dates.map((dt) => escapeHtml(dt)).join(", ")}</div>
+          </div>`
+          )
+          .join("")}
+      </div>`
+      )
+      .join("")}
+  `;
+
+  content.querySelector("#btn-repeat-week-prev").addEventListener("click", () => {
+    repeatViolationsOffset += 1;
+    renderRepeatViolationsTab();
+  });
+  content.querySelector("#btn-repeat-week-next").addEventListener("click", () => {
+    if (repeatViolationsOffset === 0) return;
+    repeatViolationsOffset -= 1;
+    renderRepeatViolationsTab();
   });
 }
 
