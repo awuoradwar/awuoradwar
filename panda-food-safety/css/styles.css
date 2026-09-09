@@ -345,6 +345,7 @@ tr:last-child td { border-bottom: none; }
 .detail-row-flagged .detail-item-text { color: var(--danger); }
 .detail-row-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .detail-row-body.collapsed { display: none; }
+.detail-row-critical { border-left: 3px solid var(--danger); background: var(--danger-bg); padding-left: 8px; border-radius: 4px; }
 .detail-flagged-date { color: var(--text-muted); font-weight: 400; }
 .detail-note {
   background: var(--surface-alt); border-left: 3px solid var(--accent); border-radius: 6px;

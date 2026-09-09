@@ -136,6 +136,7 @@ const STRINGS = {
   repeatViolationsTitle: { en: "Repeat Violations", es: "Violaciones Repetidas" },
   repeatViolationsCount: { en: "{count} of {total} stores have repeat violations this week", es: "{count} de {total} tiendas tienen violaciones repetidas esta semana" },
   noRepeatViolations: { en: "No stores have repeat violations this week.", es: "Ninguna tienda tiene violaciones repetidas esta semana." },
+  criticalLabel: { en: "⚠ Critical", es: "⚠ Crítico" },
   checklistEditorNote: { en: "Hide a question to remove it from future walkthroughs — past submissions still show it. Add new questions to any section below.", es: "Oculte una pregunta para quitarla de los próximos recorridos — los envíos anteriores todavía la muestran. Agregue nuevas preguntas a cualquier sección abajo." },
   hideQuestion: { en: "Hide", es: "Ocultar" },
   showQuestion: { en: "Show", es: "Mostrar" },

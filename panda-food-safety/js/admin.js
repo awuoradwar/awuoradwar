@@ -883,7 +883,7 @@ async function renderTodayTab() {
     // then all 3 shifts complete — store number order is kept within
     // each group rather than interleaving all three.
     const statusRank = complete ? 2 : started ? 1 : 0;
-    return { s, covered, complete, started, penalize, statusRank, streakLabel: null };
+    return { s, covered, complete, started, anyInProgress, penalize, statusRank, streakLabel: null };
   });
 
   // Only stores actually missing today ever need the historical
@@ -915,12 +915,13 @@ async function renderTodayTab() {
     <div class="admin-grid">
       ${rows
         .sort((a, b) => a.statusRank - b.statusRank || Number(a.s.number) - Number(b.s.number))
-        .map(({ s, covered, complete, started, penalize, streakLabel }) => {
+        .map(({ s, covered, complete, started, anyInProgress, penalize, streakLabel }) => {
           const badgeClass = complete ? "badge-success" : started ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
           return `
           <div class="store-status-card ${penalize ? "missing" : ""} clickable" data-view-today="${escapeHtml(s.number)}">
             <span class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</span>
             <span class="badge ${badgeClass}">${covered.doneCount} / 3</span>
+            ${anyInProgress ? `<span class="badge badge-info">${t("inProgressStatus")}</span>` : ""}
             ${streakLabel ? `<span class="store-status-streak">${escapeHtml(streakLabel)}</span>` : ""}
           </div>`;
         })
@@ -1005,6 +1006,17 @@ function renderDayShiftsModal(store, docs, covered) {
 const REPEAT_VIOLATION_THRESHOLD = 2;
 const RISK_SORT_RANK = { high: 0, medium: 1, low: 2 };
 
+// Unlike riskBadgeHtml (which hides low-risk entries elsewhere in the
+// app, since most flagged-item views are already risk-sorted and don't
+// need every row labeled), a repeat violation should always show its
+// risk tier — and a high-risk repeat is flagged as critical so it can't
+// be mistaken for a routine one.
+function repeatViolationBadgesHtml(risk) {
+  if (risk === "high") return `<span class="badge badge-danger">${t("riskHigh")}</span><span class="badge badge-danger">${t("criticalLabel")}</span>`;
+  if (risk === "medium") return `<span class="badge badge-warning">${t("riskMedium")}</span>`;
+  return `<span class="badge badge-neutral">${t("riskLow")}</span>`;
+}
+
 async function renderRepeatViolationsTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
@@ -1064,10 +1076,10 @@ async function renderRepeatViolationsTab() {
         ${items
           .map(
             (entry) => `
-          <div class="detail-row">
+          <div class="detail-row ${entry.item.risk === "high" ? "detail-row-critical" : ""}">
             <div class="detail-row-main">
               <span class="detail-item-text">${!String(entry.item.id).startsWith("custom-") ? `${entry.item.id}. ` : ""}${escapeHtml(tf(entry.item))}</span>
-              <span class="detail-row-badges">${riskBadgeHtml(entry.item.risk)}<span class="badge badge-neutral">${entry.count}×</span></span>
+              <span class="detail-row-badges">${repeatViolationBadgesHtml(entry.item.risk)}<span class="badge badge-neutral">${entry.count}×</span></span>
             </div>
             <div class="history-card-meta">${escapeHtml(categoryLabel(entry.item.category, lang))} · ${entry.dates.map((dt) => escapeHtml(dt)).join(", ")}</div>
           </div>`
