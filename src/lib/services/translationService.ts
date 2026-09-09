@@ -114,8 +114,14 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
   const notes = db
     .prepare(`SELECT id, title FROM shift_notes WHERE store_id = ? AND title IS NOT NULL AND title_es IS NULL LIMIT ?`)
     .all(storeId, BACKFILL_LIMIT) as Array<{ id: string; title: string }>;
+  const procedureItems = db
+    .prepare(
+      `SELECT pi.id, pi.text FROM procedure_items pi JOIN procedure_areas pa ON pa.id = pi.area_id
+       WHERE pa.store_id = ? AND pi.active = 1 AND pi.text_es IS NULL LIMIT ?`
+    )
+    .all(storeId, BACKFILL_LIMIT) as Array<{ id: string; text: string }>;
 
-  if (templates.length === 0 && tasks.length === 0 && notes.length === 0) return;
+  if (templates.length === 0 && tasks.length === 0 && notes.length === 0 && procedureItems.length === 0) return;
 
   const toTranslate: Record<string, string> = {};
   templates.forEach((t) => (toTranslate[`tpl_${t.id}`] = t.title));
@@ -124,6 +130,7 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
     if (t.description) toTranslate[`taskdesc_${t.id}`] = t.description;
   });
   notes.forEach((n) => (toTranslate[`note_${n.id}`] = n.title));
+  procedureItems.forEach((i) => (toTranslate[`procitem_${i.id}`] = i.text));
 
   const translated = await translateFields(toTranslate);
   if (!translated) return;
@@ -132,6 +139,7 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
   const updateTask = db.prepare(`UPDATE tasks SET title_es = ? WHERE id = ? AND title_es IS NULL`);
   const updateTaskDesc = db.prepare(`UPDATE tasks SET description_es = ? WHERE id = ? AND description_es IS NULL`);
   const updateNote = db.prepare(`UPDATE shift_notes SET title_es = ? WHERE id = ? AND title_es IS NULL`);
+  const updateProcedureItem = db.prepare(`UPDATE procedure_items SET text_es = ? WHERE id = ? AND text_es IS NULL`);
 
   for (const t of templates) {
     const entry = translated[`tpl_${t.id}`];
@@ -146,5 +154,9 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
   for (const n of notes) {
     const entry = translated[`note_${n.id}`];
     if (entry) updateNote.run(entry.lang === "es" ? n.title : entry.translated, n.id);
+  }
+  for (const i of procedureItems) {
+    const entry = translated[`procitem_${i.id}`];
+    if (entry) updateProcedureItem.run(entry.lang === "es" ? i.text : entry.translated, i.id);
   }
 }

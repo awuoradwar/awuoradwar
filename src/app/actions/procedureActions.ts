@@ -5,6 +5,7 @@ import { requireCurrentUser } from "@/lib/auth";
 import { canDo } from "@/lib/permissions";
 import * as procedureService from "@/lib/services/procedureService";
 import { ProcedureCategory, ProcedureShiftType, ProcedureSubmissionItem } from "@/lib/services/procedureService";
+import { translateFields, resolveBilingualPair } from "@/lib/services/translationService";
 
 function refresh() {
   revalidatePath("/more/procedures");
@@ -62,7 +63,11 @@ export async function deactivateAreaAction(id: string) {
 export async function addProcedureItemAction(areaId: string, shiftType: ProcedureShiftType, text: string, textEs: string): Promise<{ id?: string; error?: string }> {
   const user = await requireCurrentUser();
   if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
-  const result = procedureService.addItem(areaId, shiftType, text, textEs, user);
+  // Auto-translate whichever side wasn't typed in manually -- same
+  // translate-on-save pattern as task titles/descriptions and note titles.
+  const translated = textEs.trim() ? {} : await translateFields({ text });
+  const pair = resolveBilingualPair(translated?.text, text, textEs);
+  const result = procedureService.addItem(areaId, shiftType, pair.primary, pair.secondary, user);
   if (!result.error) refresh();
   return result;
 }
@@ -70,7 +75,9 @@ export async function addProcedureItemAction(areaId: string, shiftType: Procedur
 export async function updateProcedureItemAction(id: string, text: string, textEs: string): Promise<{ error?: string }> {
   const user = await requireCurrentUser();
   if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
-  const result = procedureService.updateItem(id, text, textEs, user);
+  const translated = textEs.trim() ? {} : await translateFields({ text });
+  const pair = resolveBilingualPair(translated?.text, text, textEs);
+  const result = procedureService.updateItem(id, pair.primary, pair.secondary, user);
   if (!result.error) refresh();
   return result;
 }
