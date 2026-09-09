@@ -273,7 +273,8 @@ function formatDateTime(ts) {
 function topBarHtml() {
   return `
     <div class="top-bar">
-      <h1>${escapeHtml(t("appTitle"))} — ${escapeHtml(t("adminLink"))}</h1>
+      <h1>${escapeHtml(t("adminLink"))}</h1>
+      <a class="text-link" href="#/">${t("backToChecklist")}</a>
       <div class="lang-toggle">
         <button data-lang="en" class="${getLang() === "en" ? "active" : ""}">EN</button>
         <button data-lang="es" class="${getLang() === "es" ? "active" : ""}">ES</button>
@@ -368,7 +369,7 @@ function renderLoginScreen(mode, message, messageIsError = true) {
     ${topBarHtml()}
     <main>
       <div class="card" style="max-width:360px; margin:40px auto;">
-        <h2 style="margin-top:0;">${isSignUp ? t("signUpTitle") : t("loginTitle")}</h2>
+        ${isSignUp ? `<h2 style="margin-top:0;">${t("signUpTitle")}</h2>` : ""}
         ${message ? `<div class="hint-banner" ${messageIsError ? 'style="color:var(--danger); border-color:var(--danger);"' : ""}>${escapeHtml(message)}</div>` : ""}
         <form id="login-form">
           <div class="field">
@@ -632,7 +633,6 @@ function renderDashboard() {
     ${topBarHtml()}
     <main>
       <div class="admin-account-row">
-        <a class="text-link" href="#/">${t("backToChecklist")}</a>
         <div class="dropdown-wrap">
           <button type="button" class="btn btn-sm btn-secondary" id="btn-account-menu">⚙ ${t("accountMenuLabel")}</button>
           <div class="dropdown-menu" id="account-dropdown" hidden>
