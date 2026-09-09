@@ -88,6 +88,33 @@ To set it up:
 4. To remove someone's access, go back to **Manage Admins** and remove
    them; they'd need to be re-added to get back in.
 
+### Giving access to someone without email/signup
+
+**Manage Admins → Add by Username & Password** creates a full admin
+account for someone else on the spot — no email, no signup screen on
+their end. You pick a username and password there and just tell them
+both; they log in with the username directly (the login screen accepts
+either an email or a username). They can then set up a PIN from the
+Account menu for faster access after that first login. Access level is
+identical to any other admin (not owner) either way.
+
+The tradeoff: since there's no real email behind a username account,
+**"Forgot password?" can't help them** — there's nowhere to send a
+reset link. If they forget it, create them a new username/password pair
+instead (the old one still exists but is harmless once removed from the
+roster; Firebase doesn't let this app delete the underlying account
+without a paid-tier Admin SDK, so the leftover just sits there unused).
+
+**One-time setup after first deploying this feature:** it needs a
+`usernames` Firestore collection with its own rule (already in
+`firestore.rules` in this repo) — but rule changes aren't part of the
+GitHub Actions auto-deploy (that only redeploys Hosting; see "First
+composite-index search" under Known limitations for why). Copy the
+contents of `firestore.rules` into the Firebase Console under
+**Firestore Database → Rules** and click **Publish** once. Skip this
+and username accounts will fail with permission-denied errors instead
+of being created.
+
 ## Deploy
 
 You need Node.js installed once, to get the Firebase CLI:

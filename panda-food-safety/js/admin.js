@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  createUserOnSecondaryApp,
   sendPasswordResetEmail,
   signOut,
   doc,
@@ -29,23 +30,20 @@ import {
 // once today reaches the date, so it's safe to leave in place after launch.
 const LAUNCH_DATE = "2026-09-07";
 
-// Remembers which tab was open across a reload (including the "new
-// version available" reload prompt), so it lands back where it was
-// instead of always resetting to Today's Status.
-const ACTIVE_TAB_KEY = "pfs-admin-active-tab";
+// Firebase Auth still needs a real-looking email under the hood even for
+// a "username" account — this fixed, never-actually-delivered domain is
+// what a username gets turned into. Nobody needs an inbox for it; it's
+// only ever used internally for sign-in. The `usernames/{username}`
+// Firestore collection maps a chosen username back to this email so the
+// login screen can resolve one from the other before signing in.
+const USERNAME_EMAIL_SUFFIX = "@users.pandafoodsafety.internal";
 
-function loadActiveTab() {
-  try {
-    return localStorage.getItem(ACTIVE_TAB_KEY) || "today";
-  } catch {
-    return "today";
-  }
+function normalizeUsername(raw) {
+  return (raw || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
 }
 
-function saveActiveTab(tab) {
-  try {
-    localStorage.setItem(ACTIVE_TAB_KEY, tab);
-  } catch {}
+function syntheticEmailForUsername(username) {
+  return `${normalizeUsername(username)}${USERNAME_EMAIL_SUFFIX}`;
 }
 
 // A soft app-lock only, never a credential of its own: it gates the
@@ -113,7 +111,10 @@ let pinFailedAttempts = 0;
 // (e.g. "too many attempts") since that transition is driven by the
 // Firebase listener, not a direct function call we can pass a message into.
 let pendingLoginMessage = null;
-let activeTab = loadActiveTab();
+// Always starts on Today's Status on a fresh login/app open — a
+// previously-open tab (e.g. History) is only kept while switching tabs
+// within the same still-open session, not restored across a reload.
+let activeTab = "today";
 let storesCache = [];
 let storesUnsub = null;
 let lastHistoryResults = [];
@@ -373,8 +374,8 @@ function renderLoginScreen(mode, message, messageIsError = true) {
         ${message ? `<div class="hint-banner" ${messageIsError ? 'style="color:var(--danger); border-color:var(--danger);"' : ""}>${escapeHtml(message)}</div>` : ""}
         <form id="login-form">
           <div class="field">
-            <label>${t("emailLabel")}</label>
-            <input type="email" id="login-email" name="email" autocomplete="username" required />
+            <label>${isSignUp ? t("emailLabel") : t("emailOrUsernameLabel")}</label>
+            <input type="${isSignUp ? "email" : "text"}" id="login-email" name="email" autocomplete="username" required />
           </div>
           <div class="field">
             <label>${t("passwordLabel")}</label>
@@ -397,15 +398,26 @@ function renderLoginScreen(mode, message, messageIsError = true) {
   // free.
   root.querySelector("#login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = root.querySelector("#login-email").value.trim().toLowerCase();
+    const identifier = root.querySelector("#login-email").value.trim().toLowerCase();
     const password = root.querySelector("#login-password").value;
     const btn = root.querySelector("#btn-submit-auth");
     btn.disabled = true;
     btn.textContent = t("loadingButton");
     try {
       await persistenceReady;
-      if (isSignUp) await withTimeout(createUserWithEmailAndPassword(auth, email, password));
-      else await withTimeout(signInWithEmailAndPassword(auth, email, password));
+      if (isSignUp) {
+        await withTimeout(createUserWithEmailAndPassword(auth, identifier, password));
+      } else {
+        // No "@" means this is a username, not an email — resolve it to
+        // the real (owner-provisioned, never-seen) account email first.
+        let email = identifier;
+        if (!email.includes("@")) {
+          const usernameDoc = await withTimeout(getDoc(doc(db, "usernames", normalizeUsername(identifier))));
+          if (!usernameDoc.exists()) throw new Error("no-such-user");
+          email = usernameDoc.data().email;
+        }
+        await withTimeout(signInWithEmailAndPassword(auth, email, password));
+      }
       // Just proved identity with the real password — stronger than the
       // PIN gate, so don't immediately re-prompt for a PIN too.
       pinUnlockedThisLoad = true;
@@ -423,6 +435,10 @@ function renderLoginScreen(mode, message, messageIsError = true) {
       const email = root.querySelector("#login-email").value.trim().toLowerCase();
       if (!email) {
         renderLoginScreen(mode, t("forgotPasswordNeedsEmail"));
+        return;
+      }
+      if (!email.includes("@")) {
+        renderLoginScreen(mode, t("forgotPasswordUsernameAccount"));
         return;
       }
       try {
@@ -722,7 +738,6 @@ function renderDashboard() {
     btn.addEventListener("click", () => {
       activeTab = btn.dataset.tab;
       if (activeTab === "weekly") weeklyOffset = 0;
-      saveActiveTab(activeTab);
       renderDashboard();
     });
   });
@@ -1088,11 +1103,11 @@ function weekRangeDates(weeksAgo) {
 // so History's Weekly view stays scoped to "check one store's past".
 let histViewMode = "daily";
 let expandedHistoryWeek = null;
-// Collapsed by default — the filter form (quick ranges, store, date
-// range, actions) was taking up most of the screen before any results
-// even showed. Stays expanded/collapsed across tab switches once an
-// admin has touched it, same as histViewMode.
-let histFiltersExpanded = false;
+// History is search-first: nothing loads until an admin actually
+// searches (Search, or picking a store) — a browsable everything-list
+// already exists on Weekly Summary, so History doesn't need to
+// duplicate it.
+let hasSearchedHistory = false;
 
 function renderHistoryTab() {
   const content = root.querySelector("#tab-content");
@@ -1102,57 +1117,46 @@ function renderHistoryTab() {
   monthAgo.setDate(monthAgo.getDate() - 30);
   const fromDefault = todayDateStringFor(monthAgo);
   const toDefault = today;
+  lastHistoryResults = [];
+  hasSearchedHistory = false;
 
   content.innerHTML = `
     <div class="card">
-      <button type="button" class="hist-filters-toggle" id="btn-toggle-filters">
-        <span id="hist-filters-summary"></span>
-        <span class="hist-filters-caret">${t("filtersLabel")} ${histFiltersExpanded ? "▲" : "▼"}</span>
-      </button>
-      <div class="hist-filters-body" id="hist-filters-body" ${histFiltersExpanded ? "" : "hidden"}>
-        <div class="quick-range-row">
-          <span class="quick-range-label">${t("quickRangeLabel")}</span>
-          <button class="btn btn-sm btn-secondary" data-weeks-ago="0">${t("thisWeek")}</button>
-          <button class="btn btn-sm btn-secondary" data-weeks-ago="1">${t("lastWeek")}</button>
-          <button class="btn btn-sm btn-secondary" data-weeks-ago="2">${t("weeksAgo", { n: 2 })}</button>
-          <button class="btn btn-sm btn-secondary" data-weeks-ago="3">${t("weeksAgo", { n: 3 })}</button>
-        </div>
-        <div class="field">
-          <label>${t("filterStore")}</label>
-          <div class="store-combo">
-            <input type="text" id="hist-store-input" autocomplete="off" placeholder="${t("filterAllStores")}" />
-            <input type="hidden" id="hist-store" value="" />
-            <div class="store-combo-list" id="hist-store-list" hidden></div>
-          </div>
-        </div>
-        <div class="field">
-          <label>${t("filterConductedBy")}</label>
-          <div class="store-combo">
-            <input type="text" id="hist-name-input" autocomplete="off" placeholder="${t("filterAnyName")}" />
-            <div class="store-combo-list" id="hist-name-list" hidden></div>
-          </div>
-        </div>
-        <div class="view-mode-row" id="hist-view-mode-row" hidden>
-          <button type="button" class="btn btn-sm ${histViewMode === "daily" ? "btn-primary" : "btn-secondary"}" data-view-mode="daily">${t("dailyViewLabel")}</button>
-          <button type="button" class="btn btn-sm ${histViewMode === "weekly" ? "btn-primary" : "btn-secondary"}" data-view-mode="weekly">${t("weeklyViewLabel")}</button>
-        </div>
-        <div class="hist-date-row">
-          <div class="field">
-            <label>${t("filterFrom")}</label>
-            <input type="date" id="hist-from" value="${fromDefault}" />
-          </div>
-          <div class="field">
-            <label>${t("filterTo")}</label>
-            <input type="date" id="hist-to" value="${toDefault}" />
-          </div>
-        </div>
-        <div class="hist-actions-row">
-          <button class="btn btn-secondary" id="btn-hist-search">${t("searchButton")}</button>
-          <button class="btn btn-secondary" id="btn-hist-export">${t("exportCsv")}</button>
+      <div class="field">
+        <label>${t("filterStore")}</label>
+        <div class="store-combo">
+          <input type="text" id="hist-store-input" autocomplete="off" placeholder="${t("filterAllStores")}" />
+          <input type="hidden" id="hist-store" value="" />
+          <div class="store-combo-list" id="hist-store-list" hidden></div>
         </div>
       </div>
+      <div class="field">
+        <label>${t("filterConductedBy")}</label>
+        <div class="store-combo">
+          <input type="text" id="hist-name-input" autocomplete="off" placeholder="${t("filterAnyName")}" />
+          <div class="store-combo-list" id="hist-name-list" hidden></div>
+        </div>
+      </div>
+      <div class="view-mode-row" id="hist-view-mode-row" hidden>
+        <button type="button" class="btn btn-sm ${histViewMode === "daily" ? "btn-primary" : "btn-secondary"}" data-view-mode="daily">${t("dailyViewLabel")}</button>
+        <button type="button" class="btn btn-sm ${histViewMode === "weekly" ? "btn-primary" : "btn-secondary"}" data-view-mode="weekly">${t("weeklyViewLabel")}</button>
+      </div>
+      <div class="hist-date-row">
+        <div class="field">
+          <label>${t("filterFrom")}</label>
+          <input type="date" id="hist-from" value="${fromDefault}" />
+        </div>
+        <div class="field">
+          <label>${t("filterTo")}</label>
+          <input type="date" id="hist-to" value="${toDefault}" />
+        </div>
+      </div>
+      <div class="hist-actions-row">
+        <button class="btn btn-primary" id="btn-hist-search">${t("searchButton")}</button>
+        <button class="btn btn-secondary" id="btn-hist-export" disabled>${t("exportCsv")}</button>
+      </div>
     </div>
-    <div class="card" id="hist-results"></div>
+    <div class="card" id="hist-results"><p style="color:var(--text-muted); margin:0;">${t("historySearchPrompt")}</p></div>
   `;
 
   function updateViewModeVisibility() {
@@ -1160,12 +1164,6 @@ function renderHistoryTab() {
     content.querySelector("#hist-view-mode-row").hidden = !storeNumber;
     if (!storeNumber) histViewMode = "daily";
   }
-
-  content.querySelector("#btn-toggle-filters").addEventListener("click", () => {
-    histFiltersExpanded = !histFiltersExpanded;
-    content.querySelector("#hist-filters-body").hidden = !histFiltersExpanded;
-    content.querySelector(".hist-filters-caret").textContent = `${t("filtersLabel")} ${histFiltersExpanded ? "▲" : "▼"}`;
-  });
 
   wireStoreCombo({
     inputEl: content.querySelector("#hist-store-input"),
@@ -1184,15 +1182,6 @@ function renderHistoryTab() {
   });
   updateViewModeVisibility();
 
-  content.querySelectorAll("[data-weeks-ago]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const { from, to } = weekRangeDates(Number(btn.dataset.weeksAgo));
-      content.querySelector("#hist-from").value = from;
-      content.querySelector("#hist-to").value = to;
-      runHistorySearch();
-    });
-  });
-
   content.querySelectorAll("[data-view-mode]").forEach((btn) => {
     btn.addEventListener("click", () => {
       histViewMode = btn.dataset.viewMode;
@@ -1209,27 +1198,11 @@ function renderHistoryTab() {
     inputEl: content.querySelector("#hist-name-input"),
     listEl: content.querySelector("#hist-name-list"),
     getNames: () => knownConductedByNames,
-    onChange: () => {
-      updateHistFiltersSummary();
-      renderHistoryResults();
-    },
+    onChange: () => renderHistoryResults(),
   });
 
   root.querySelector("#btn-hist-search").addEventListener("click", () => runHistorySearch());
   root.querySelector("#btn-hist-export").addEventListener("click", () => exportCsv(filteredHistoryResults()));
-  runHistorySearch();
-}
-
-function updateHistFiltersSummary() {
-  const summaryEl = root.querySelector("#hist-filters-summary");
-  if (!summaryEl) return;
-  const from = root.querySelector("#hist-from").value;
-  const to = root.querySelector("#hist-to").value;
-  const storeNumber = root.querySelector("#hist-store").value;
-  const store = storesCache.find((s) => s.number === storeNumber);
-  const storeText = store ? storeLabel(store.number, store.name) : t("filterAllStores");
-  const nameText = root.querySelector("#hist-name-input")?.value.trim();
-  summaryEl.textContent = `${formatWeekRangeLabel(from, to)} · ${storeText}${nameText ? ` · ${nameText}` : ""}`;
 }
 
 async function openHistoryRecord(record) {
@@ -1384,7 +1357,6 @@ async function runHistorySearch() {
   const to = root.querySelector("#hist-to").value;
   const resultsEl = root.querySelector("#hist-results");
   resultsEl.innerHTML = `<div>${t("loadingButton")}</div>`;
-  updateHistFiltersSummary();
 
   const clauses = [where("date", ">=", from), where("date", "<=", to)];
   if (storeNumber) clauses.push(where("storeNumber", "==", storeNumber));
@@ -1398,6 +1370,9 @@ async function runHistorySearch() {
   lastHistoryResults = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   recordKnownNames(lastHistoryResults);
   expandedHistoryWeek = null;
+  hasSearchedHistory = true;
+  const exportBtn = root.querySelector("#btn-hist-export");
+  if (exportBtn) exportBtn.disabled = false;
   renderHistoryResults();
 }
 
@@ -1414,6 +1389,10 @@ function filteredHistoryResults() {
 function renderHistoryResults() {
   const resultsEl = root.querySelector("#hist-results");
   if (!resultsEl) return;
+  if (!hasSearchedHistory) {
+    resultsEl.innerHTML = `<p style="color:var(--text-muted); margin:0;">${t("historySearchPrompt")}</p>`;
+    return;
+  }
   if (filteredHistoryResults().length === 0) {
     resultsEl.innerHTML = `<div>${t("noSubmissionsFound")}</div>`;
     return;
@@ -2273,6 +2252,7 @@ function renderManageAdminsTab() {
     content.innerHTML = `
       <div class="hint-banner">${t("ownerNote")}</div>
       <div class="card">
+        <div class="detail-section-title" style="margin-top:0;">${t("addAdminByEmailTitle")}</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px;">
           <div class="field" style="margin-bottom:0; flex:1;">
             <label>${t("adminEmailLabel")}</label>
@@ -2288,12 +2268,26 @@ function renderManageAdminsTab() {
             .map(
               (a) => `
             <div class="store-manage-row">
-              <div class="grow">${escapeHtml(a.email)} — ${t("adminRole")}</div>
+              <div class="grow">${escapeHtml(a.username ? `@${a.username}` : a.email)} — ${t("adminRole")}</div>
               <button class="btn btn-sm btn-danger" data-remove="${escapeHtml(a.id)}">${t("deleteButton")}</button>
             </div>`
             )
             .join("")}
         </div>
+      </div>
+      <div class="card">
+        <div class="detail-section-title" style="margin-top:0;">${t("addAdminByUsernameTitle")}</div>
+        <p style="color:var(--text-muted); margin-top:0; font-size:13px;">${t("addAdminByUsernameNote")}</p>
+        <div class="field">
+          <label>${t("newUsernameLabel")}</label>
+          <input type="text" id="new-admin-username" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>${t("newUsernamePasswordLabel")}</label>
+          <input type="password" id="new-admin-username-password" autocomplete="new-password" />
+        </div>
+        <div class="hint-banner" id="new-admin-username-error" style="color:var(--danger); border-color:var(--danger);" hidden></div>
+        <button class="btn btn-primary" id="btn-add-admin-username">${t("addAdmin")}</button>
       </div>
     `;
 
@@ -2311,8 +2305,61 @@ function renderManageAdminsTab() {
     content.querySelectorAll("button[data-remove]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         if (!confirm(t("confirmRemoveAdmin"))) return;
+        const removedAdmin = adminsCache.find((a) => a.id === btn.dataset.remove);
         await deleteDoc(doc(db, "admins", btn.dataset.remove));
+        // Free the username back up for reuse — the account itself can't
+        // be deleted client-side (no Admin SDK), but removing the
+        // roster entry already revokes its access; this just tidies up
+        // the now-unusable mapping.
+        if (removedAdmin?.username) await deleteDoc(doc(db, "usernames", removedAdmin.username)).catch(() => {});
       });
+    });
+
+    content.querySelector("#btn-add-admin-username").addEventListener("click", async () => {
+      const usernameInput = content.querySelector("#new-admin-username");
+      const passwordInput = content.querySelector("#new-admin-username-password");
+      const errorEl = content.querySelector("#new-admin-username-error");
+      const btn = content.querySelector("#btn-add-admin-username");
+      const username = normalizeUsername(usernameInput.value);
+      const password = passwordInput.value;
+      errorEl.hidden = true;
+      if (!username) {
+        errorEl.textContent = t("usernameRequiredError");
+        errorEl.hidden = false;
+        return;
+      }
+      if (password.length < 6) {
+        errorEl.textContent = t("passwordTooShortError");
+        errorEl.hidden = false;
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = t("loadingButton");
+      try {
+        const existing = await withTimeout(getDoc(doc(db, "usernames", username)));
+        if (existing.exists()) {
+          errorEl.textContent = t("usernameTakenError");
+          errorEl.hidden = false;
+          return;
+        }
+        const email = syntheticEmailForUsername(username);
+        await withTimeout(createUserOnSecondaryApp(email, password));
+        await setDoc(doc(db, "usernames", username), { email, createdAt: serverTimestamp() });
+        await setDoc(doc(db, "admins", email), { email, username, addedAt: serverTimestamp() });
+        usernameInput.value = "";
+        passwordInput.value = "";
+      } catch (err) {
+        errorEl.textContent =
+          err.message === "timeout"
+            ? t("requestTimedOut")
+            : err.code === "auth/email-already-in-use"
+              ? t("usernameTakenError")
+              : String(err.message || err);
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = t("addAdmin");
+      }
     });
   }
 }

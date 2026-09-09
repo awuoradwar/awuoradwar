@@ -8,7 +8,7 @@
 // Firestore instead (see js/app.js), which stays on the no-cost Spark
 // plan with no credit card required.
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
   getAuth,
   setPersistence,
@@ -64,6 +64,27 @@ const db = getFirestore(app);
 // issued while setPersistence() is still pending can silently fail.
 const persistenceReady = setPersistence(auth, browserLocalPersistence).catch(() => {});
 
+// Creates a brand-new account without touching whichever session is
+// currently active on the primary `auth` above. Firebase's
+// createUserWithEmailAndPassword always signs in as the account it just
+// created — fine for someone creating their own account, but wrong for
+// an owner minting a username-based account on someone else's behalf
+// from Manage Admins, which would otherwise silently sign the owner out
+// of their own session. A short-lived secondary Firebase App instance is
+// the standard client-only way around that, with no backend/Admin SDK.
+let secondaryAppCounter = 0;
+async function createUserOnSecondaryApp(email, password) {
+  const secondaryApp = initializeApp(firebaseConfig, `secondary-${Date.now()}-${secondaryAppCounter++}`);
+  const secondaryAuth = getAuth(secondaryApp);
+  try {
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    return cred.user;
+  } finally {
+    await signOut(secondaryAuth).catch(() => {});
+    await deleteApp(secondaryApp).catch(() => {});
+  }
+}
+
 export {
   auth,
   db,
@@ -72,6 +93,7 @@ export {
   signInAnonymously,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  createUserOnSecondaryApp,
   sendPasswordResetEmail,
   onAuthStateChanged,
   signOut,

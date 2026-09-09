@@ -30,6 +30,19 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // Username -> real-email lookup for username-based admin accounts
+    // (created by the owner from Manage Admins — see /admins/{email}
+    // above; the "email" is an internal-only address, never a real
+    // inbox). Has to be publicly readable since the login screen needs
+    // to resolve a username *before* anyone is signed in; nothing
+    // sensitive lives here — actual admin data still requires a real,
+    // authorized signed-in admin per every rule below. Only the owner
+    // creates these, same as the admin roster itself.
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if isOwner();
+    }
+
     // Store roster: every signed-in viewer (including anonymous
     // associates) can read it to populate the store dropdown; only
     // admins can add/edit/remove stores.
