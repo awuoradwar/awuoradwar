@@ -91,6 +91,7 @@ function createConnection(): Database.Database {
   splitWeeklyOpsSummaries(db);
   backfillDefaultFranchiseOrg(db);
   seedFohClosingProcedures(db);
+  backfillFohClosingTranslations(db);
   return db;
 }
 
@@ -107,88 +108,99 @@ function createConnection(): Database.Database {
  * management page. One-time per store, idempotent: skipped for any store
  * that already has an area named "Lobby" in FOH (either from an earlier run
  * of this seed, or because a GM already built their own). */
-function seedFohClosingProcedures(db: Database.Database) {
-  const FOH_CLOSING_STATIONS: Array<{ name: string; items: string[] }> = [
-    {
-      name: "Lobby",
-      items: [
-        "Tables are wiped down",
-        "Floor is swept and mopped twice",
-        "Area behind the trash can is swept",
-        "Trash is taken out",
-        "Black trays are clean and placed up front",
-        "Patio chairs and cones are brought inside",
-      ],
-    },
-    {
-      name: "Drink Station",
-      items: [
-        "Teas are cleaned with soap (no harsh chemicals)",
-        "Tea nozzles and station are cleaned",
-        "All area is restocked",
-        "Area is wiped down",
-        "Soda nozzles are left soaking",
-        "Soda area and wall are wiped down",
-        "Trash is taken out",
-        "DST cabinets are polished",
-      ],
-    },
-    {
-      name: "Refreshers",
-      items: [
-        "All remaining juices are stored in the walk-in cooler",
-        "All containers are cleaned with soap",
-        "Station is cleaned and wiped down",
-        "Cups and lids are restocked",
-        "Ice container is wiped down and stored in the freezer",
-        "Drain container is cleaned",
-      ],
-    },
-    {
-      name: "OLO Restocker",
-      items: [
-        "Windows and doors are cleaned",
-        "All sauces are neatly restocked",
-        "Cookie bags and the Panda plushie up front are restocked",
-        "Register area is wiped down and clean",
-        "Utensils and cookie drawer are restocked",
-        "Apple crisp and chopsticks are restocked",
-      ],
-    },
-    {
-      name: "Drive Thru Register",
-      items: [
-        "Sauces, drive-thru fridge, drink station, utensils, plates, and containers are restocked",
-        "Register area is wiped down",
-        "Window and register screen are cleaned",
-        "Steam table, walls, sink area, and drink station cabinets are wiped down",
-        "Window is turned off and locked at 11:00 PM",
-        "Teas are cleaned",
-        "Soda nozzles are removed and left soaking",
-        "Ice is melted and the ice container is cleaned",
-        "Floors are swept",
-        "Floors are scrubbed with soapy water",
-        "Floors are squeegeed with clean water",
-        "Drains are cleaned out and filled with ice overnight",
-      ],
-    },
-    {
-      name: "Drive Thru Runner",
-      items: [
-        "All rings are pulled and cleaned by 9:00 PM",
-        "Steam table is clean",
-        "Glass is clean",
-        "Steam table is restocked",
-        "Rice cooker is cleaned",
-        "Reach-in cooler counter is polished",
-        "Pans and spoons are cleaned and assembled",
-        "Black line counter is clean",
-        "Underneath the steam table is cleaned",
-        "OLO shelf is cleaned",
-      ],
-    },
-  ];
+interface FohClosingItem {
+  en: string;
+  es: string;
+}
 
+const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
+  {
+    name: "Lobby",
+    items: [
+      { en: "Tables are wiped down", es: "Las mesas están limpias" },
+      { en: "Floor is swept and mopped twice", es: "El piso está barrido y trapeado dos veces" },
+      { en: "Area behind the trash can is swept", es: "El área detrás del bote de basura está barrida" },
+      { en: "Trash is taken out", es: "La basura está sacada" },
+      { en: "Black trays are clean and placed up front", es: "Las charolas negras están limpias y colocadas al frente" },
+      { en: "Patio chairs and cones are brought inside", es: "Las sillas del patio y los conos están guardados adentro" },
+    ],
+  },
+  {
+    name: "Drink Station",
+    items: [
+      { en: "Teas are cleaned with soap (no harsh chemicals)", es: "Los tés están limpios con jabón (sin químicos fuertes)" },
+      { en: "Tea nozzles and station are cleaned", es: "Las boquillas de té y la estación están limpias" },
+      { en: "All area is restocked", es: "Toda el área está reabastecida" },
+      { en: "Area is wiped down", es: "El área está limpia" },
+      { en: "Soda nozzles are left soaking", es: "Las boquillas de soda están remojando" },
+      { en: "Soda area and wall are wiped down", es: "El área de soda y la pared están limpias" },
+      { en: "Trash is taken out", es: "La basura está sacada" },
+      { en: "DST cabinets are polished", es: "Los gabinetes del DST están pulidos" },
+    ],
+  },
+  {
+    name: "Refreshers",
+    items: [
+      { en: "All remaining juices are stored in the walk-in cooler", es: "Todos los jugos restantes están guardados en el walk-in" },
+      { en: "All containers are cleaned with soap", es: "Todos los contenedores están limpios con jabón" },
+      { en: "Station is cleaned and wiped down", es: "La estación está limpia" },
+      { en: "Cups and lids are restocked", es: "Los vasos y las tapas están reabastecidos" },
+      { en: "Ice container is wiped down and stored in the freezer", es: "El contenedor de hielo está limpio y guardado en el congelador" },
+      { en: "Drain container is cleaned", es: "El contenedor del drenaje está limpio" },
+    ],
+  },
+  {
+    name: "OLO Restocker",
+    items: [
+      { en: "Windows and doors are cleaned", es: "Las ventanas y las puertas están limpias" },
+      { en: "All sauces are neatly restocked", es: "Todas las salsas están reabastecidas ordenadamente" },
+      { en: "Cookie bags and the Panda plushie up front are restocked", es: "Las bolsas de galletas y el peluche de Panda al frente están reabastecidos" },
+      { en: "Register area is wiped down and clean", es: "El área de la caja está limpia" },
+      { en: "Utensils and cookie drawer are restocked", es: "Los utensilios y el cajón de galletas están reabastecidos" },
+      { en: "Apple crisp and chopsticks are restocked", es: "El apple crisp y los palillos están reabastecidos" },
+    ],
+  },
+  {
+    name: "Drive Thru Register",
+    items: [
+      {
+        en: "Sauces, drive-thru fridge, drink station, utensils, plates, and containers are restocked",
+        es: "Las salsas, el refrigerador del drive-thru, la estación de bebidas, los utensilios, los platos y los contenedores están reabastecidos",
+      },
+      { en: "Register area is wiped down", es: "El área de la caja está limpia" },
+      { en: "Window and register screen are cleaned", es: "La ventana y la pantalla de la caja están limpias" },
+      {
+        en: "Steam table, walls, sink area, and drink station cabinets are wiped down",
+        es: "La mesa de vapor, las paredes, el área del fregadero y los gabinetes de la estación de bebidas están limpios",
+      },
+      { en: "Window is turned off and locked at 11:00 PM", es: "La ventana está apagada y cerrada con llave a las 11:00 PM" },
+      { en: "Teas are cleaned", es: "Los tés están limpios" },
+      { en: "Soda nozzles are removed and left soaking", es: "Las boquillas de soda están quitadas y remojando" },
+      { en: "Ice is melted and the ice container is cleaned", es: "El hielo está derretido y el contenedor de hielo está limpio" },
+      { en: "Floors are swept", es: "Los pisos están barridos" },
+      { en: "Floors are scrubbed with soapy water", es: "Los pisos están tallados con agua jabonosa" },
+      { en: "Floors are squeegeed with clean water", es: "Los pisos están jalados con agua limpia" },
+      { en: "Drains are cleaned out and filled with ice overnight", es: "Los drenajes están limpios y llenos de hielo durante la noche" },
+    ],
+  },
+  {
+    name: "Drive Thru Runner",
+    items: [
+      { en: "All rings are pulled and cleaned by 9:00 PM", es: "Todos los aros están sacados y limpios antes de las 9:00 PM" },
+      { en: "Steam table is clean", es: "La mesa de vapor está limpia" },
+      { en: "Glass is clean", es: "El vidrio está limpio" },
+      { en: "Steam table is restocked", es: "La mesa de vapor está reabastecida" },
+      { en: "Rice cooker is cleaned", es: "La arrocera está limpia" },
+      { en: "Reach-in cooler counter is polished", es: "El mostrador del reach-in está pulido" },
+      { en: "Pans and spoons are cleaned and assembled", es: "Las charolas y las cucharas están limpias y armadas" },
+      { en: "Black line counter is clean", es: "El mostrador de la línea negra está limpio" },
+      { en: "Underneath the steam table is cleaned", es: "Debajo de la mesa de vapor está limpio" },
+      { en: "OLO shelf is cleaned", es: "El estante del OLO está limpio" },
+    ],
+  },
+];
+
+function seedFohClosingProcedures(db: Database.Database) {
   const stores = db
     .prepare(
       `SELECT id FROM stores WHERE NOT EXISTS (
@@ -202,7 +214,7 @@ function seedFohClosingProcedures(db: Database.Database) {
     `INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, 'FOH', ?, 1, ?)`
   );
   const insertItem = db.prepare(
-    `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, NULL, ?, 1, ?)`
+    `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, 1, ?)`
   );
 
   for (const store of stores) {
@@ -210,10 +222,26 @@ function seedFohClosingProcedures(db: Database.Database) {
       const areaId = randomUUID();
       const now = new Date().toISOString();
       insertArea.run(areaId, store.id, station.name, areaIndex, now);
-      station.items.forEach((text, itemIndex) => {
-        insertItem.run(randomUUID(), areaId, text, itemIndex, now);
+      station.items.forEach((item, itemIndex) => {
+        insertItem.run(randomUUID(), areaId, item.en, item.es, itemIndex, now);
       });
     });
+  }
+}
+
+/** seedFohClosingProcedures originally inserted these items with no Spanish
+ * text (text_es NULL), so a store that already ran that seed before
+ * translations were added here would see the checklist stay in English even
+ * with the app set to Español. One-time, idempotent: matches existing rows
+ * by their exact English text and only fills text_es where it's still NULL
+ * -- a GM who has since reworded an item (see the Procedures edit UI) no
+ * longer matches the original English text and is left alone. */
+function backfillFohClosingTranslations(db: Database.Database) {
+  const stmt = db.prepare(`UPDATE procedure_items SET text_es = ? WHERE text = ? AND text_es IS NULL`);
+  for (const station of FOH_CLOSING_STATIONS) {
+    for (const item of station.items) {
+      stmt.run(item.es, item.en);
+    }
   }
 }
 
