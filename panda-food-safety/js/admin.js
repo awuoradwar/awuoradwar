@@ -792,14 +792,47 @@ function renderDashboard() {
 // ---------- Today's Status ----------
 
 // How far back to look when checking whether a currently-missing store
-// has been missing on prior days too — bounded so the query stays cheap
-// (one range read covering this many days across all stores) rather than
-// scanning a store's entire history every time Today's Status loads.
+// has been missing on prior days too. Only queried per-store, and only
+// for stores already found missing today (a small subset, usually) —
+// keeps this from scanning every store's history on every Today's
+// Status load, which is what made that tab slow once there was more
+// than a day or two of history to look back through.
 const MISSING_STREAK_WINDOW_DAYS = 14;
 
 function addDaysToDateString(dateStr, delta) {
   const [y, m, d] = dateStr.split("-").map(Number);
   return todayDateStringFor(new Date(y, m - 1, d + delta));
+}
+
+// Consecutive days strictly before `today` with zero shifts submitted at
+// `storeNumber` — a separate, per-store range query (reuses the same
+// storeNumber+date composite index History's search already needs, so
+// this doesn't require provisioning a new one). Only ever called for a
+// store already confirmed missing today.
+async function missingStreakBeforeToday(storeNumber, today) {
+  const windowStart = addDaysToDateString(today, -MISSING_STREAK_WINDOW_DAYS);
+  const effectiveStart = windowStart < LAUNCH_DATE ? LAUNCH_DATE : windowStart;
+  const yesterday = addDaysToDateString(today, -1);
+  if (yesterday < effectiveStart) return { streak: 0, hitWindowLimit: false };
+
+  const snap = await getDocs(
+    query(collection(db, "submissions"), where("storeNumber", "==", storeNumber), where("date", ">=", effectiveStart), where("date", "<=", yesterday))
+  );
+  const docsByDate = {};
+  snap.docs.forEach((d) => {
+    const data = { id: d.id, ...d.data() };
+    (docsByDate[data.date] ||= []).push(data);
+  });
+
+  let streak = 0;
+  let date = yesterday;
+  while (date >= effectiveStart) {
+    if (shiftsCoveredForDay(docsByDate[date] || []).doneCount !== 0) break;
+    streak += 1;
+    date = addDaysToDateString(date, -1);
+  }
+  const hitWindowLimit = streak === MISSING_STREAK_WINDOW_DAYS && effectiveStart === windowStart;
+  return { streak, hitWindowLimit };
 }
 
 async function renderTodayTab() {
@@ -808,41 +841,20 @@ async function renderTodayTab() {
   content.innerHTML = `<div class="card">${t("loadingButton")}</div>`;
 
   const today = todayDateString();
-  const windowStart = addDaysToDateString(today, -MISSING_STREAK_WINDOW_DAYS);
-  const effectiveStart = windowStart < LAUNCH_DATE ? LAUNCH_DATE : windowStart;
-  // One range query covers both today (for the existing per-shift status)
-  // and the lookback window (for the consecutive-missing streak) — no
-  // separate query needed for each.
-  const snap = await getDocs(query(collection(db, "submissions"), where("date", ">=", effectiveStart), where("date", "<=", today)));
+  // Just today's docs, same single-field equality query as before the
+  // streak feature existed — cheap, no composite index needed.
+  const snap = await getDocs(query(collection(db, "submissions"), where("date", "==", today)));
 
   const docsByStoreNumber = {};
-  const docsByStoreDate = {};
   snap.docs.forEach((d) => {
     const data = { id: d.id, ...d.data() };
-    ((docsByStoreDate[data.storeNumber] ||= {})[data.date] ||= []).push(data);
-    if (data.date === today) (docsByStoreNumber[data.storeNumber] ||= []).push(data);
+    (docsByStoreNumber[data.storeNumber] ||= []).push(data);
   });
 
   const coveredByStoreNumber = {};
   storesCache.forEach((s) => {
     coveredByStoreNumber[s.number] = shiftsCoveredForDay(docsByStoreNumber[s.number] || []);
   });
-
-  // Consecutive days strictly before today with zero shifts submitted —
-  // only meaningful to show once we know today is missing too, so this
-  // is only called for stores already in that state.
-  function missingStreakBeforeToday(storeNumber) {
-    let streak = 0;
-    let date = addDaysToDateString(today, -1);
-    while (date >= effectiveStart) {
-      const docsForDay = (docsByStoreDate[storeNumber] || {})[date] || [];
-      if (shiftsCoveredForDay(docsForDay).doneCount !== 0) break;
-      streak += 1;
-      date = addDaysToDateString(date, -1);
-    }
-    const hitWindowLimit = streak === MISSING_STREAK_WINDOW_DAYS && effectiveStart === windowStart;
-    return { streak, hitWindowLimit };
-  }
 
   const notSubmittedCount = storesCache.filter((s) => coveredByStoreNumber[s.number].doneCount === 0).length;
   const dateLocale = getLang() === "es" ? "es-US" : "en-US";
@@ -851,31 +863,38 @@ async function renderTodayTab() {
   });
   const notYetLaunched = today < LAUNCH_DATE;
 
+  const rows = storesCache.map((s) => {
+    const covered = coveredByStoreNumber[s.number];
+    const anyInProgress = (docsByStoreNumber[s.number] || []).some((d) => !d.submitted);
+    const complete = covered.doneCount === 3;
+    const started = covered.doneCount > 0 || anyInProgress;
+    const penalize = !complete && !started && !notYetLaunched;
+    // Missing first (needs the most attention), then partially started,
+    // then all 3 shifts complete — store number order is kept within
+    // each group rather than interleaving all three.
+    const statusRank = complete ? 2 : started ? 1 : 0;
+    return { s, covered, complete, started, penalize, statusRank, streakLabel: null };
+  });
+
+  // Only stores actually missing today ever need the historical
+  // lookback — usually a handful, not the whole store list.
+  await Promise.all(
+    rows
+      .filter((r) => r.penalize)
+      .map(async (r) => {
+        const { streak, hitWindowLimit } = await missingStreakBeforeToday(r.s.number, today);
+        const totalDays = streak + 1;
+        if (totalDays >= 2) r.streakLabel = t(hitWindowLimit ? "missingStreakCapped" : "missingStreakDays", { days: totalDays });
+      })
+  );
+
   content.innerHTML = `
     <div class="card">
       <strong>${t("storesNotSubmittedCount", { count: notSubmittedCount, total: storesCache.length })}</strong>
       <div style="color:var(--text-muted); font-size:13px;">${todayLabel}</div>
     </div>
     <div class="admin-grid">
-      ${storesCache
-        .map((s) => {
-          const covered = coveredByStoreNumber[s.number];
-          const anyInProgress = (docsByStoreNumber[s.number] || []).some((d) => !d.submitted);
-          const complete = covered.doneCount === 3;
-          const started = covered.doneCount > 0 || anyInProgress;
-          const penalize = !complete && !started && !notYetLaunched;
-          // Missing first (needs the most attention), then partially
-          // started, then all 3 shifts complete — store number order is
-          // kept within each group rather than interleaving all three.
-          const statusRank = complete ? 2 : started ? 1 : 0;
-          let streakLabel = null;
-          if (penalize) {
-            const { streak, hitWindowLimit } = missingStreakBeforeToday(s.number);
-            const totalDays = streak + 1;
-            if (totalDays >= 2) streakLabel = t(hitWindowLimit ? "missingStreakCapped" : "missingStreakDays", { days: totalDays });
-          }
-          return { s, covered, complete, started, penalize, statusRank, streakLabel };
-        })
+      ${rows
         .sort((a, b) => a.statusRank - b.statusRank || Number(a.s.number) - Number(b.s.number))
         .map(({ s, covered, complete, started, penalize, streakLabel }) => {
           const badgeClass = complete ? "badge-success" : started ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
