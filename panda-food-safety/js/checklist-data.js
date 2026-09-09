@@ -216,24 +216,141 @@ const BASE_CHECKLIST_GROUPS = [
   },
 ];
 
+// Which of Panda's 6 violation-risk categories each base item falls
+// under, and how severe a "No" on it is — mapped by hand against the
+// internal "Food Safety Violation Progression" reference (Low -> Medium
+// -> High), matching each item's actual wording to that chart's own
+// bullet points wherever one exists (e.g. #54 "Is sanitizer available?"
+// -> the chart's own "No sanitizer available in facility", High). Where
+// no exact bullet exists, the closest analog was used — e.g. #1/#2/#8/#10
+// (thermometer/equipment readiness) map to the chart's Low-tier
+// "Food thermometer not functioning" rather than a direct temperature
+// failure, since nothing has actually been measured yet.
+// A custom item an admin adds later has no entry here and defaults to
+// category "other" / risk "medium" unless the admin sets it explicitly
+// from Manage Checklist.
+const ITEM_RISK_INFO = {
+  1: { category: "temperature", risk: "low" },
+  2: { category: "temperature", risk: "low" },
+  3: { category: "temperature", risk: "high" },
+  4: { category: "storage", risk: "medium" },
+  5: { category: "storage", risk: "medium" },
+  6: { category: "storage", risk: "medium" },
+  7: { category: "storage", risk: "medium" },
+  8: { category: "temperature", risk: "low" },
+  9: { category: "temperature", risk: "high" },
+  10: { category: "temperature", risk: "low" },
+  11: { category: "temperature", risk: "medium" },
+  12: { category: "temperature", risk: "high" },
+  13: { category: "temperature", risk: "medium" },
+  14: { category: "temperature", risk: "high" },
+  15: { category: "temperature", risk: "high" },
+  16: { category: "temperature", risk: "high" },
+  17: { category: "temperature", risk: "high" },
+  18: { category: "temperature", risk: "medium" },
+  19: { category: "storage", risk: "medium" },
+  20: { category: "storage", risk: "medium" },
+  21: { category: "storage", risk: "medium" },
+  22: { category: "storage", risk: "medium" },
+  23: { category: "storage", risk: "medium" },
+  24: { category: "sanitation", risk: "medium" },
+  25: { category: "sanitation", risk: "medium" },
+  26: { category: "sanitation", risk: "medium" },
+  27: { category: "sanitation", risk: "medium" },
+  28: { category: "facility", risk: "high" },
+  29: { category: "facility", risk: "medium" },
+  30: { category: "facility", risk: "low" },
+  31: { category: "employee", risk: "medium" },
+  32: { category: "employee", risk: "medium" },
+  33: { category: "sanitation", risk: "medium" },
+  34: { category: "employee", risk: "medium" },
+  35: { category: "employee", risk: "low" },
+  36: { category: "employee", risk: "medium" },
+  37: { category: "employee", risk: "high" },
+  38: { category: "employee", risk: "medium" },
+  39: { category: "employee", risk: "medium" },
+  40: { category: "employee", risk: "high" },
+  41: { category: "employee", risk: "low" },
+  42: { category: "employee", risk: "low" },
+  43: { category: "temperature", risk: "medium" },
+  44: { category: "employee", risk: "low" },
+  45: { category: "employee", risk: "medium" },
+  46: { category: "employee", risk: "low" },
+  47: { category: "storage", risk: "medium" },
+  48: { category: "storage", risk: "medium" },
+  49: { category: "storage", risk: "medium" },
+  50: { category: "sanitation", risk: "medium" },
+  51: { category: "storage", risk: "medium" },
+  52: { category: "storage", risk: "medium" },
+  53: { category: "sanitation", risk: "medium" },
+  54: { category: "sanitation", risk: "high" },
+  55: { category: "sanitation", risk: "medium" },
+  56: { category: "sanitation", risk: "low" },
+  57: { category: "sanitation", risk: "medium" },
+  58: { category: "sanitation", risk: "medium" },
+  59: { category: "sanitation", risk: "medium" },
+  60: { category: "sanitation", risk: "medium" },
+  61: { category: "facility", risk: "high" },
+  62: { category: "facility", risk: "high" },
+  63: { category: "pests", risk: "high" },
+  64: { category: "pests", risk: "high" },
+  65: { category: "pests", risk: "high" },
+  66: { category: "sanitation", risk: "medium" },
+  67: { category: "sanitation", risk: "high" },
+};
+
+const VIOLATION_CATEGORIES = [
+  { id: "storage", en: "Food Storage & Labeling", es: "Almacenamiento y Etiquetado de Alimentos" },
+  { id: "temperature", en: "Food Temperatures", es: "Temperaturas de Alimentos" },
+  { id: "sanitation", en: "Sanitation & Cleaning", es: "Saneamiento y Limpieza" },
+  { id: "employee", en: "Employee Practices & Hygiene", es: "Prácticas e Higiene de los Empleados" },
+  { id: "facility", en: "Facility & Plumbing", es: "Instalaciones y Plomería" },
+  { id: "pests", en: "Pests & Waste", es: "Plagas y Desechos" },
+  { id: "other", en: "Other", es: "Otro" },
+];
+
+function categoryLabel(categoryId, lang) {
+  const cat = VIOLATION_CATEGORIES.find((c) => c.id === categoryId) || VIOLATION_CATEGORIES[VIOLATION_CATEGORIES.length - 1];
+  return lang === "es" ? cat.es : cat.en;
+}
+
 function flattenChecklist(groups) {
-  return groups.flatMap((g) => g.sections.flatMap((s) => s.items.map((it) => ({ ...it, sectionId: s.id, groupId: g.id }))));
+  return groups.flatMap((g) =>
+    g.sections.flatMap((s) =>
+      s.items.map((it) => ({
+        category: "other",
+        risk: "medium",
+        ...ITEM_RISK_INFO[it.id],
+        ...it,
+        sectionId: s.id,
+        groupId: g.id,
+      }))
+    )
+  );
 }
 
 // overridesMap: { [id]: { active?, en?, es?, requiresPhoto?, alwaysPhoto?,
-// custom?, customSection?, groupId?, sectionId?, order? } } — one
-// Firestore doc per key, from the `checklistOverrides` collection.
-// active:false hides a base item or a custom section; en/es/
-// requiresPhoto/alwaysPhoto reword or retier an existing item;
-// custom:true entries are admin-added items, appended to the end of
-// their target section in `order`; customSection:true entries are
+// category?, risk?, custom?, customSection?, groupId?, sectionId?,
+// order? } } — one Firestore doc per key, from the `checklistOverrides`
+// collection. active:false hides a base item or a custom section; en/es/
+// requiresPhoto/alwaysPhoto/category/risk reword or retier an existing
+// item; custom:true entries are admin-added items, appended to the end
+// of their target section in `order`; customSection:true entries are
 // admin-added sections (within an existing group), which can hold their
 // own custom items the same way a base section can.
 function itemsForSectionFromOverrides(sectionId, overridesMap) {
   return Object.entries(overridesMap)
     .filter(([, o]) => o.custom && o.sectionId === sectionId && o.active !== false)
     .sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0))
-    .map(([id, o]) => ({ id, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto }));
+    .map(([id, o]) => ({
+      id,
+      en: o.en,
+      es: o.es || o.en,
+      requiresPhoto: !!o.requiresPhoto,
+      alwaysPhoto: !!o.alwaysPhoto,
+      category: o.category || "other",
+      risk: o.risk || "medium",
+    }));
 }
 
 function computeEffectiveChecklist(overridesMap) {
@@ -243,7 +360,19 @@ function computeEffectiveChecklist(overridesMap) {
       for (const item of section.items) {
         const o = overridesMap[item.id];
         if (o?.active === false) continue;
-        items.push(o ? { ...item, ...(o.en ? { en: o.en } : {}), ...(o.es ? { es: o.es } : {}), ...("requiresPhoto" in o ? { requiresPhoto: o.requiresPhoto } : {}), ...("alwaysPhoto" in o ? { alwaysPhoto: o.alwaysPhoto } : {}) } : item);
+        items.push(
+          o
+            ? {
+                ...item,
+                ...(o.en ? { en: o.en } : {}),
+                ...(o.es ? { es: o.es } : {}),
+                ...("requiresPhoto" in o ? { requiresPhoto: o.requiresPhoto } : {}),
+                ...("alwaysPhoto" in o ? { alwaysPhoto: o.alwaysPhoto } : {}),
+                ...(o.category ? { category: o.category } : {}),
+                ...(o.risk ? { risk: o.risk } : {}),
+              }
+            : item
+        );
       }
       return { ...section, items: [...items, ...itemsForSectionFromOverrides(section.id, overridesMap)] };
     });
@@ -281,6 +410,6 @@ function findItemDefinitionById(itemId) {
   const found = flatBase.find((it) => String(it.id) === String(itemId));
   if (found) return found;
   const o = CHECKLIST_OVERRIDES_MAP[itemId];
-  if (o?.custom) return { id: itemId, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto };
+  if (o?.custom) return { id: itemId, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto, category: o.category || "other", risk: o.risk || "medium" };
   return null;
 }

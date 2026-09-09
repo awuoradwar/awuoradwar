@@ -117,6 +117,16 @@ let activeTab = loadActiveTab();
 let storesCache = [];
 let storesUnsub = null;
 let lastHistoryResults = [];
+// Names seen in any submission doc fetched so far this session (History,
+// Weekly Summary) — there's no Firestore "distinct conductedBy" query, so
+// this is built up opportunistically from whatever's already been read,
+// purely to power the History name-filter's autocomplete suggestions.
+let knownConductedByNames = new Set();
+function recordKnownNames(docs) {
+  for (const d of docs) {
+    if (d.conductedBy) knownConductedByNames.add(d.conductedBy);
+  }
+}
 let isOwnerSession = false;
 let editingStoreId = null;
 let adminsCache = [];
@@ -201,6 +211,46 @@ function wireStoreCombo({ inputEl, hiddenEl, listEl, stores, allLabel, valueKey 
     e.preventDefault();
     const matches = currentMatches(inputEl.value);
     if (matches.length === 1) select(matches[0]);
+  });
+  document.addEventListener("click", (e) => {
+    if (!inputEl.parentElement.contains(e.target)) listEl.hidden = true;
+  });
+}
+
+// A free-text version of the store combo above: no canonical list to
+// select from, just autocomplete suggestions drawn from names already
+// seen (recordKnownNames), and the typed text itself is the filter —
+// onChange fires on every keystroke so results can filter live, with no
+// Firestore round-trip (the name filter is applied client-side against
+// whatever's already been fetched).
+function wireNameCombo({ inputEl, listEl, getNames, onChange }) {
+  if (!inputEl || !listEl) return;
+
+  function renderList() {
+    const q = inputEl.value.trim().toLowerCase();
+    const names = [...getNames()]
+      .filter((n) => n.toLowerCase().includes(q))
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, 20);
+    if (names.length === 0) {
+      listEl.hidden = true;
+      return;
+    }
+    listEl.innerHTML = names.map((n) => `<button type="button" class="store-combo-item" data-name="${escapeHtml(n)}">${escapeHtml(n)}</button>`).join("");
+    listEl.hidden = false;
+    listEl.querySelectorAll("[data-name]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        inputEl.value = btn.dataset.name;
+        listEl.hidden = true;
+        onChange();
+      });
+    });
+  }
+
+  inputEl.addEventListener("focus", renderList);
+  inputEl.addEventListener("input", () => {
+    renderList();
+    onChange();
   });
   document.addEventListener("click", (e) => {
     if (!inputEl.parentElement.contains(e.target)) listEl.hidden = true;
@@ -687,23 +737,58 @@ function renderDashboard() {
 
 // ---------- Today's Status ----------
 
+// How far back to look when checking whether a currently-missing store
+// has been missing on prior days too — bounded so the query stays cheap
+// (one range read covering this many days across all stores) rather than
+// scanning a store's entire history every time Today's Status loads.
+const MISSING_STREAK_WINDOW_DAYS = 14;
+
+function addDaysToDateString(dateStr, delta) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return todayDateStringFor(new Date(y, m - 1, d + delta));
+}
+
 async function renderTodayTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
   content.innerHTML = `<div class="card">${t("loadingButton")}</div>`;
 
   const today = todayDateString();
-  const snap = await getDocs(query(collection(db, "submissions"), where("date", "==", today)));
+  const windowStart = addDaysToDateString(today, -MISSING_STREAK_WINDOW_DAYS);
+  const effectiveStart = windowStart < LAUNCH_DATE ? LAUNCH_DATE : windowStart;
+  // One range query covers both today (for the existing per-shift status)
+  // and the lookback window (for the consecutive-missing streak) — no
+  // separate query needed for each.
+  const snap = await getDocs(query(collection(db, "submissions"), where("date", ">=", effectiveStart), where("date", "<=", today)));
+
   const docsByStoreNumber = {};
+  const docsByStoreDate = {};
   snap.docs.forEach((d) => {
     const data = { id: d.id, ...d.data() };
-    (docsByStoreNumber[data.storeNumber] ||= []).push(data);
+    ((docsByStoreDate[data.storeNumber] ||= {})[data.date] ||= []).push(data);
+    if (data.date === today) (docsByStoreNumber[data.storeNumber] ||= []).push(data);
   });
 
   const coveredByStoreNumber = {};
   storesCache.forEach((s) => {
     coveredByStoreNumber[s.number] = shiftsCoveredForDay(docsByStoreNumber[s.number] || []);
   });
+
+  // Consecutive days strictly before today with zero shifts submitted —
+  // only meaningful to show once we know today is missing too, so this
+  // is only called for stores already in that state.
+  function missingStreakBeforeToday(storeNumber) {
+    let streak = 0;
+    let date = addDaysToDateString(today, -1);
+    while (date >= effectiveStart) {
+      const docsForDay = (docsByStoreDate[storeNumber] || {})[date] || [];
+      if (shiftsCoveredForDay(docsForDay).doneCount !== 0) break;
+      streak += 1;
+      date = addDaysToDateString(date, -1);
+    }
+    const hitWindowLimit = streak === MISSING_STREAK_WINDOW_DAYS && effectiveStart === windowStart;
+    return { streak, hitWindowLimit };
+  }
 
   const notSubmittedCount = storesCache.filter((s) => coveredByStoreNumber[s.number].doneCount === 0).length;
   const dateLocale = getLang() === "es" ? "es-US" : "en-US";
@@ -729,15 +814,22 @@ async function renderTodayTab() {
           // started, then all 3 shifts complete — store number order is
           // kept within each group rather than interleaving all three.
           const statusRank = complete ? 2 : started ? 1 : 0;
-          return { s, covered, complete, started, penalize, statusRank };
+          let streakLabel = null;
+          if (penalize) {
+            const { streak, hitWindowLimit } = missingStreakBeforeToday(s.number);
+            const totalDays = streak + 1;
+            if (totalDays >= 2) streakLabel = t(hitWindowLimit ? "missingStreakCapped" : "missingStreakDays", { days: totalDays });
+          }
+          return { s, covered, complete, started, penalize, statusRank, streakLabel };
         })
         .sort((a, b) => a.statusRank - b.statusRank || Number(a.s.number) - Number(b.s.number))
-        .map(({ s, covered, complete, started, penalize }) => {
+        .map(({ s, covered, complete, started, penalize, streakLabel }) => {
           const badgeClass = complete ? "badge-success" : started ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
           return `
           <div class="store-status-card ${penalize ? "missing" : ""} clickable" data-view-today="${escapeHtml(s.number)}">
             <span class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</span>
             <span class="badge ${badgeClass}">${covered.doneCount} / 3</span>
+            ${streakLabel ? `<span class="store-status-streak">${escapeHtml(streakLabel)}</span>` : ""}
           </div>`;
         })
         .join("")}
@@ -871,6 +963,7 @@ async function renderWeeklyTab() {
       bucket.flagged += Object.values(data.answers || {}).filter((a) => a.value === "no").length;
       const ts = data.submittedAt?.toMillis ? data.submittedAt.toMillis() : 0;
       if (!bucket.lastSubmittedAt || ts > bucket.lastSubmittedAt) bucket.lastSubmittedAt = ts;
+      recordKnownNames([data]);
     }
   });
 
@@ -1032,6 +1125,13 @@ function renderHistoryTab() {
             <div class="store-combo-list" id="hist-store-list" hidden></div>
           </div>
         </div>
+        <div class="field">
+          <label>${t("filterConductedBy")}</label>
+          <div class="store-combo">
+            <input type="text" id="hist-name-input" autocomplete="off" placeholder="${t("filterAnyName")}" />
+            <div class="store-combo-list" id="hist-name-list" hidden></div>
+          </div>
+        </div>
         <div class="view-mode-row" id="hist-view-mode-row" hidden>
           <button type="button" class="btn btn-sm ${histViewMode === "daily" ? "btn-primary" : "btn-secondary"}" data-view-mode="daily">${t("dailyViewLabel")}</button>
           <button type="button" class="btn btn-sm ${histViewMode === "weekly" ? "btn-primary" : "btn-secondary"}" data-view-mode="weekly">${t("weeklyViewLabel")}</button>
@@ -1105,8 +1205,18 @@ function renderHistoryTab() {
     });
   });
 
+  wireNameCombo({
+    inputEl: content.querySelector("#hist-name-input"),
+    listEl: content.querySelector("#hist-name-list"),
+    getNames: () => knownConductedByNames,
+    onChange: () => {
+      updateHistFiltersSummary();
+      renderHistoryResults();
+    },
+  });
+
   root.querySelector("#btn-hist-search").addEventListener("click", () => runHistorySearch());
-  root.querySelector("#btn-hist-export").addEventListener("click", () => exportCsv(lastHistoryResults));
+  root.querySelector("#btn-hist-export").addEventListener("click", () => exportCsv(filteredHistoryResults()));
   runHistorySearch();
 }
 
@@ -1118,7 +1228,8 @@ function updateHistFiltersSummary() {
   const storeNumber = root.querySelector("#hist-store").value;
   const store = storesCache.find((s) => s.number === storeNumber);
   const storeText = store ? storeLabel(store.number, store.name) : t("filterAllStores");
-  summaryEl.textContent = `${formatWeekRangeLabel(from, to)} · ${storeText}`;
+  const nameText = root.querySelector("#hist-name-input")?.value.trim();
+  summaryEl.textContent = `${formatWeekRangeLabel(from, to)} · ${storeText}${nameText ? ` · ${nameText}` : ""}`;
 }
 
 async function openHistoryRecord(record) {
@@ -1172,27 +1283,49 @@ function renderFlaggedItemsModal(records) {
     for (const id of Object.keys(record.answers || {})) {
       const a = record.answers[id];
       if (a?.value === "no") {
-        const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}` };
+        const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}`, category: "other", risk: "medium" };
         flaggedRows.push({ record, item, a });
       }
     }
   }
 
+  // Grouped by Panda's violation-risk category (Food Storage & Labeling,
+  // Food Temperatures, etc.) so the same categories from the internal
+  // risk-progression reference show up here, most urgent first within
+  // each group — a High-risk violation shouldn't be buried under a
+  // Low-risk one just because of checklist order.
+  const RISK_RANK = { high: 0, medium: 1, low: 2 };
+  const lang = getLang();
+  const rowsByCategory = new Map();
+  for (const row of flaggedRows) {
+    const catId = row.item.category || "other";
+    if (!rowsByCategory.has(catId)) rowsByCategory.set(catId, []);
+    rowsByCategory.get(catId).push(row);
+  }
+  const orderedCategoryIds = VIOLATION_CATEGORIES.map((c) => c.id).filter((id) => rowsByCategory.has(id));
+
   const rowsHtml = flaggedRows.length
-    ? flaggedRows
-        .map(
-          ({ record, item, a }) => `
-          <div class="detail-row detail-row-flagged">
-            <div class="detail-row-main">
-              <span class="detail-item-text">${multi ? `<span class="detail-flagged-date">${escapeHtml(record.date)}</span> — ` : ""}${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
-              <span class="badge badge-danger">${t("no")}</span>
-            </div>
-            <div class="detail-row-body">
-              ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
-              ${a.note ? `<div class="detail-note" data-translatable data-note-text="${escapeHtml(a.note)}" data-note-lang="${escapeHtml(record.language || "")}"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}<div class="detail-note-translation" hidden></div></div>` : ""}
-            </div>
-          </div>`
-        )
+    ? orderedCategoryIds
+        .map((catId) => {
+          const rows = [...rowsByCategory.get(catId)].sort((a, b) => (RISK_RANK[a.item.risk] ?? 1) - (RISK_RANK[b.item.risk] ?? 1));
+          return `
+            <div class="detail-section-title">${escapeHtml(categoryLabel(catId, lang))}</div>
+            ${rows
+              .map(
+                ({ record, item, a }) => `
+              <div class="detail-row detail-row-flagged">
+                <div class="detail-row-main">
+                  <span class="detail-item-text">${multi ? `<span class="detail-flagged-date">${escapeHtml(record.date)}</span> — ` : ""}${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
+                  <span class="detail-row-badges">${riskBadgeHtml(item.risk)}<span class="badge badge-danger">${t("no")}</span></span>
+                </div>
+                <div class="detail-row-body">
+                  ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
+                  ${a.note ? `<div class="detail-note" data-translatable data-note-text="${escapeHtml(a.note)}" data-note-lang="${escapeHtml(record.language || "")}"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}<div class="detail-note-translation" hidden></div></div>` : ""}
+                </div>
+              </div>`
+              )
+              .join("")}`;
+        })
         .join("")
     : `<p>${t("noFlaggedItemsFound")}</p>`;
 
@@ -1263,14 +1396,25 @@ async function runHistorySearch() {
     return;
   }
   lastHistoryResults = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  recordKnownNames(lastHistoryResults);
   expandedHistoryWeek = null;
   renderHistoryResults();
+}
+
+// Name filtering happens entirely client-side against whatever's already
+// been fetched (no Firestore query re-run), so it can filter live on
+// every keystroke — kept separate from lastHistoryResults itself so a
+// changed name filter never needs to touch what was actually queried.
+function filteredHistoryResults() {
+  const q = (root.querySelector("#hist-name-input")?.value || "").trim().toLowerCase();
+  if (!q) return lastHistoryResults;
+  return lastHistoryResults.filter((r) => (r.conductedBy || "").toLowerCase().includes(q));
 }
 
 function renderHistoryResults() {
   const resultsEl = root.querySelector("#hist-results");
   if (!resultsEl) return;
-  if (lastHistoryResults.length === 0) {
+  if (filteredHistoryResults().length === 0) {
     resultsEl.innerHTML = `<div>${t("noSubmissionsFound")}</div>`;
     return;
   }
@@ -1298,7 +1442,7 @@ function historyDayCardHtml(r, dateLocale) {
 
 function renderDailyHistoryView(resultsEl) {
   const dateLocale = getLang() === "es" ? "es-US" : "en-US";
-  resultsEl.innerHTML = `<div class="history-list">${lastHistoryResults.map((r) => historyDayCardHtml(r, dateLocale)).join("")}</div>`;
+  resultsEl.innerHTML = `<div class="history-list">${filteredHistoryResults().map((r) => historyDayCardHtml(r, dateLocale)).join("")}</div>`;
   wireHistoryResultButtons(resultsEl);
 }
 
@@ -1325,7 +1469,7 @@ function groupRecordsByWeek(records) {
 
 function renderWeeklyHistoryView(resultsEl) {
   const dateLocale = getLang() === "es" ? "es-US" : "en-US";
-  const weeks = groupRecordsByWeek(lastHistoryResults);
+  const weeks = groupRecordsByWeek(filteredHistoryResults());
   resultsEl.innerHTML = `
     <div class="history-list">
       ${weeks
@@ -1712,18 +1856,39 @@ function photoTierLabel(tier) {
   return t("photoTierNone");
 }
 
+// Shared between the flagged-items view and the Manage Checklist editor.
+function riskBadgeHtml(risk) {
+  if (risk === "high") return `<span class="badge badge-danger">${t("riskHigh")}</span>`;
+  if (risk === "medium") return `<span class="badge badge-warning">${t("riskMedium")}</span>`;
+  return "";
+}
+
+function categoryOptionsHtml(selectedId) {
+  const lang = getLang();
+  return VIOLATION_CATEGORIES.map((c) => `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>${escapeHtml(categoryLabel(c.id, lang))}</option>`).join("");
+}
+
+function riskOptionsHtml(selectedRisk) {
+  return ["low", "medium", "high"]
+    .map((r) => `<option value="${r}" ${r === selectedRisk ? "selected" : ""}>${t(`risk${r[0].toUpperCase()}${r.slice(1)}`)}</option>`)
+    .join("");
+}
+
 // All items for a section, base + custom, including hidden ones — the
 // editor needs to show what's hidden so it can be turned back on, unlike
 // the effective (associate-facing) checklist which filters those out.
 function allItemsForSection(section) {
   const baseItems = section.items.map((item) => {
     const o = CHECKLIST_OVERRIDES_MAP[item.id] || {};
+    const defaults = ITEM_RISK_INFO[item.id] || { category: "other", risk: "medium" };
     return {
       id: item.id,
       en: o.en || item.en,
       es: o.es || item.es,
       requiresPhoto: "requiresPhoto" in o ? o.requiresPhoto : !!item.requiresPhoto,
       alwaysPhoto: "alwaysPhoto" in o ? o.alwaysPhoto : !!item.alwaysPhoto,
+      category: o.category || defaults.category,
+      risk: o.risk || defaults.risk,
       active: o.active !== false,
       isCustom: false,
     };
@@ -1737,6 +1902,8 @@ function allItemsForSection(section) {
       es: o.es || o.en,
       requiresPhoto: !!o.requiresPhoto,
       alwaysPhoto: !!o.alwaysPhoto,
+      category: o.category || "other",
+      risk: o.risk || "medium",
       active: o.active !== false,
       isCustom: true,
     }));
@@ -1758,6 +1925,14 @@ function renderChecklistItemRow(item) {
             <option value="${PHOTO_TIER_ALWAYS}" ${tier === PHOTO_TIER_ALWAYS ? "selected" : ""}>${t("photoTierAlways")}</option>
           </select>
         </div>
+        <div class="field">
+          <label>${t("categoryFieldLabel")}</label>
+          <select class="edit-item-category">${categoryOptionsHtml(item.category)}</select>
+        </div>
+        <div class="field">
+          <label>${t("riskFieldLabel")}</label>
+          <select class="edit-item-risk">${riskOptionsHtml(item.risk)}</select>
+        </div>
         <div style="display:flex; gap:8px;">
           <button class="btn btn-sm btn-primary" data-save-item="${escapeHtml(item.id)}">${t("saveButton")}</button>
           <button class="btn btn-sm btn-secondary" data-cancel-item-edit="1">${t("cancelButton")}</button>
@@ -1770,6 +1945,8 @@ function renderChecklistItemRow(item) {
         <span class="checklist-item-text">${!item.isCustom ? `${escapeHtml(item.id)}. ` : ""}${escapeHtml(item.en)}</span>
         <div class="checklist-item-meta">
           <span class="badge badge-neutral">${photoTierLabel(photoTierOf(item))}</span>
+          <span class="badge badge-neutral">${escapeHtml(categoryLabel(item.category, getLang()))}</span>
+          ${riskBadgeHtml(item.risk)}
           ${!item.active ? `<span class="badge badge-danger">${t("hiddenBadge")}</span>` : ""}
         </div>
       </div>
@@ -1836,6 +2013,14 @@ function renderChecklistSectionBlock(group, section) {
                 <option value="${PHOTO_TIER_ONFAIL}">${t("photoTierOnFail")}</option>
                 <option value="${PHOTO_TIER_ALWAYS}">${t("photoTierAlways")}</option>
               </select>
+            </div>
+            <div class="field">
+              <label>${t("categoryFieldLabel")}</label>
+              <select id="new-item-category">${categoryOptionsHtml("other")}</select>
+            </div>
+            <div class="field">
+              <label>${t("riskFieldLabel")}</label>
+              <select id="new-item-risk">${riskOptionsHtml("medium")}</select>
             </div>
             <div style="display:flex; gap:8px;">
               <button class="btn btn-sm btn-primary" data-save-new-item="${group.id}|${section.id}">${t("saveButton")}</button>
@@ -1926,10 +2111,12 @@ function renderManageChecklistTab() {
       const en = row.querySelector(".edit-item-en").value.trim();
       const es = row.querySelector(".edit-item-es").value.trim();
       const tier = row.querySelector(".edit-item-tier").value;
+      const category = row.querySelector(".edit-item-category").value;
+      const risk = row.querySelector(".edit-item-risk").value;
       if (!en) return;
       await setDoc(
         doc(db, "checklistOverrides", String(id)),
-        { en, es, requiresPhoto: tier === PHOTO_TIER_ONFAIL, alwaysPhoto: tier === PHOTO_TIER_ALWAYS },
+        { en, es, requiresPhoto: tier === PHOTO_TIER_ONFAIL, alwaysPhoto: tier === PHOTO_TIER_ALWAYS, category, risk },
         { merge: true }
       );
       editingChecklistItemId = null;
@@ -1966,6 +2153,8 @@ function renderManageChecklistTab() {
       const en = content.querySelector("#new-item-en").value.trim();
       const es = content.querySelector("#new-item-es").value.trim();
       const tier = content.querySelector("#new-item-tier").value;
+      const category = content.querySelector("#new-item-category").value;
+      const risk = content.querySelector("#new-item-risk").value;
       if (!en) return;
       const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       await setDoc(doc(db, "checklistOverrides", id), {
@@ -1976,6 +2165,8 @@ function renderManageChecklistTab() {
         es,
         requiresPhoto: tier === PHOTO_TIER_ONFAIL,
         alwaysPhoto: tier === PHOTO_TIER_ALWAYS,
+        category,
+        risk,
         active: true,
         order: Date.now(),
         createdAt: serverTimestamp(),
