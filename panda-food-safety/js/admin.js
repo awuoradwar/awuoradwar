@@ -111,10 +111,18 @@ let pinFailedAttempts = 0;
 // (e.g. "too many attempts") since that transition is driven by the
 // Firebase listener, not a direct function call we can pass a message into.
 let pendingLoginMessage = null;
-// Always starts on Today's Status on a fresh login/app open — a
-// previously-open tab (e.g. History) is only kept while switching tabs
-// within the same still-open session, not restored across a reload.
+// Reset to "today" on every sign-in transition (see handleAuthChange) —
+// a previously-open tab (e.g. History) is only kept while switching
+// tabs within the same still-signed-in session, never restored across a
+// reload or carried over when a different person logs in.
 let activeTab = "today";
+// Tracks the document-level click listener renderDashboard() installs
+// to close the account/more-tabs dropdowns — removed and re-added on
+// every render instead of just piling up. Without this, each dropdown
+// listener re-queries the dashboard's DOM at click time, and once that
+// DOM has been replaced by a different screen (e.g. after logging out)
+// every stale copy throws trying to set `.hidden` on null.
+let closeDropdownsListener = null;
 let storesCache = [];
 let storesUnsub = null;
 let lastHistoryResults = [];
@@ -321,6 +329,13 @@ async function handleAuthChange(user) {
   }
   currentUserEmail = user.email;
   isOwnerSession = user.email === OWNER_EMAIL;
+  // A fresh sign-in transition (this fires once per actual auth change,
+  // not on every re-render) — reset to Today's Status regardless of
+  // whatever tab happened to be showing before, since `activeTab` is a
+  // single shared variable that otherwise carries over even when a
+  // different person logs in within the same already-open tab (it was
+  // only ever reset by a full page reload, which doesn't happen here).
+  activeTab = "today";
   if (!isOwnerSession) {
     let adminDoc;
     try {
@@ -735,8 +750,10 @@ function renderDashboard() {
   }
 
   function closeDropdowns() {
-    root.querySelector("#account-dropdown").hidden = true;
-    root.querySelector("#more-tabs-dropdown").hidden = true;
+    const accountMenu = root.querySelector("#account-dropdown");
+    const moreTabs = root.querySelector("#more-tabs-dropdown");
+    if (accountMenu) accountMenu.hidden = true;
+    if (moreTabs) moreTabs.hidden = true;
   }
   root.querySelector("#btn-account-menu").addEventListener("click", (e) => {
     e.stopPropagation();
@@ -752,7 +769,9 @@ function renderDashboard() {
     closeDropdowns();
     menu.hidden = !willOpen;
   });
-  document.addEventListener("click", closeDropdowns);
+  if (closeDropdownsListener) document.removeEventListener("click", closeDropdownsListener);
+  closeDropdownsListener = closeDropdowns;
+  document.addEventListener("click", closeDropdownsListener);
 
   root.querySelectorAll("button[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1231,7 +1250,7 @@ async function openHistoryRecord(record) {
 }
 
 async function openFlaggedOnly(records) {
-  const hydrated = await Promise.all(records.map((r) => hydrateRecordPhotos(r)));
+  const hydrated = await Promise.all(records.map((r) => hydrateFlaggedPhotos(r)));
   renderFlaggedItemsModal(hydrated);
 }
 
@@ -1539,6 +1558,26 @@ async function hydrateRecordPhotos(record) {
     const id = Number(d.id);
     if (answers[id]) answers[id] = { ...answers[id], photoUrl: d.data().dataUrl };
   });
+  return { ...record, answers };
+}
+
+// Same idea as hydrateRecordPhotos, but only fetches photos for items
+// actually flagged ("No") on this record — used by the flagged-only view
+// (openFlaggedOnly), which never shows a passed item's photo anyway. Up
+// to 6 checklist items require a documentation photo even when they
+// pass, so fetching the *whole* photos subcollection there was
+// downloading several unused embedded images per record — the real cost
+// behind Weekly's "Flagged" view (often pulling a whole week of records
+// at once) being slow to open.
+async function hydrateFlaggedPhotos(record) {
+  const flaggedIds = Object.keys(record.answers || {}).filter((id) => record.answers[id]?.value === "no");
+  const answers = { ...record.answers };
+  await Promise.all(
+    flaggedIds.map(async (id) => {
+      const snap = await getDoc(doc(db, "submissions", record.id, "photos", id));
+      if (snap.exists()) answers[id] = { ...answers[id], photoUrl: snap.data().dataUrl };
+    })
+  );
   return { ...record, answers };
 }
 
