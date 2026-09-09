@@ -96,18 +96,15 @@ function createConnection(): Database.Database {
 }
 
 /** Front of House closing checklist, transcribed from the store's own
- * paper close-out sheet -- six stations (Lobby, Drink Station, Refreshers,
- * OLO Restocker, Drive Thru Register, Drive Thru Runner), each worded as a
- * post-clean verification ("X is done") rather than an instruction, since
- * the whole point is a closer confirming coverage after cleaning, not being
- * told what to do. Seeded into every store's existing procedure_areas/
+ * paper close-out sheets -- each station worded as a post-clean
+ * verification ("X is done") rather than an instruction, since the whole
+ * point is a closer confirming coverage after cleaning, not being told
+ * what to do. Seeded into every store's existing procedure_areas/
  * procedure_items tables (see procedureService.ts) rather than a parallel
  * schema -- it's the same FOH-category/CLOSING-shift shape the Procedures
  * feature already supports, just content instead of code. A GM can still
  * reword, add to, or add whole new stations afterward from the Procedures
- * management page. One-time per store, idempotent: skipped for any store
- * that already has an area named "Lobby" in FOH (either from an earlier run
- * of this seed, or because a GM already built their own). */
+ * management page. */
 interface FohClosingItem {
   en: string;
   es: string;
@@ -198,18 +195,42 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
       { en: "OLO shelf is cleaned", es: "El estante del OLO está limpio" },
     ],
   },
+  {
+    name: "Patio",
+    items: [
+      { en: "Cones and the menu sign are brought inside", es: "Los conos y el letrero del menú están guardados adentro" },
+      { en: "Chairs are stacked", es: "Las sillas están apiladas" },
+      { en: "Tables are clean", es: "Las mesas están limpias" },
+      {
+        en: "Trash is taken out, leaving 2 clean bags in the speaker trash can",
+        es: "La basura está sacada, dejando 2 bolsas limpias en el bote de basura de la bocina",
+      },
+      { en: "Menu sign near the speaker is cleaned", es: "El letrero del menú cerca de la bocina está limpio" },
+    ],
+  },
+  {
+    name: "Bathrooms",
+    items: [
+      { en: "Toilet seat and base are cleaned with bleach", es: "El asiento y la base del inodoro están limpios con cloro" },
+      { en: "Sink and mirror are wiped down with Spic n Span", es: "El lavabo y el espejo están limpios con Spic n Span" },
+      { en: "Everything is restocked", es: "Todo está reabastecido" },
+      { en: "Stalls are polished", es: "Los compartimentos están pulidos" },
+      { en: "Floor is swept and mopped", es: "El piso está barrido y trapeado" },
+      { en: "Trash is taken out", es: "La basura está sacada" },
+    ],
+  },
 ];
 
+/** Per-station idempotent: checks each station individually rather than
+ * gating on the whole set existing, so adding a new station to this array
+ * (Patio and Bathrooms came after the original six) reaches every store
+ * that already ran this seed, not just brand-new ones -- each store only
+ * ever gets whichever named stations it doesn't already have. */
 function seedFohClosingProcedures(db: Database.Database) {
-  const stores = db
-    .prepare(
-      `SELECT id FROM stores WHERE NOT EXISTS (
-         SELECT 1 FROM procedure_areas WHERE store_id = stores.id AND category = 'FOH' AND name = 'Lobby'
-       )`
-    )
-    .all() as Array<{ id: string }>;
+  const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
   if (stores.length === 0) return;
 
+  const areaExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND category = 'FOH' AND name = ?`);
   const insertArea = db.prepare(
     `INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, 'FOH', ?, 1, ?)`
   );
@@ -219,6 +240,7 @@ function seedFohClosingProcedures(db: Database.Database) {
 
   for (const store of stores) {
     FOH_CLOSING_STATIONS.forEach((station, areaIndex) => {
+      if (areaExists.get(store.id, station.name)) return;
       const areaId = randomUUID();
       const now = new Date().toISOString();
       insertArea.run(areaId, store.id, station.name, areaIndex, now);
