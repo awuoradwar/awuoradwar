@@ -11,6 +11,7 @@ import {
   listAllItemsForArea,
   getRecentSubmissions,
   getMissedAreasForDate,
+  getSubmissionsForDate,
   ProcedureCategory,
   ProcedureSubmission,
 } from "@/lib/services/procedureService";
@@ -95,12 +96,18 @@ export default async function ProceduresPage() {
   // "Missed" only ever looks at a day that's fully over -- yesterday, not
   // today, since today's closing simply hasn't happened yet. Opening isn't
   // in use yet (see ProcedureKiosk), so only closing is checked here.
-  const yesterday = addDaysStr(storeToday(user.storeId), -1);
+  const today = storeToday(user.storeId);
+  const yesterday = addDaysStr(today, -1);
   const missedClosing = new Set(getMissedAreasForDate(user.storeId, yesterday, "CLOSING"));
+  // Same "closing" scope, but for today -- gives each station row a real
+  // Done/Pending/Missed state instead of only ever flagging a problem, so
+  // a glance at this list says what's actually been covered so far today.
+  const doneToday = new Set(getSubmissionsForDate(user.storeId, today).filter((s) => s.shift_type === "CLOSING").map((s) => s.area_id));
   const stationsList = listActiveAreas(user.storeId);
   const stationsByCategory = (["FOH", "BOH", "PATIO_WINDOWS"] as ProcedureCategory[])
     .map((c) => ({ category: c, areas: stationsList.filter((a) => a.category === c) }))
     .filter((g) => g.areas.length > 0);
+  const doneTodayCount = stationsList.filter((a) => doneToday.has(a.id)).length;
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-5">
@@ -131,21 +138,33 @@ export default async function ProceduresPage() {
           <p className="-mt-1 mb-2 text-xs text-muted">
             {es ? "Toca una estación para ver la semana -- quién la hizo cada día, o si se saltó." : "Tap a station to see its week -- who did it each day, or if it got skipped."}
           </p>
+          <div
+            className={`mb-3 rounded-xl px-3 py-2 text-sm font-semibold ${
+              doneTodayCount === stationsList.length ? "border border-ok/30 bg-ok/5 text-ok" : "border border-accent/30 bg-accent/5 text-accent"
+            }`}
+          >
+            {es ? `${doneTodayCount} de ${stationsList.length} cerradas hoy` : `${doneTodayCount} of ${stationsList.length} closed today`}
+          </div>
           <div className="flex flex-col gap-4">
             {stationsByCategory.map((group) => (
               <div key={group.category}>
                 <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-muted">{CATEGORY_LABEL[group.category][user.language]}</h3>
                 <div className="card divide-y divide-border">
                   {group.areas.map((a) => {
-                    const flagged = missedClosing.has(a.id);
+                    const done = doneToday.has(a.id);
+                    const flagged = !done && missedClosing.has(a.id);
                     return (
                       <Link key={a.id} href={`/more/procedures/${a.id}`} className="tap-target flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium hover:bg-card-subtle">
                         <span>{a.name}</span>
                         <span className="flex shrink-0 items-center gap-2">
-                          {flagged && (
+                          {done ? (
+                            <span className="rounded-full bg-ok/10 px-2 py-0.5 text-xs font-semibold text-ok">{es ? "✓ Hecho" : "✓ Done"}</span>
+                          ) : flagged ? (
                             <span className="rounded-full bg-critical/10 px-2 py-0.5 text-xs font-semibold text-critical">
                               {es ? "⚠ Faltó ayer" : "⚠ Missed yesterday"}
                             </span>
+                          ) : (
+                            <span className="rounded-full bg-card-subtle px-2 py-0.5 text-xs font-semibold text-muted">{es ? "Pendiente" : "Pending"}</span>
                           )}
                           <span className="text-muted">→</span>
                         </span>
