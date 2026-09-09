@@ -292,6 +292,22 @@ function wireLangToggle(rerender) {
   });
 }
 
+// Toggles a password-type input between masked and plain text — shared
+// by every real account-password field (login, signup, the
+// username-account creation form in Manage Admins). Not used for PIN
+// inputs, which stay masked; a PIN isn't an account credential the same
+// way, and toggling it wasn't asked for.
+function wirePasswordToggle(container, inputId, btnId) {
+  const input = container.querySelector(`#${inputId}`);
+  const btn = container.querySelector(`#${btnId}`);
+  if (!input || !btn) return;
+  btn.addEventListener("click", () => {
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    btn.textContent = showing ? t("showPasswordLabel") : t("hidePasswordLabel");
+  });
+}
+
 // ---------- Auth screens ----------
 
 async function handleAuthChange(user) {
@@ -379,7 +395,10 @@ function renderLoginScreen(mode, message, messageIsError = true) {
           </div>
           <div class="field">
             <label>${t("passwordLabel")}</label>
-            <input type="password" id="login-password" name="password" autocomplete="${isSignUp ? "new-password" : "current-password"}" required />
+            <div class="password-field-wrap">
+              <input type="password" id="login-password" name="password" autocomplete="${isSignUp ? "new-password" : "current-password"}" required />
+              <button type="button" class="password-toggle-btn" id="btn-toggle-login-password">${t("showPasswordLabel")}</button>
+            </div>
           </div>
           <button type="submit" class="btn btn-primary btn-block" id="btn-submit-auth">${isSignUp ? t("signUpButton") : t("loginButton")}</button>
           <button type="button" class="text-link" id="btn-toggle-mode" style="display:block; margin:10px auto 0;">${isSignUp ? t("switchToLogin") : t("switchToSignUp")}</button>
@@ -389,6 +408,7 @@ function renderLoginScreen(mode, message, messageIsError = true) {
     </main>
   `;
   wireLangToggle(() => renderLoginScreen(mode, message, messageIsError));
+  wirePasswordToggle(root, "login-password", "btn-toggle-login-password");
   root.querySelector("#btn-toggle-mode").addEventListener("click", () => renderLoginScreen(isSignUp ? "login" : "signup"));
   // A real <form> with a type="submit" button (rather than a bare button
   // wired only via a click listener) is what lets Safari's Keychain
@@ -2284,12 +2304,16 @@ function renderManageAdminsTab() {
         </div>
         <div class="field">
           <label>${t("newUsernamePasswordLabel")}</label>
-          <input type="password" id="new-admin-username-password" autocomplete="new-password" />
+          <div class="password-field-wrap">
+            <input type="password" id="new-admin-username-password" autocomplete="new-password" />
+            <button type="button" class="password-toggle-btn" id="btn-toggle-new-admin-password">${t("showPasswordLabel")}</button>
+          </div>
         </div>
         <div class="hint-banner" id="new-admin-username-error" style="color:var(--danger); border-color:var(--danger);" hidden></div>
         <button class="btn btn-primary" id="btn-add-admin-username">${t("addAdmin")}</button>
       </div>
     `;
+    wirePasswordToggle(content, "new-admin-username-password", "btn-toggle-new-admin-password");
 
     content.querySelector("#btn-add-admin").addEventListener("click", async () => {
       const emailInput = content.querySelector("#new-admin-email");

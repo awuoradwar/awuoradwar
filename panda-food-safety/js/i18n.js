@@ -52,6 +52,8 @@ const STRINGS = {
   emailLabel: { en: "Email", es: "Correo electrónico" },
   emailOrUsernameLabel: { en: "Email or username", es: "Correo electrónico o nombre de usuario" },
   passwordLabel: { en: "Password", es: "Contraseña" },
+  showPasswordLabel: { en: "Show", es: "Mostrar" },
+  hidePasswordLabel: { en: "Hide", es: "Ocultar" },
   loginButton: { en: "Log In", es: "Iniciar Sesión" },
   logoutButton: { en: "Log Out", es: "Cerrar Sesión" },
   loginError: { en: "Incorrect email or password.", es: "Correo electrónico o contraseña incorrectos." },
