@@ -178,6 +178,9 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
       {step === "checklist" && area && (
         <>
           <StepHeader step={checklistStepNum} total={totalSteps} label={`${area.name} — ${es ? "Cierre" : "Closing"}`} lang={lang} />
+          <button type="button" onClick={() => setStep("area")} disabled={pending} className="-mt-3 mb-4 self-start text-sm font-medium text-muted">
+            {es ? "← Atrás" : "← Back"}
+          </button>
           <label className="mb-4 flex flex-col gap-1.5 text-sm font-medium">
             {es ? "Tu nombre" : "Your name"}
             <input
@@ -231,9 +234,6 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
             className="tap-target mt-4 rounded-xl bg-accent text-base font-semibold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover disabled:opacity-60"
           >
             {pending ? (es ? "Enviando…" : "Submitting…") : es ? "Enviar lista" : "Submit checklist"}
-          </button>
-          <button type="button" onClick={() => setStep("area")} disabled={pending} className="mt-4 text-sm font-medium text-muted">
-            {es ? "← Atrás" : "← Back"}
           </button>
         </>
       )}
