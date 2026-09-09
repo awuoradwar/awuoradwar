@@ -48,9 +48,71 @@ function saveActiveTab(tab) {
   } catch {}
 }
 
+// A soft app-lock only, never a credential of its own: it gates the
+// dashboard while this device's Firebase session is still valid, purely
+// to avoid re-typing a full password on every reopen. It's deliberately
+// stored device-local (never Firestore) and never substitutes for real
+// sign-in — a genuine logout (iOS clearing storage, or an explicit Log
+// Out) always requires the real password again, autofilled from Safari's
+// Keychain where possible.
+const PIN_STORAGE_KEY = "pfs-admin-pin-v1";
+
+function loadPinRecord() {
+  try {
+    const raw = localStorage.getItem(PIN_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearPinRecord() {
+  try {
+    localStorage.removeItem(PIN_STORAGE_KEY);
+  } catch {}
+}
+
+function randomSaltHex() {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function toHex(buffer) {
+  return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashPin(pin, salt) {
+  const data = new TextEncoder().encode(`${salt}:${pin}`);
+  return toHex(await crypto.subtle.digest("SHA-256", data));
+}
+
+async function savePinForEmail(email, pin) {
+  const salt = randomSaltHex();
+  const hash = await hashPin(pin, salt);
+  try {
+    localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({ email, salt, hash }));
+  } catch {}
+}
+
+async function verifyPin(pin) {
+  const record = loadPinRecord();
+  if (!record) return false;
+  return (await hashPin(pin, record.salt)) === record.hash;
+}
+
 let initialized = false;
 let root;
 let currentUserEmail = null;
+// Set once this device's PIN (if any) has been satisfied for the current
+// page load, so switching tabs doesn't re-prompt — only a fresh app open
+// (or a real logout/login) does.
+let pinUnlockedThisLoad = false;
+let pinFailedAttempts = 0;
+// Carries a message across the signOut() -> onAuthStateChanged(null) hop
+// (e.g. "too many attempts") since that transition is driven by the
+// Firebase listener, not a direct function call we can pass a message into.
+let pendingLoginMessage = null;
 let activeTab = loadActiveTab();
 let storesCache = [];
 let storesUnsub = null;
@@ -183,7 +245,10 @@ function wireLangToggle(rerender) {
 async function handleAuthChange(user) {
   if (!user || !user.email) {
     currentUserEmail = null;
-    renderLoginScreen("login");
+    pinUnlockedThisLoad = false;
+    pinFailedAttempts = 0;
+    renderLoginScreen("login", pendingLoginMessage, Boolean(pendingLoginMessage));
+    pendingLoginMessage = null;
     return;
   }
   currentUserEmail = user.email;
@@ -204,6 +269,11 @@ async function handleAuthChange(user) {
   ensureStoresSubscription();
   ensureChecklistSubscription();
   ensureAutoDateRefresh();
+  const pinRecord = loadPinRecord();
+  if (pinRecord && pinRecord.email === user.email && !pinUnlockedThisLoad) {
+    renderPinLockScreen();
+    return;
+  }
   renderDashboard();
 }
 
@@ -285,6 +355,9 @@ function renderLoginScreen(mode, message, messageIsError = true) {
       await persistenceReady;
       if (isSignUp) await withTimeout(createUserWithEmailAndPassword(auth, email, password));
       else await withTimeout(signInWithEmailAndPassword(auth, email, password));
+      // Just proved identity with the real password — stronger than the
+      // PIN gate, so don't immediately re-prompt for a PIN too.
+      pinUnlockedThisLoad = true;
     } catch (err) {
       if (err.message === "timeout") {
         renderLoginScreen(mode, t("requestTimedOut"));
@@ -314,6 +387,116 @@ function renderLoginScreen(mode, message, messageIsError = true) {
       renderLoginScreen(mode, t("passwordResetSent", { email }), false);
     });
   }
+}
+
+const PIN_MAX_ATTEMPTS = 5;
+
+// Shown instead of the dashboard when this device already has a PIN set
+// up for the signed-in email and it hasn't been entered yet this page
+// load. Purely a local gate in front of the Firebase session that's
+// already valid — never itself a credential, so there's nothing here
+// worth attacking beyond what an unlocked, already-signed-in device
+// already exposes without any PIN at all.
+function renderPinLockScreen() {
+  root.innerHTML = `
+    ${topBarHtml()}
+    <main>
+      <div class="card" style="max-width:360px; margin:40px auto; text-align:center;">
+        <h2 style="margin-top:0;">${t("pinLockTitle")}</h2>
+        <p style="color:var(--text-muted);">${t("pinLockSubtitle", { email: currentUserEmail })}</p>
+        <form id="pin-lock-form">
+          <div class="field">
+            <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pin-lock-input" autocomplete="off" style="text-align:center; font-size:28px; letter-spacing:12px;" />
+          </div>
+          <div class="hint-banner" id="pin-lock-error" style="color:var(--danger); border-color:var(--danger);" hidden></div>
+          <button type="submit" class="btn btn-primary btn-block" id="btn-pin-submit">${t("loginButton")}</button>
+        </form>
+        <button type="button" class="text-link" id="btn-pin-use-password" style="display:block; margin:14px auto 0;">${t("useFullLoginButton")}</button>
+      </div>
+    </main>
+  `;
+  wireLangToggle(renderPinLockScreen);
+  const input = root.querySelector("#pin-lock-input");
+  const errorEl = root.querySelector("#pin-lock-error");
+  input.focus();
+  root.querySelector("#pin-lock-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pin = input.value.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      errorEl.textContent = t("pinInvalidError");
+      errorEl.hidden = false;
+      return;
+    }
+    const ok = await verifyPin(pin);
+    if (ok) {
+      pinUnlockedThisLoad = true;
+      pinFailedAttempts = 0;
+      renderDashboard();
+      return;
+    }
+    pinFailedAttempts += 1;
+    if (pinFailedAttempts >= PIN_MAX_ATTEMPTS) {
+      pendingLoginMessage = t("tooManyPinAttempts");
+      await signOut(auth);
+      return;
+    }
+    errorEl.textContent = t("pinIncorrectError");
+    errorEl.hidden = false;
+    input.value = "";
+    input.focus();
+  });
+  root.querySelector("#btn-pin-use-password").addEventListener("click", () => signOut(auth));
+}
+
+// Add/change the device-local PIN for the signed-in admin. Never touches
+// Firestore or the real password — just an entry in this browser's own
+// localStorage, scoped to this email.
+function renderPinSetupModal() {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3 style="margin:0;">${t("pinSetupTitle")}</h3>
+        <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
+      </div>
+      <p style="color:var(--text-muted); margin-top:0;">${t("pinSetupBody")}</p>
+      <div class="field">
+        <label>${t("pinLabel")}</label>
+        <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pin-setup-input" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>${t("confirmPinLabel")}</label>
+        <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pin-setup-confirm" autocomplete="off" />
+      </div>
+      <div class="hint-banner" id="pin-setup-error" style="color:var(--danger); border-color:var(--danger);" hidden></div>
+      <button type="button" class="btn btn-primary btn-block" id="btn-pin-setup-save">${t("savePinButton")}</button>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+  backdrop.querySelector("#btn-pin-setup-save").addEventListener("click", async () => {
+    const pin = backdrop.querySelector("#pin-setup-input").value.trim();
+    const confirmPin = backdrop.querySelector("#pin-setup-confirm").value.trim();
+    const errorEl = backdrop.querySelector("#pin-setup-error");
+    if (!/^\d{4}$/.test(pin)) {
+      errorEl.textContent = t("pinInvalidError");
+      errorEl.hidden = false;
+      return;
+    }
+    if (pin !== confirmPin) {
+      errorEl.textContent = t("pinMismatchError");
+      errorEl.hidden = false;
+      return;
+    }
+    await savePinForEmail(currentUserEmail, pin);
+    pinUnlockedThisLoad = true;
+    backdrop.remove();
+    renderDashboard();
+  });
 }
 
 // The admin-roster check (getDoc on /admins/{email}) runs right after
@@ -393,6 +576,8 @@ function secondaryTabs() {
 
 function renderDashboard() {
   const isSecondaryActive = secondaryTabs().some(([key]) => key === activeTab);
+  const pinRecord = loadPinRecord();
+  const hasPinForCurrentUser = Boolean(pinRecord && pinRecord.email === currentUserEmail);
   root.innerHTML = `
     ${topBarHtml()}
     <main>
@@ -402,6 +587,8 @@ function renderDashboard() {
           <button type="button" class="btn btn-sm btn-secondary" id="btn-account-menu">⚙ ${t("accountMenuLabel")}</button>
           <div class="dropdown-menu" id="account-dropdown" hidden>
             <button type="button" class="dropdown-item" id="btn-reset-password">${t("resetPasswordButton")}</button>
+            <button type="button" class="dropdown-item" id="btn-manage-pin">${hasPinForCurrentUser ? t("changePinButton") : t("setUpPinButton")}</button>
+            ${hasPinForCurrentUser ? `<button type="button" class="dropdown-item" id="btn-remove-pin">${t("removePinButton")}</button>` : ""}
             <button type="button" class="dropdown-item" id="btn-logout">${t("logoutButton")}</button>
           </div>
         </div>
@@ -447,6 +634,19 @@ function renderDashboard() {
       root.querySelector("#account-dropdown").hidden = true;
     }
   });
+  root.querySelector("#btn-manage-pin").addEventListener("click", () => {
+    root.querySelector("#account-dropdown").hidden = true;
+    renderPinSetupModal();
+  });
+  const removePinBtn = root.querySelector("#btn-remove-pin");
+  if (removePinBtn) {
+    removePinBtn.addEventListener("click", () => {
+      root.querySelector("#account-dropdown").hidden = true;
+      if (!confirm(t("confirmRemovePin"))) return;
+      clearPinRecord();
+      renderDashboard();
+    });
+  }
 
   function closeDropdowns() {
     root.querySelector("#account-dropdown").hidden = true;
@@ -623,6 +823,35 @@ function formatWeekRangeLabel(from, to) {
   return `${fromStr} – ${toStr}`;
 }
 
+// The 7 calendar-date strings (Sun-Sat) covered by a week's from/to range,
+// in order — used to build each store's day-by-day status strip.
+function weekDatesList(from) {
+  const [fy, fm, fd] = from.split("-").map(Number);
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    dates.push(todayDateStringFor(new Date(fy, fm - 1, fd + i)));
+  }
+  return dates;
+}
+
+// A day is only "done" once all 3 shifts (or one legacy pre-shift-feature
+// submission) are submitted — but 1 or 2 of the 3 is real, in-progress
+// effort and reads very differently from a day nobody touched at all, so
+// this keeps a 3rd state between "done" and "missing" instead of
+// collapsing both non-done cases together. A day that hasn't happened
+// yet (or falls before rollout) is never held against a store.
+function weeklyDayState(date, doneCount, today) {
+  if (doneCount === 3) return "done";
+  if (doneCount > 0) return "partial";
+  if (date > today || date < LAUNCH_DATE) return "future";
+  return "missing";
+}
+
+function dayLetter(dateStr, lang) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(lang, { weekday: "narrow" });
+}
+
 async function renderWeeklyTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
@@ -645,13 +874,16 @@ async function renderWeeklyTab() {
     }
   });
 
-  // A day only counts as done once all 3 shifts (or one legacy
-  // pre-shift-feature submission) are submitted for it.
+  const weekDates = weekDatesList(from);
+  const today = todayDateString();
+  const lang = getLang() === "es" ? "es-US" : "en-US";
+
   const rows = storesCache
     .map((s) => {
       const b = byStore[s.number] || { docsByDate: {}, flagged: 0, lastSubmittedAt: null };
-      const doneDays = Object.values(b.docsByDate).filter((docsForDay) => shiftsCoveredForDay(docsForDay).doneCount === 3).length;
-      return { store: s, doneDays, flagged: b.flagged, lastSubmittedAt: b.lastSubmittedAt };
+      const dayStates = weekDates.map((date) => weeklyDayState(date, shiftsCoveredForDay(b.docsByDate[date] || []).doneCount, today));
+      const doneDays = dayStates.filter((st) => st === "done").length;
+      return { store: s, dayStates, doneDays, flagged: b.flagged, lastSubmittedAt: b.lastSubmittedAt };
     })
     .sort((a, b) => a.doneDays - b.doneDays || b.flagged - a.flagged || Number(a.store.number) - Number(b.store.number));
 
@@ -674,16 +906,20 @@ async function renderWeeklyTab() {
       <div class="history-list">
         ${rows
           .map((r) => {
-            const doneDaysBadgeClass = r.doneDays === 7 ? "badge-success" : r.doneDays === 0 ? "badge-danger" : "badge-neutral";
             const lastSub = r.lastSubmittedAt ? formatDateTime({ toDate: () => new Date(r.lastSubmittedAt) }) : t("weeklyNever");
             return `
             <div class="history-card">
               <div class="history-card-top">
                 <strong>${escapeHtml(storeLabel(r.store.number, r.store.name))}</strong>
-                <span class="badge ${doneDaysBadgeClass}">${r.doneDays} / 7</span>
+                <span class="week-progress-label">${r.doneDays} / 7</span>
               </div>
-              <div class="history-card-meta">${escapeHtml(t("weeklyLastSubmission"))}: ${escapeHtml(lastSub)}</div>
-              ${r.flagged > 0 ? `<div class="history-card-actions"><button class="btn btn-sm btn-danger" data-view-weekly-flagged="${escapeHtml(r.store.number)}">${escapeHtml(t("weeklyFlaggedColumn"))}: ${r.flagged}</button></div>` : ""}
+              <div class="week-day-strip">
+                ${r.dayStates.map((state, i) => `<div class="week-day-cell day-cell-${state}">${escapeHtml(dayLetter(weekDates[i], lang))}</div>`).join("")}
+              </div>
+              <div class="history-card-actions">
+                <span class="history-card-meta" style="margin-top:0;">${escapeHtml(t("weeklyLastSubmission"))}: ${escapeHtml(lastSub)}</span>
+                ${r.flagged > 0 ? `<button class="btn btn-sm btn-danger" data-view-weekly-flagged="${escapeHtml(r.store.number)}">${escapeHtml(t("weeklyFlaggedColumn"))}: ${r.flagged}</button>` : ""}
+              </div>
             </div>`;
           })
           .join("")}

@@ -266,6 +266,13 @@ textarea { resize: vertical; min-height: 70px; }
 .history-card-meta { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
 .history-card-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; }
 .history-flagged-none { color: var(--text-muted); font-size: 13px; }
+.week-progress-label { font-size: 13px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.week-day-strip { display: flex; gap: 4px; margin: 8px 0; }
+.week-day-cell { flex: 1; text-align: center; border-radius: 6px; padding: 5px 0; font-size: 12px; font-weight: 700; }
+.week-day-cell.day-cell-done { background: var(--success-bg); color: var(--success); }
+.week-day-cell.day-cell-partial { background: var(--info-bg); color: var(--info); }
+.week-day-cell.day-cell-missing { background: var(--danger-bg); color: var(--danger); }
+.week-day-cell.day-cell-future { background: var(--neutral-bg); color: var(--text-muted); opacity: 0.55; }
 .view-mode-row { display: flex; gap: 8px; margin-bottom: 16px; }
 .view-mode-row[hidden] { display: none; }
 .hist-date-row { display: flex; gap: 12px; }
