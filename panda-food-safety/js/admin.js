@@ -125,6 +125,8 @@ let activeTab = "today";
 let closeDropdownsListener = null;
 let storesCache = [];
 let storesUnsub = null;
+let unresolvedAiFlagsCount = 0;
+let aiFlagsUnsub = null;
 let lastHistoryResults = [];
 // Names seen in any submission doc fetched so far this session (History,
 // Weekly Summary) — there's no Firestore "distinct conductedBy" query, so
@@ -352,6 +354,7 @@ async function handleAuthChange(user) {
   }
   ensureStoresSubscription();
   ensureChecklistSubscription();
+  ensureAiFlagsSubscription();
   ensureAutoDateRefresh();
   const pinRecord = loadPinRecord();
   if (pinRecord && pinRecord.email === user.email && !pinUnlockedThisLoad) {
@@ -648,6 +651,128 @@ function ensureStoresSubscription() {
   });
 }
 
+// Live count of unresolved automatic temperature-photo mismatches (see
+// functions/index.js), shown as a badge on the bell button in the
+// account row. Queries the small denormalized `aiFlagged` collection
+// (only ever contains real mismatches, not every submission) rather
+// than scanning submissions directly. Only the count badge updates on
+// each change — no full dashboard re-render, since this fires
+// independently of whatever tab happens to be open.
+function ensureAiFlagsSubscription() {
+  if (aiFlagsUnsub) return;
+  aiFlagsUnsub = onSnapshot(query(collection(db, "aiFlagged"), where("reviewed", "==", false)), (snap) => {
+    unresolvedAiFlagsCount = snap.docs.length;
+    const btn = root.querySelector("#btn-ai-flags");
+    if (btn) renderAiFlagsButtonContent(btn);
+  });
+}
+
+function renderAiFlagsButtonContent(btn) {
+  const count = unresolvedAiFlagsCount > 99 ? "99+" : String(unresolvedAiFlagsCount);
+  btn.innerHTML = `🔔${unresolvedAiFlagsCount > 0 ? `<span class="badge-count">${count}</span>` : ""}`;
+}
+
+async function renderAiFlagsModal() {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `<div class="modal"><div class="modal-header"><h3 style="margin:0;">${t("aiFlagsModalTitle")}</h3></div><div class="card">${t("loadingButton")}</div></div>`;
+  document.body.appendChild(backdrop);
+
+  let snap;
+  try {
+    snap = await withTimeout(getDocs(query(collection(db, "aiFlagged"), where("reviewed", "==", false))));
+  } catch (err) {
+    backdrop.querySelector(".modal").innerHTML = `
+      <div class="modal-header"><h3 style="margin:0;">${t("aiFlagsModalTitle")}</h3><button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button></div>
+      <div class="hint-banner">${escapeHtml(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err))}</div>
+    `;
+    backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+    backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
+    return;
+  }
+
+  // Every item shows its violation risk level here — that's the whole
+  // point of this app: stores need to know how severe a finding is to
+  // actually get ready for a real Ecosure/food-safety visit, not just
+  // that "something" disagreed. Sorted worst-first (high risk before
+  // medium/low) so the most severe findings triage to the top.
+  const flags = snap.docs
+    .map((d) => ({ id: d.id, ...d.data(), item: findItemDefinitionById(d.data().itemId) || { id: d.data().itemId, en: `#${d.data().itemId}`, es: `#${d.data().itemId}`, risk: "medium" } }))
+    .sort((a, b) => (RISK_SORT_RANK[a.item.risk] ?? 1) - (RISK_SORT_RANK[b.item.risk] ?? 1) || (b.checkedAt?.toMillis?.() || 0) - (a.checkedAt?.toMillis?.() || 0));
+
+  backdrop.querySelector(".modal").innerHTML = `
+    <div class="modal-header">
+      <h3 style="margin:0;">${t("aiFlagsModalTitle")}</h3>
+      <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
+    </div>
+    <div class="hint-banner">${t("aiFlagsModalHint")}</div>
+    ${
+      flags.length === 0
+        ? `<p>${t("noAiFlags")}</p>`
+        : flags
+            .map((flag) => {
+              const store = storesCache.find((s) => s.number === flag.storeNumber);
+              const item = flag.item;
+              const reason = flag.reason || "mismatch";
+              const reasonDetailHtml =
+                reason === "duplicate"
+                  ? `<div>${escapeHtml(t("aiFlagDuplicateDetail", { date: flag.duplicateOfDate }))}</div>`
+                  : reason === "unreadable"
+                    ? `<div>${escapeHtml(t("aiFlagUnreadableDetail"))}</div>`
+                    : `<div>${escapeHtml(t("aiFlagReadingLabel", { temp: flag.temperatureF }))} (${escapeHtml(t("aiFlagExpectedLabel", { op: flag.expectedOp, threshold: flag.expectedThreshold }))})</div>
+                       <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
+              return `
+              <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}" data-flag-row="${flag.id}">
+                <div class="detail-row-main">
+                  <span class="detail-item-text">${escapeHtml(storeLabel(flag.storeNumber, store?.name))} — ${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
+                  <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
+                </div>
+                <div class="history-card-meta">${escapeHtml(flag.date)} · ${escapeHtml(t("shift_" + flag.shift))} · ${escapeHtml(flag.conductedBy)}</div>
+                ${reasonDetailHtml}
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                  <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}">${t("viewDetail")}</button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-mark-reviewed="${flag.id}">${t("markReviewedButton")}</button>
+                </div>
+              </div>`;
+            })
+            .join("")
+    }
+  `;
+
+  backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+  backdrop.querySelectorAll("[data-mark-reviewed]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const flagId = btn.dataset.markReviewed;
+      btn.disabled = true;
+      try {
+        await withTimeout(updateDoc(doc(db, "aiFlagged", flagId), { reviewed: true }));
+        backdrop.querySelector(`[data-flag-row="${flagId}"]`)?.remove();
+      } catch (err) {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  backdrop.querySelectorAll("[data-view-flag-submission]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const submissionId = btn.dataset.viewFlagSubmission;
+      btn.disabled = true;
+      try {
+        const submissionSnap = await withTimeout(getDoc(doc(db, "submissions", submissionId)));
+        if (!submissionSnap.exists()) return;
+        const hydrated = await hydrateRecordPhotos({ id: submissionId, ...submissionSnap.data() });
+        renderDetailModal(hydrated, { expandFlagged: true });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
 let checklistUnsub = null;
 
 function ensureChecklistSubscription() {
@@ -695,6 +820,7 @@ function renderDashboard() {
     ${topBarHtml()}
     <main>
       <div class="admin-account-row">
+        <button type="button" class="btn btn-sm btn-secondary ai-flags-btn" id="btn-ai-flags" aria-label="${t("aiFlagsButtonLabel")}"></button>
         <div class="dropdown-wrap">
           <button type="button" class="btn btn-sm btn-secondary" id="btn-account-menu">⚙ ${t("accountMenuLabel")}</button>
           <div class="dropdown-menu" id="account-dropdown" hidden>
@@ -735,6 +861,8 @@ function renderDashboard() {
     </main>
   `;
   wireLangToggle(renderDashboard);
+  renderAiFlagsButtonContent(root.querySelector("#btn-ai-flags"));
+  root.querySelector("#btn-ai-flags").addEventListener("click", () => renderAiFlagsModal());
   root.querySelector("#btn-logout").addEventListener("click", () => signOut(auth));
   root.querySelector("#btn-reset-password").addEventListener("click", async (e) => {
     const btn = e.currentTarget;
@@ -1032,6 +1160,26 @@ function repeatViolationBadgesHtml(risk) {
   if (risk === "high") return `<span class="badge badge-danger">${t("riskHigh")}</span><span class="badge badge-danger">${t("criticalLabel")}</span>`;
   if (risk === "medium") return `<span class="badge badge-warning">${t("riskMedium")}</span>`;
   return `<span class="badge badge-neutral">${t("riskLow")}</span>`;
+}
+
+// One badge per automatic check "reason" a submission's photo can be
+// flagged for. `mismatch` (currently the only one actually written by
+// the Cloud Function) is the reading-vs-answer disagreement; `duplicate`
+// and `unreadable` are shown here so the UI is ready for those checks
+// once they're built, but nothing writes those reasons yet.
+function aiFlagBadgeHtml(aiFlag) {
+  if (!aiFlag) return "";
+  const reason = aiFlag.reason || (aiFlag.mismatch ? "mismatch" : null);
+  if (reason === "duplicate") {
+    return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagDuplicateDetail", { date: aiFlag.duplicateOfDate }))}">${escapeHtml(t("aiFlagReasonDuplicate", { date: aiFlag.duplicateOfDate }))}</span>`;
+  }
+  if (reason === "unreadable") {
+    return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagUnreadableDetail"))}">${escapeHtml(t("aiFlagReasonUnreadable"))}</span>`;
+  }
+  if (reason === "mismatch") {
+    return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagsModalHint"))}">${escapeHtml(t("aiMismatchBadge", { temp: aiFlag.temperatureF }))}</span>`;
+  }
+  return "";
 }
 
 async function renderRepeatViolationsTab() {
@@ -1485,10 +1633,10 @@ function renderFlaggedItemsModal(records) {
             ${rows
               .map(
                 ({ record, item, a }) => `
-              <div class="detail-row detail-row-flagged">
+              <div class="detail-row detail-row-flagged ${item.risk === "high" ? "detail-row-critical" : ""}">
                 <div class="detail-row-main">
                   <span class="detail-item-text">${multi ? `<span class="detail-flagged-date">${escapeHtml(record.date)}</span> — ` : ""}${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
-                  <span class="detail-row-badges">${riskBadgeHtml(item.risk)}<span class="badge badge-danger">${t("no")}</span></span>
+                  <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}<span class="badge badge-danger">${t("no")}</span></span>
                 </div>
                 <div class="detail-row-body">
                   ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
@@ -1758,11 +1906,23 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
     const badgeLabel = value === "yes" ? t("yes") : value === "no" ? t("no") : value === "na" ? t("na") : "—";
     const proofPhoto = item.alwaysPhoto && value === "yes" && a.photoUrl;
     if (isNo && firstFlaggedId === null) firstFlaggedId = item.id;
+    const aiFlag = record.aiFlags?.[item.id];
+    // Every flagged item always shows its violation risk level — the
+    // whole point of this app is prepping stores for a real Ecosure/
+    // food-safety visit, where severity is exactly what gets graded, so
+    // this can't be a sometimes-shown label. Uses the same always-show
+    // (including Low) + Critical-for-High treatment as Repeat Violations.
+    const itemRisk = (findItemDefinitionById(item.id) || {}).risk || "medium";
+    const isCritical = isNo && itemRisk === "high";
     return `
-      <div class="detail-row ${isNo ? "detail-row-flagged" : ""}" ${isNo ? `data-toggle-detail="${item.id}"` : ""} id="detail-row-${item.id}">
+      <div class="detail-row ${isNo ? "detail-row-flagged" : ""} ${isCritical ? "detail-row-critical" : ""}" ${isNo ? `data-toggle-detail="${item.id}"` : ""} id="detail-row-${item.id}">
         <div class="detail-row-main">
           <span class="detail-item-text">${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
-          <span class="badge ${badgeClass}">${badgeLabel}</span>
+          <span class="detail-row-badges">
+            ${isNo ? repeatViolationBadgesHtml(itemRisk) : ""}
+            ${aiFlagBadgeHtml(aiFlag)}
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
+          </span>
         </div>
         ${
           isNo

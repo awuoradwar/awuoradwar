@@ -253,3 +253,61 @@ composite-index search" below for why). Copy the contents of
 `firestore.rules` into the Firebase Console under **Firestore Database
 → Rules** and click **Publish** once. Skip this and Manage Checklist
 will show permission-denied errors instead of saving.
+
+## Automatic photo checking (AI temperature + duplicate detection)
+
+A Cloud Function (`functions/`) automatically checks the photo attached
+to a submission the moment it's finalized:
+
+- **Temperature mismatch** — for the 3 photo-required temperature items
+  (#3 reach-in cooler, #15 Grilled Teriyaki Chicken, #16 walk-in
+  cooler), it reads the number shown in the photo (Claude Haiku 4.5
+  vision) and flags it if that disagrees with the yes/no answer given.
+- **Unreadable photo** — same 3 items; if the photo doesn't show a clear
+  reading at all (blank, blurry, wrong subject), that's flagged too,
+  rather than silently ignored.
+- **Duplicate photo** — every photo-required item, any store: if the
+  exact same photo file was already used in an earlier submission for
+  that store+item, it's flagged, no API call needed (just a content
+  hash comparison).
+
+Flags show up as a bell icon with a count in the admin top bar, and as
+a badge on the flagged item wherever that submission's detail is
+viewed. This is a signal for a human to double-check, not an
+accusation — automated reads can be wrong.
+
+**This does NOT deploy automatically** — GitHub Actions only redeploys
+Hosting (see above), never Cloud Functions. One-time setup:
+
+1. Confirm the Firebase project is on the **Blaze** (pay-as-you-go)
+   plan — Console → gear icon → **Usage and billing**. Cloud Functions
+   can't make outbound API calls on the free Spark plan at all. Actual
+   cost at normal usage is expected to be a few dollars a month at most
+   (Firestore/Functions usage stays inside Blaze's free monthly
+   allowance; the only real cost is the Anthropic API call itself).
+2. Get an Anthropic API key with billing enabled at
+   [console.anthropic.com](https://console.anthropic.com).
+3. From the `functions/` directory: `npm install -g firebase-tools`
+   (if not already installed), then `firebase login`.
+4. `firebase functions:secrets:set ANTHROPIC_API_KEY` — paste the key
+   when prompted (never commit it or paste it anywhere else).
+5. `firebase deploy --only functions,firestore:rules` from the repo
+   root — deploys the Cloud Function and the `aiFlagged` collection's
+   rules together. After this one-time deploy, it just runs forever;
+   no redeploying needed for ordinary app changes.
+
+**Applying this to submissions from before the function existed:**
+`functions/backfill.js` runs the same checks against every already-existing
+submission. It's a one-time script, not a deployed function — run it
+locally with a Firebase service account key (Console → Project Settings
+→ Service Accounts → Generate new private key):
+
+```
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json ANTHROPIC_API_KEY=sk-ant-... node functions/backfill.js --dry-run
+```
+
+Always run `--dry-run` first — it reports exactly how many submissions,
+photos, and Anthropic API calls (i.e. real cost) a real run would make,
+without calling the API or writing anything. Drop `--dry-run` once
+those numbers look right. Safe to re-run: anything already checked is
+skipped, so it never double-charges for the same photo.

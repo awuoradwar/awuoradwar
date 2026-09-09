@@ -43,6 +43,18 @@ service cloud.firestore {
       allow write: if isOwner();
     }
 
+    // Denormalized audit queue for the automatic temperature-photo check
+    // (Cloud Function only — written via the Admin SDK, which bypasses
+    // these rules entirely, so `create`/`delete` here are admin-only as
+    // a belt-and-suspenders default rather than something the Function
+    // actually needs). Admins can read the list and flip `reviewed` to
+    // true once they've looked at a flag.
+    match /aiFlagged/{flagId} {
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
     // Store roster: every signed-in viewer (including anonymous
     // associates) can read it to populate the store dropdown; only
     // admins can add/edit/remove stores.

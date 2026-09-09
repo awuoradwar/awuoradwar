@@ -7,7 +7,8 @@
       "**/node_modules/**",
       "firestore.rules",
       "firestore.indexes.json",
-      "README.md"
+      "README.md",
+      "functions/**"
     ],
     "rewrites": [
       {
@@ -27,5 +28,12 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": ["node_modules", ".git", "test", "*.log"]
+    }
+  ]
 }
