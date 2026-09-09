@@ -87,7 +87,7 @@ const STRINGS = {
   adminRole: { en: "Admin", es: "Administrador" },
   confirmRemoveAdmin: { en: "Remove this admin's access? They can be re-added later.", es: "¿Eliminar el acceso de este administrador? Puede volver a agregarse más tarde." },
   todayStatusTitle: { en: "Today", es: "Hoy" },
-  storesSubmittedCount: { en: "{done} of {total} stores submitted today", es: "{done} de {total} tiendas enviaron hoy" },
+  storesNotSubmittedCount: { en: "{count} of {total} stores haven't submitted at all today", es: "{count} de {total} tiendas no han enviado nada hoy" },
   submittedStatus: { en: "Submitted", es: "Enviado" },
   missingStatus: { en: "Missing", es: "Falta" },
   inProgressStatus: { en: "In Progress", es: "En Progreso" },

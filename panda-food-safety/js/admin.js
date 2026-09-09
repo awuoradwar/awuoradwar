@@ -705,7 +705,7 @@ async function renderTodayTab() {
     coveredByStoreNumber[s.number] = shiftsCoveredForDay(docsByStoreNumber[s.number] || []);
   });
 
-  const doneCount = storesCache.filter((s) => coveredByStoreNumber[s.number].doneCount === 3).length;
+  const notSubmittedCount = storesCache.filter((s) => coveredByStoreNumber[s.number].doneCount === 0).length;
   const dateLocale = getLang() === "es" ? "es-US" : "en-US";
   const todayLabel = new Date(`${today}T00:00:00`).toLocaleDateString(dateLocale, {
     weekday: "short", month: "short", day: "numeric", year: "numeric",
@@ -714,7 +714,7 @@ async function renderTodayTab() {
 
   content.innerHTML = `
     <div class="card">
-      <strong>${t("storesSubmittedCount", { done: doneCount, total: storesCache.length })}</strong>
+      <strong>${t("storesNotSubmittedCount", { count: notSubmittedCount, total: storesCache.length })}</strong>
       <div style="color:var(--text-muted); font-size:13px;">${todayLabel}</div>
     </div>
     <div class="admin-grid">
