@@ -730,7 +730,7 @@ async function renderAiFlagsModal() {
                 <div class="history-card-meta">${escapeHtml(flag.date)}${flag.shift ? ` · ${escapeHtml(t("shift_" + flag.shift))}` : ""} · ${escapeHtml(flag.conductedBy)}</div>
                 ${reasonDetailHtml}
                 <div style="display:flex; gap:8px; margin-top:8px;">
-                  <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}">${t("viewDetail")}</button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}" data-view-flag-item="${flag.itemId}">${t("viewDetail")}</button>
                   <button type="button" class="btn btn-sm btn-secondary" data-mark-reviewed="${flag.id}">${t("markReviewedButton")}</button>
                 </div>
               </div>`;
@@ -758,12 +758,13 @@ async function renderAiFlagsModal() {
   backdrop.querySelectorAll("[data-view-flag-submission]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const submissionId = btn.dataset.viewFlagSubmission;
+      const itemId = btn.dataset.viewFlagItem;
       btn.disabled = true;
       try {
         const submissionSnap = await withTimeout(getDoc(doc(db, "submissions", submissionId)));
         if (!submissionSnap.exists()) return;
         const hydrated = await hydrateRecordPhotos({ id: submissionId, ...submissionSnap.data() });
-        renderDetailModal(hydrated, { expandFlagged: true });
+        renderDetailModal(hydrated, { scrollToItemId: itemId });
       } catch (err) {
         console.error(err);
       } finally {
@@ -1904,7 +1905,7 @@ async function hydrateFlaggedPhotos(record) {
   return { ...record, answers };
 }
 
-function renderDetailModal(record, { expandFlagged = false } = {}) {
+function renderDetailModal(record, { expandFlagged = false, scrollToItemId = null } = {}) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   let firstFlaggedId = null;
@@ -1997,13 +1998,17 @@ function renderDetailModal(record, { expandFlagged = false } = {}) {
   `;
   document.body.appendChild(backdrop);
   translateNotesIn(backdrop);
-  if (expandFlagged && firstFlaggedId !== null) {
+  // An explicit target (e.g. from the Flagged Photos list, where the
+  // item of interest was answered "yes" and so never sets
+  // firstFlaggedId below) always wins over the generic first-"no" scroll.
+  const targetRowId = scrollToItemId ?? (expandFlagged ? firstFlaggedId : null);
+  if (targetRowId !== null) {
     // Mobile Safari can miscalculate scroll geometry for an element
     // queried in the same tick it was inserted — wait a couple of frames
     // so layout has actually settled before scrolling to it.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        backdrop.querySelector(`#detail-row-${firstFlaggedId}`)?.scrollIntoView({ block: "start" });
+        backdrop.querySelector(`#detail-row-${targetRowId}`)?.scrollIntoView({ block: "start" });
       });
     });
   }
