@@ -5,6 +5,10 @@ name: Deploy to Firebase Hosting
 # by hand from a terminal after every push. Deliberately scoped to
 # hosting only -- Cloud Function and Firestore rules changes are rarer
 # and more consequential, so those stay a manual, deliberate deploy.
+#
+# This workflow file must live at the repo root's .github/workflows --
+# GitHub Actions ignores one nested inside panda-food-safety/. The app
+# itself lives in that subfolder, so PROJECT_PATH points there.
 on:
   push:
     branches:
@@ -21,3 +25,4 @@ jobs:
         env:
           GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           PROJECT_ID: food-safety-walkthrough
+          PROJECT_PATH: panda-food-safety
