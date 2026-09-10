@@ -260,6 +260,20 @@ const BOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
       { en: "Microwave is cleaned", es: "El microondas está limpio" },
     ],
   },
+  {
+    name: "Dishes",
+    items: [
+      { en: "Dish area is cleaned", es: "El área de trastes está limpia" },
+      { en: "Walls are cleaned", es: "Las paredes están limpias" },
+      { en: "Filters are taken out and cleaned", es: "Los filtros están sacados y limpios" },
+      { en: "Container shelves are cleaned", es: "Las repisas de los contenedores están limpias" },
+      { en: "Acid container is cleaned", es: "El contenedor del ácido está limpio" },
+      { en: "Trash is taken out", es: "La basura está tirada" },
+      { en: "Dishes are returned to the kitchen", es: "Los trastes están de regreso en la cocina" },
+      { en: "Dry containers are put on the shelves", es: "Los contenedores secos están puestos en las repisas" },
+      { en: "Floor is cleaned", es: "El piso está limpio" },
+    ],
+  },
 ];
 
 /** Per-station idempotent: checks each station individually rather than
