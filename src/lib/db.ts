@@ -90,25 +90,28 @@ function createConnection(): Database.Database {
   unassignStaleAutoAssignedTasks(db);
   splitWeeklyOpsSummaries(db);
   backfillDefaultFranchiseOrg(db);
-  seedFohClosingProcedures(db);
-  backfillFohClosingTranslations(db);
+  seedClosingProcedures(db, "FOH", FOH_CLOSING_STATIONS);
+  seedClosingProcedures(db, "BOH", BOH_CLOSING_STATIONS);
+  backfillClosingTranslations(db, FOH_CLOSING_STATIONS);
+  backfillClosingTranslations(db, BOH_CLOSING_STATIONS);
   return db;
 }
 
-/** Front of House closing checklist, transcribed from the store's own
- * paper close-out sheets -- each station worded as a post-clean
- * verification ("X is done") rather than an instruction, since the whole
- * point is a closer confirming coverage after cleaning, not being told
- * what to do. Seeded into every store's existing procedure_areas/
- * procedure_items tables (see procedureService.ts) rather than a parallel
- * schema -- it's the same FOH-category/CLOSING-shift shape the Procedures
- * feature already supports, just content instead of code. A GM can still
- * reword, add to, or add whole new stations afterward from the Procedures
- * management page. */
+/** Closing checklists, transcribed from the store's own paper close-out
+ * sheets -- each station worded as a post-clean verification ("X is done")
+ * rather than an instruction, since the whole point is a closer confirming
+ * coverage after cleaning, not being told what to do. Seeded into every
+ * store's existing procedure_areas/procedure_items tables (see
+ * procedureService.ts) rather than a parallel schema -- it's the same
+ * category/CLOSING-shift shape the Procedures feature already supports,
+ * just content instead of code. A GM can still reword, add to, or add
+ * whole new stations afterward from the Procedures management page. */
 interface FohClosingItem {
   en: string;
   es: string;
 }
+
+type ClosingCategory = "FOH" | "BOH" | "PATIO_WINDOWS";
 
 const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   {
@@ -221,29 +224,69 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
 ];
 
+const BOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
+  {
+    name: "Cooks",
+    items: [
+      { en: "Woks and the hood (left side) are cleaned", es: "Los woks y la campana (lado izquierdo) están limpios" },
+      { en: "Prep cooler is cleaned", es: "El prep cooler está limpio" },
+      { en: "Small freezer is restocked", es: "El freezer pequeño está reabastecido" },
+      { en: "Fryers are cleaned and filtered", es: "Las freidoras están limpias y filtradas" },
+      { en: "Oil is changed", es: "El aceite está cambiado" },
+      { en: "Oil from the hood's grease containers is thrown out", es: "El aceite de los contenedores de la campana está tirado" },
+      { en: "Filters are changed", es: "Los filtros están cambiados" },
+      { en: "Filters are soaking in the acid", es: "Los filtros están en el ácido" },
+      { en: "Fryer filter machine is washed", es: "La filtradora está lavada" },
+      { en: "Floor is washed", es: "El piso está lavado" },
+      { en: "All spoons are clean and put back", es: "Todas las cucharas están limpias y de regreso" },
+      { en: "Condiment cart is washed and restocked with sauces and condiments", es: "El carrito está lavado y reabastecido de salsas y condimentos" },
+      { en: "Ansul pipes are cleaned", es: "Las pipas Ansul están limpias" },
+      { en: "Drains are cleaned", es: "Las coladeras están limpias" },
+    ],
+  },
+  {
+    name: "Sides",
+    items: [
+      { en: "Chow mein wok area is cleaned", es: "El área del wok de chao mein está limpia" },
+      { en: "Rice cabinet is cleaned", es: "El gabinete del arroz está limpio" },
+      { en: "Rice in the cabinet is covered with plastic", es: "El arroz del gabinete está cubierto con plástico" },
+      { en: "Rice pots are washed", es: "Las ollas del arroz están lavadas" },
+      { en: "Floor is washed", es: "El piso está lavado" },
+      { en: "Grill is cleaned", es: "La parrilla está limpia" },
+      { en: "Wall next to the grill is cleaned", es: "La pared del lado de la parrilla está limpia" },
+      { en: "Trash is taken out", es: "La basura está tirada" },
+      { en: "Spoons are put back", es: "Las cucharas están de regreso" },
+      { en: "Trash cans are washed inside and out", es: "Los basureros están lavados por dentro y fuera" },
+      { en: "Microwave is cleaned", es: "El microondas está limpio" },
+    ],
+  },
+];
+
 /** Per-station idempotent: checks each station individually rather than
- * gating on the whole set existing, so adding a new station to this array
- * (Patio and Bathrooms came after the original six) reaches every store
- * that already ran this seed, not just brand-new ones -- each store only
- * ever gets whichever named stations it doesn't already have. */
-function seedFohClosingProcedures(db: Database.Database) {
+ * gating on the whole set existing, so adding a new station to one of the
+ * arrays above (Patio and Bathrooms came after FOH's original six; BOH
+ * arrived after FOH entirely) reaches every store that already ran this
+ * seed, not just brand-new ones -- each store only ever gets whichever
+ * named stations it doesn't already have, in whichever category they
+ * belong to. */
+function seedClosingProcedures(db: Database.Database, category: ClosingCategory, stations: Array<{ name: string; items: FohClosingItem[] }>) {
   const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
   if (stores.length === 0) return;
 
-  const areaExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND category = 'FOH' AND name = ?`);
+  const areaExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND category = ? AND name = ?`);
   const insertArea = db.prepare(
-    `INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, 'FOH', ?, 1, ?)`
+    `INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)`
   );
   const insertItem = db.prepare(
     `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, 1, ?)`
   );
 
   for (const store of stores) {
-    FOH_CLOSING_STATIONS.forEach((station, areaIndex) => {
-      if (areaExists.get(store.id, station.name)) return;
+    stations.forEach((station, areaIndex) => {
+      if (areaExists.get(store.id, category, station.name)) return;
       const areaId = randomUUID();
       const now = new Date().toISOString();
-      insertArea.run(areaId, store.id, station.name, areaIndex, now);
+      insertArea.run(areaId, store.id, station.name, category, areaIndex, now);
       station.items.forEach((item, itemIndex) => {
         insertItem.run(randomUUID(), areaId, item.en, item.es, itemIndex, now);
       });
@@ -251,16 +294,18 @@ function seedFohClosingProcedures(db: Database.Database) {
   }
 }
 
-/** seedFohClosingProcedures originally inserted these items with no Spanish
- * text (text_es NULL), so a store that already ran that seed before
- * translations were added here would see the checklist stay in English even
- * with the app set to Español. One-time, idempotent: matches existing rows
- * by their exact English text and only fills text_es where it's still NULL
- * -- a GM who has since reworded an item (see the Procedures edit UI) no
- * longer matches the original English text and is left alone. */
-function backfillFohClosingTranslations(db: Database.Database) {
+/** seedClosingProcedures originally inserted FOH items with no Spanish text
+ * (text_es NULL), so a store that already ran that seed before translations
+ * were added here would see the checklist stay in English even with the app
+ * set to Español. One-time, idempotent: matches existing rows by their
+ * exact English text and only fills text_es where it's still NULL -- a GM
+ * who has since reworded an item (see the Procedures edit UI) no longer
+ * matches the original English text and is left alone. Kept generic (not
+ * FOH-specific) since every content set defined above is seeded with
+ * translations from the start now, but this still runs as a safety net. */
+function backfillClosingTranslations(db: Database.Database, stations: Array<{ name: string; items: FohClosingItem[] }>) {
   const stmt = db.prepare(`UPDATE procedure_items SET text_es = ? WHERE text = ? AND text_es IS NULL`);
-  for (const station of FOH_CLOSING_STATIONS) {
+  for (const station of stations) {
     for (const item of station.items) {
       stmt.run(item.es, item.en);
     }
