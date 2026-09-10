@@ -1099,29 +1099,8 @@ async function renderTodayTab() {
     // then all 3 shifts complete — store number order is kept within
     // each group rather than interleaving all three.
     const statusRank = complete ? 2 : started ? 1 : 0;
-    return { s, covered, complete, started, anyInProgress, penalize, statusRank, streakLabel: null };
+    return { s, covered, complete, started, anyInProgress, penalize, statusRank };
   });
-
-  // Only stores actually missing today ever need the historical
-  // lookback — usually a handful, not the whole store list. Each is its
-  // own try/catch: the streak label is a nice-to-have, so one store's
-  // lookback failing (timeout, transient error) never blocks the rest of
-  // the page — that store just shows without a streak label.
-  await Promise.all(
-    rows
-      .filter((r) => r.penalize)
-      .map(async (r) => {
-        let streak, hitWindowLimit;
-        try {
-          ({ streak, hitWindowLimit } = await missingStreakBeforeToday(r.s.number, today));
-        } catch (err) {
-          console.error(err);
-          return;
-        }
-        const totalDays = streak + 1;
-        if (totalDays >= 2) r.streakLabel = t(hitWindowLimit ? "missingStreakCapped" : "missingStreakDays", { days: totalDays });
-      })
-  );
 
   content.innerHTML = `
     <div class="card">
@@ -1131,14 +1110,13 @@ async function renderTodayTab() {
     <div class="admin-grid">
       ${rows
         .sort((a, b) => a.statusRank - b.statusRank || Number(a.s.number) - Number(b.s.number))
-        .map(({ s, covered, complete, started, anyInProgress, penalize, streakLabel }) => {
+        .map(({ s, covered, complete, started, anyInProgress, penalize }) => {
           const badgeClass = complete ? "badge-success" : started ? "badge-info" : penalize ? "badge-danger" : "badge-neutral";
           return `
           <div class="store-status-card ${penalize ? "missing" : ""} clickable" data-view-today="${escapeHtml(s.number)}">
             <span class="store-name">${escapeHtml(storeLabel(s.number, s.name))}</span>
             <span class="badge ${badgeClass}">${covered.doneCount} / 3</span>
             ${anyInProgress ? `<span class="badge badge-info">${t("inProgressStatus")}</span>` : ""}
-            ${streakLabel ? `<span class="store-status-streak">${escapeHtml(streakLabel)}</span>` : ""}
           </div>`;
         })
         .join("")}
@@ -1152,6 +1130,35 @@ async function renderTodayTab() {
       renderDayShiftsModal(store, docsByStoreNumber[storeNumber] || [], coveredByStoreNumber[storeNumber]);
     });
   });
+
+  // Only stores actually missing today ever need the historical lookback
+  // — usually a handful, not the whole store list. But even a handful is
+  // a handful of separate Firestore queries, and blocking the entire grid
+  // behind Promise.all-ing all of them was making every admin wait out
+  // the slowest one before seeing ANY store, often on a weak connection.
+  // The streak label is a nice-to-have annotation, not core data, so the
+  // grid above renders immediately and each label is patched in
+  // independently as its own lookback resolves. Each has its own
+  // try/catch: one store's lookback failing (timeout, transient error)
+  // just leaves that one card without a streak label.
+  rows
+    .filter((r) => r.penalize)
+    .forEach(async (r) => {
+      let streak, hitWindowLimit;
+      try {
+        ({ streak, hitWindowLimit } = await missingStreakBeforeToday(r.s.number, today));
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+      const totalDays = streak + 1;
+      if (totalDays < 2) return;
+      const label = t(hitWindowLimit ? "missingStreakCapped" : "missingStreakDays", { days: totalDays });
+      const card = content.querySelector(`[data-view-today="${CSS.escape(String(r.s.number))}"]`);
+      if (card && !card.querySelector(".store-status-streak")) {
+        card.insertAdjacentHTML("beforeend", `<span class="store-status-streak">${escapeHtml(label)}</span>`);
+      }
+    });
 }
 
 // Drill-down from a store's "X / 3" card on Today's Status: shows each of
