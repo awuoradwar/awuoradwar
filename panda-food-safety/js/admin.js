@@ -754,19 +754,32 @@ async function renderAiFlagsModal() {
       btn.disabled = true;
       btn.textContent = t("loadingButton");
       try {
-        const submissionSnap = await withTimeout(getDoc(doc(db, "submissions", submissionId)));
-        if (!submissionSnap.exists()) {
-          alert(t("recordNotFound"));
-          return;
-        }
         // A submission can have more than one flagged item (e.g. items #15
         // and #16 both mismatched) -- show all of them together instead of
         // making the admin click View once per item.
         const submissionFlags = flags.filter((f) => f.submissionId === submissionId);
-        const hydrated = await withTimeout(
-          hydrateFlaggedPhotos({ id: submissionId, ...submissionSnap.data() }, submissionFlags.map((f) => f.itemId))
+        const itemIds = submissionFlags.map((f) => f.itemId);
+        // The submission doc (for the answer values) and each flagged
+        // item's photo are independent reads -- fetch them all at once
+        // instead of one after another. On a slow connection, that was
+        // the difference between one round trip's worth of wait and
+        // several stacked back to back.
+        const [submissionSnap, photoSnaps] = await withTimeout(
+          Promise.all([
+            getDoc(doc(db, "submissions", submissionId)),
+            Promise.all(itemIds.map((id) => getDoc(doc(db, "submissions", submissionId, "photos", id)))),
+          ])
         );
-        renderAiFlagDetailModal(hydrated, submissionFlags);
+        if (!submissionSnap.exists()) {
+          alert(t("recordNotFound"));
+          return;
+        }
+        const answers = { ...submissionSnap.data().answers };
+        itemIds.forEach((id, i) => {
+          const photoSnap = photoSnaps[i];
+          if (photoSnap.exists()) answers[id] = { ...answers[id], photoUrl: photoSnap.data().dataUrl };
+        });
+        renderAiFlagDetailModal({ id: submissionId, ...submissionSnap.data(), answers }, submissionFlags);
       } catch (err) {
         alert(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err));
       } finally {
