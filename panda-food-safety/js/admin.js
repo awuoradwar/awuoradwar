@@ -984,6 +984,20 @@ async function missingStreakBeforeToday(storeNumber, today) {
   return { streak, hitWindowLimit };
 }
 
+// Rough store-hours boundaries for each shift, in business-timezone
+// 24h clock hours — used only to decide whether an unsubmitted draft
+// still plausibly represents someone actively working on it right now.
+// An opening-shift draft left unsubmitted is a believable "in
+// progress" state before ~11am, but by evening that shift's window has
+// closed — there's no going back to do the morning shift, so it should
+// read as stale/missing, not as still in progress.
+const SHIFT_WINDOW_END_HOUR = { opening: 11, midday: 16, closing: 24 };
+
+function shiftWindowHasPassed(shiftKey, nowHour) {
+  const endHour = SHIFT_WINDOW_END_HOUR[shiftKey];
+  return endHour !== undefined && nowHour >= endHour;
+}
+
 async function renderTodayTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
@@ -1018,9 +1032,10 @@ async function renderTodayTab() {
   });
   const notYetLaunched = today < LAUNCH_DATE;
 
+  const nowHour = nowInBusinessTZ().getHours();
   const rows = storesCache.map((s) => {
     const covered = coveredByStoreNumber[s.number];
-    const anyInProgress = (docsByStoreNumber[s.number] || []).some((d) => !d.submitted);
+    const anyInProgress = (docsByStoreNumber[s.number] || []).some((d) => !d.submitted && !shiftWindowHasPassed(d.shift, nowHour));
     const complete = covered.doneCount === 3;
     const started = covered.doneCount > 0 || anyInProgress;
     const penalize = !complete && !started && !notYetLaunched;
