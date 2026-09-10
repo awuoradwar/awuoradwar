@@ -1,0 +1,23 @@
+name: Deploy to Firebase Hosting
+
+# Runs the routine "firebase deploy --only hosting" step automatically
+# whenever the production branch changes, so it no longer has to be run
+# by hand from a terminal after every push. Deliberately scoped to
+# hosting only -- Cloud Function and Firestore rules changes are rarer
+# and more consequential, so those stay a manual, deliberate deploy.
+on:
+  push:
+    branches:
+      - claude/panda-express-safety-checklist-rjvmb7
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: w9jds/firebase-action@v15.30.0
+        with:
+          args: deploy --only hosting
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          PROJECT_ID: food-safety-walkthrough
