@@ -713,14 +713,6 @@ async function renderAiFlagsModal() {
             .map((flag) => {
               const store = storesCache.find((s) => s.number === flag.storeNumber);
               const item = flag.item;
-              const reason = flag.reason || "mismatch";
-              const reasonDetailHtml =
-                reason === "duplicate"
-                  ? `<div>${escapeHtml(t("aiFlagDuplicateDetail", { date: flag.duplicateOfDate }))}</div>`
-                  : reason === "unreadable"
-                    ? `<div>${escapeHtml(t("aiFlagUnreadableDetail"))}</div>`
-                    : `<div>${escapeHtml(t("aiFlagReadingLabel", { temp: flag.temperatureF }))} (${escapeHtml(t("aiFlagExpectedLabel", { op: flag.expectedOp, threshold: flag.expectedThreshold }))})</div>
-                       <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
               return `
               <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}" data-flag-row="${flag.id}">
                 <div class="detail-row-main">
@@ -728,9 +720,9 @@ async function renderAiFlagsModal() {
                   <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
                 </div>
                 <div class="history-card-meta">${escapeHtml(flag.date)}${flag.shift ? ` · ${escapeHtml(t("shift_" + flag.shift))}` : ""} · ${escapeHtml(flag.conductedBy)}</div>
-                ${reasonDetailHtml}
+                ${flagReasonDetailHtml(flag)}
                 <div style="display:flex; gap:8px; margin-top:8px;">
-                  <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}" data-view-flag-item="${flag.itemId}">${t("viewDetail")}</button>
+                  <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}">${t("viewDetail")}</button>
                   <button type="button" class="btn btn-sm btn-secondary" data-mark-reviewed="${flag.id}">${t("markReviewedButton")}</button>
                 </div>
               </div>`;
@@ -758,7 +750,6 @@ async function renderAiFlagsModal() {
   backdrop.querySelectorAll("[data-view-flag-submission]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const submissionId = btn.dataset.viewFlagSubmission;
-      const itemId = btn.dataset.viewFlagItem;
       const originalLabel = btn.textContent;
       btn.disabled = true;
       btn.textContent = t("loadingButton");
@@ -768,8 +759,14 @@ async function renderAiFlagsModal() {
           alert(t("recordNotFound"));
           return;
         }
-        const hydrated = await withTimeout(hydrateFlaggedPhotos({ id: submissionId, ...submissionSnap.data() }, [itemId]));
-        renderDetailModal(hydrated, { scrollToItemId: itemId });
+        // A submission can have more than one flagged item (e.g. items #15
+        // and #16 both mismatched) -- show all of them together instead of
+        // making the admin click View once per item.
+        const submissionFlags = flags.filter((f) => f.submissionId === submissionId);
+        const hydrated = await withTimeout(
+          hydrateFlaggedPhotos({ id: submissionId, ...submissionSnap.data() }, submissionFlags.map((f) => f.itemId))
+        );
+        renderAiFlagDetailModal(hydrated, submissionFlags);
       } catch (err) {
         alert(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err));
       } finally {
@@ -777,6 +774,58 @@ async function renderAiFlagsModal() {
         btn.textContent = originalLabel;
       }
     });
+  });
+}
+
+// Opens just the flagged item(s) for one submission -- not the full 65+
+// item checklist. Opening the whole document and scrolling down to the
+// one flagged answer (then scrolling all the way back up again just to
+// close) was real reported friction; this shows only what needs review.
+function renderAiFlagDetailModal(record, itemFlags) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+
+  const rowsHtml = itemFlags
+    .map((flag) => {
+      const item = findItemDefinitionById(flag.itemId) || { id: flag.itemId, en: `#${flag.itemId}`, es: `#${flag.itemId}`, risk: "medium" };
+      const a = record.answers?.[flag.itemId] || {};
+      const badgeClass = a.value === "yes" ? "badge-success" : a.value === "no" ? "badge-danger" : "badge-neutral";
+      const badgeLabel = a.value === "yes" ? t("yes") : a.value === "no" ? t("no") : t("na");
+      return `
+        <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}" id="detail-row-${item.id}">
+          <div class="detail-row-main">
+            <span class="detail-item-text">${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
+            <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}<span class="badge ${badgeClass}">${badgeLabel}</span></span>
+          </div>
+          <div class="detail-row-body">
+            ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
+            ${flagReasonDetailHtml(flag)}
+            ${a.note ? `<div class="detail-note" data-translatable data-note-text="${escapeHtml(a.note)}" data-note-lang="${escapeHtml(record.language || "")}"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(a.note)}<div class="detail-note-translation" hidden></div></div>` : ""}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  backdrop.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3 style="margin:0;">${escapeHtml(storeLabel(record.storeNumber, record.storeName))} — ${escapeHtml(record.date)}</h3>
+        <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
+      </div>
+      <p style="color:var(--text-muted); margin-top:0;">${t("conductedByColumn")}: ${escapeHtml(record.conductedBy)}${record.shift ? ` · ${escapeHtml(t("shift_" + record.shift))}` : ""}</p>
+      ${rowsHtml}
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+  translateNotesIn(backdrop);
+  backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) {
+      backdrop.remove();
+      return;
+    }
+    const thumb = e.target.closest("img[data-lightbox]");
+    if (thumb) openLightbox(thumb.dataset.lightbox);
   });
 }
 
@@ -1202,6 +1251,17 @@ function aiFlagBadgeHtml(aiFlag) {
     return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagsModalHint"))}">${escapeHtml(t("aiMismatchBadge", { temp: aiFlag.temperatureF }))}</span>`;
   }
   return "";
+}
+
+// Shared between the Flagged Photos list and its per-item detail view --
+// the longer explanation of *why* a photo was flagged (the reading vs.
+// what was expected, a duplicate's original date, or "couldn't read this").
+function flagReasonDetailHtml(flag) {
+  const reason = flag.reason || "mismatch";
+  if (reason === "duplicate") return `<div>${escapeHtml(t("aiFlagDuplicateDetail", { date: flag.duplicateOfDate }))}</div>`;
+  if (reason === "unreadable") return `<div>${escapeHtml(t("aiFlagUnreadableDetail"))}</div>`;
+  return `<div>${escapeHtml(t("aiFlagReadingLabel", { temp: flag.temperatureF }))} (${escapeHtml(t("aiFlagExpectedLabel", { op: flag.expectedOp, threshold: flag.expectedThreshold }))})</div>
+          <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
 }
 
 async function renderRepeatViolationsTab() {
@@ -1915,7 +1975,7 @@ async function hydrateFlaggedPhotos(record, extraItemIds = []) {
   return { ...record, answers };
 }
 
-function renderDetailModal(record, { expandFlagged = false, scrollToItemId = null } = {}) {
+function renderDetailModal(record, { expandFlagged = false } = {}) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   let firstFlaggedId = null;
@@ -2008,17 +2068,13 @@ function renderDetailModal(record, { expandFlagged = false, scrollToItemId = nul
   `;
   document.body.appendChild(backdrop);
   translateNotesIn(backdrop);
-  // An explicit target (e.g. from the Flagged Photos list, where the
-  // item of interest was answered "yes" and so never sets
-  // firstFlaggedId below) always wins over the generic first-"no" scroll.
-  const targetRowId = scrollToItemId ?? (expandFlagged ? firstFlaggedId : null);
-  if (targetRowId !== null) {
+  if (expandFlagged && firstFlaggedId !== null) {
     // Mobile Safari can miscalculate scroll geometry for an element
     // queried in the same tick it was inserted — wait a couple of frames
     // so layout has actually settled before scrolling to it.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        backdrop.querySelector(`#detail-row-${targetRowId}`)?.scrollIntoView({ block: "start" });
+        backdrop.querySelector(`#detail-row-${firstFlaggedId}`)?.scrollIntoView({ block: "start" });
       });
     });
   }
