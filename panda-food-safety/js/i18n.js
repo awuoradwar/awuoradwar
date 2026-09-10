@@ -187,6 +187,7 @@ const STRINGS = {
   aiFlagsModalTitle: { en: "Flagged Photos", es: "Fotos Marcadas" },
   aiFlagsModalHint: { en: "Double-check before acting — automated.", es: "Verifique antes de actuar — automático." },
   noAiFlags: { en: "Nothing to review.", es: "Nada que revisar." },
+  recordNotFound: { en: "This submission could not be found — it may have been deleted.", es: "No se encontró este envío — es posible que haya sido eliminado." },
   aiFlagReadingLabel: { en: "Photo reads ~{temp}°F", es: "La foto muestra ~{temp}°F" },
   aiFlagExpectedLabel: { en: "needs {op} {threshold}°F", es: "necesita {op} {threshold}°F" },
   aiFlagAnsweredLabel: { en: "Answered: {answer}", es: "Respondió: {answer}" },

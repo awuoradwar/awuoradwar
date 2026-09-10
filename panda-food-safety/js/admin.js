@@ -759,16 +759,22 @@ async function renderAiFlagsModal() {
     btn.addEventListener("click", async () => {
       const submissionId = btn.dataset.viewFlagSubmission;
       const itemId = btn.dataset.viewFlagItem;
+      const originalLabel = btn.textContent;
       btn.disabled = true;
+      btn.textContent = t("loadingButton");
       try {
         const submissionSnap = await withTimeout(getDoc(doc(db, "submissions", submissionId)));
-        if (!submissionSnap.exists()) return;
-        const hydrated = await hydrateFlaggedPhotos({ id: submissionId, ...submissionSnap.data() }, [itemId]);
+        if (!submissionSnap.exists()) {
+          alert(t("recordNotFound"));
+          return;
+        }
+        const hydrated = await withTimeout(hydrateFlaggedPhotos({ id: submissionId, ...submissionSnap.data() }, [itemId]));
         renderDetailModal(hydrated, { scrollToItemId: itemId });
       } catch (err) {
-        console.error(err);
+        alert(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err));
       } finally {
         btn.disabled = false;
+        btn.textContent = originalLabel;
       }
     });
   });
