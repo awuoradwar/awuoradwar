@@ -25,10 +25,14 @@ function StepHeader({ step, total, label, lang }: { step: number; total: number;
   );
 }
 
+function fmtShortDate(dateStr: string, locale: string): string {
+  return new Date(dateStr + "T12:00:00Z").toLocaleDateString(locale, { month: "short", day: "numeric" });
+}
+
 const bigTile =
   "tap-target flex w-full items-center justify-between rounded-2xl border-2 border-border bg-card px-5 py-4 text-left text-lg font-semibold transition-colors hover:border-accent hover:bg-accent/5 active:bg-accent/10";
 
-export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShift, categories }: {
+export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShift, categories, todayDate, yesterdayDate, lateNightWindow }: {
   token: string;
   storeName: string;
   areas: ProcedureArea[];
@@ -39,6 +43,13 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
    * the very first screen. When there's exactly one, that whole step is
    * skipped too, same reasoning as skipping the opening/closing tap. */
   categories: ProcedureCategory[];
+  todayDate: string;
+  yesterdayDate: string;
+  /** Store-local hour is before the cutoff (see procedures/[token]/page.tsx)
+   * -- a closing submitted right now is more likely finishing up last
+   * night's shift than starting today's, so the checklist step asks which
+   * night this is for instead of silently assuming today. */
+  lateNightWindow: boolean;
 }) {
   const singleCategory = categories.length === 1 ? categories[0] : null;
   const [lang, setLang] = useState<Lang>("en");
@@ -54,6 +65,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   const [name, setName] = useState("");
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [notes, setNotes] = useState("");
+  const [submittedDate, setSubmittedDate] = useState(lateNightWindow ? yesterdayDate : todayDate);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -69,6 +81,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
     return es && item.text_es ? item.text_es : item.text;
   }
 
+  const locale = es ? "es-MX" : "en-US";
   const totalSteps = singleCategory ? 2 : 3;
   const areaStepNum = singleCategory ? 1 : 2;
   const checklistStepNum = singleCategory ? 2 : 3;
@@ -80,6 +93,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
     setName("");
     setChecked({});
     setNotes("");
+    setSubmittedDate(lateNightWindow ? yesterdayDate : todayDate);
     setError(null);
   }
 
@@ -97,7 +111,8 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
         shiftType,
         name,
         items.map((i) => ({ text: i.text, textEs: i.text_es, checked: !!checked[i.id] })),
-        notes
+        notes,
+        submittedDate
       );
       if (result.error) {
         setError(result.error);
@@ -181,6 +196,33 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
           <button type="button" onClick={() => setStep("area")} disabled={pending} className="-mt-3 mb-4 self-start text-sm font-medium text-muted">
             {es ? "← Atrás" : "← Back"}
           </button>
+          {lateNightWindow && (
+            <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-3">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">
+                {es ? "¿Qué noche cerraste?" : "Which night did you close?"}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSubmittedDate(yesterdayDate)}
+                  className={`flex-1 rounded-xl border-2 px-3 py-2 text-sm font-semibold ${
+                    submittedDate === yesterdayDate ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted"
+                  }`}
+                >
+                  {es ? "Anoche" : "Last night"} · {fmtShortDate(yesterdayDate, locale)}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubmittedDate(todayDate)}
+                  className={`flex-1 rounded-xl border-2 px-3 py-2 text-sm font-semibold ${
+                    submittedDate === todayDate ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted"
+                  }`}
+                >
+                  {es ? "Esta noche" : "Tonight"} · {fmtShortDate(todayDate, locale)}
+                </button>
+              </div>
+            </div>
+          )}
           <label className="mb-4 flex flex-col gap-1.5 text-sm font-medium">
             {es ? "Tu nombre" : "Your name"}
             <input

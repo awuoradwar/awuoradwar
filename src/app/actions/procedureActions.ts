@@ -23,13 +23,14 @@ export async function submitProcedureAction(
   shiftType: ProcedureShiftType,
   associateName: string,
   items: ProcedureSubmissionItem[],
-  notes: string
+  notes: string,
+  submittedDate?: string
 ): Promise<{ id?: string; error?: string }> {
   const store = procedureService.getStoreByProceduresToken(token);
   if (!store) return { error: "This link is no longer valid." };
   const area = procedureService.getArea(areaId, store.id);
   if (!area) return { error: "That area isn't available anymore. Refresh and try again." };
-  return procedureService.submitProcedure({ storeId: store.id, areaId, shiftType, associateName, items, notes });
+  return procedureService.submitProcedure({ storeId: store.id, areaId, shiftType, associateName, items, notes, submittedDate });
 }
 
 // --- GM management -----------------------------------------------------

@@ -19,6 +19,37 @@ function addDaysStr(dateStr: string, days: number): string {
   return new Date(d.getTime() + days * 86400000).toISOString().slice(0, 10);
 }
 
+const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_NAMES_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+interface DayGroup<T> {
+  date: string;
+  label: string;
+  items: T[];
+}
+
+/** Same idea as groupByWeek, one level finer -- buckets one week's items by
+ * their exact store-local calendar date, newest day first, with a
+ * "Weekday, Mon D" label matching the convention the per-station week page
+ * already uses. Only called for callers that opt into groupByDay below. */
+function groupItemsByDay<T>(items: T[], getDate: (item: T) => string | null, storeId: string | undefined, locale: string, lang: Language): DayGroup<T>[] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const raw = getDate(item);
+    if (!raw) continue;
+    const d = toStoreLocalDate(raw, storeId);
+    if (!groups.has(d)) groups.set(d, []);
+    groups.get(d)!.push(item);
+  }
+  const dayNames = lang === "es" ? DAY_NAMES_ES : DAY_NAMES_EN;
+  return Array.from(groups.entries())
+    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .map(([date, dayItems]) => {
+      const d = new Date(date + "T12:00:00Z");
+      return { date, label: `${dayNames[d.getUTCDay()]}, ${d.toLocaleDateString(locale, { month: "short", day: "numeric" })}`, items: dayItems };
+    });
+}
+
 function fmtWeekRange(weekStart: string, weekEnd: string, locale: string): string {
   const s = new Date(weekStart + "T12:00:00Z");
   const e = new Date(weekEnd + "T12:00:00Z");
@@ -71,6 +102,7 @@ export default function HistoryByWeek<T>({
   lang,
   emptyLabel,
   storeId,
+  groupByDay,
 }: {
   items: T[];
   getDate: (item: T) => string | null;
@@ -88,6 +120,10 @@ export default function HistoryByWeek<T>({
    * trained_at, etc.) rather than an already-store-local "YYYY-MM-DD" --
    * without it, late-evening events get bucketed into the wrong week. */
   storeId?: string;
+  /** Sub-groups each week's items by exact day, with a day-label header --
+   * opt-in so existing callers (Catering, Training, Attendance) keep their
+   * flat per-week list unless they ask for this. */
+  groupByDay?: boolean;
 }) {
   if (items.length === 0) {
     return <p className="border-t border-border p-4 text-center text-xs text-muted">{emptyLabel}</p>;
@@ -114,9 +150,18 @@ export default function HistoryByWeek<T>({
             </span>
           </summary>
           <div className="divide-y divide-border">
-            {w.items.map((item) => (
-              <div key={keyOf(item)}>{renderItem(item)}</div>
-            ))}
+            {groupByDay
+              ? groupItemsByDay(w.items, getDate, storeId, locale, lang).map((day) => (
+                  <div key={day.date}>
+                    <p className="border-b border-border bg-card-subtle px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted">{day.label}</p>
+                    <div className="flex flex-col gap-2 p-2">
+                      {day.items.map((item) => (
+                        <div key={keyOf(item)}>{renderItem(item)}</div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              : w.items.map((item) => <div key={keyOf(item)}>{renderItem(item)}</div>)}
           </div>
         </details>
       ))}

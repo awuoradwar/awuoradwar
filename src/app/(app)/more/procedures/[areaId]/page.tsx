@@ -3,8 +3,10 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getArea, getSubmissionsForAreaInRange, ProcedureShiftType, ProcedureSubmission } from "@/lib/services/procedureService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
-import { storeToday, formatStoreDateTime } from "@/lib/storeTime";
+import { storeToday } from "@/lib/storeTime";
+import { Language } from "@/lib/types";
 import PageHeader from "@/components/PageHeader";
+import ProcedureSubmissionRow from "@/components/ProcedureSubmissionRow";
 
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -13,25 +15,22 @@ function addDaysStr(dateStr: string, days: number): string {
   return new Date(new Date(dateStr + "T00:00:00Z").getTime() + days * 86400000).toISOString().slice(0, 10);
 }
 
-function ShiftCell({ label, submissions, isPast, isToday, storeId, locale, es }: {
+function ShiftCell({ label, submissions, isPast, isToday, storeId, lang, es }: {
   label: string;
   submissions: ProcedureSubmission[];
   isPast: boolean;
   isToday: boolean;
   storeId: string;
-  locale: string;
+  lang: Language;
   es: boolean;
 }) {
   if (submissions.length > 0) {
     return (
-      <div className="flex items-start justify-between gap-2 text-sm">
+      <div className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium text-muted">{label}</span>
-        <div className="text-right">
+        <div className="flex flex-col gap-1.5">
           {submissions.map((s) => (
-            <p key={s.id} className="text-ok">
-              ✓ {s.associate_name}
-              <span className="ml-1 text-xs text-muted">{formatStoreDateTime(storeId, s.created_at, locale, { hour: "numeric", minute: "2-digit" })}</span>
-            </p>
+            <ProcedureSubmissionRow key={s.id} submission={s} storeId={storeId} lang={lang} compact />
           ))}
         </div>
       </div>
@@ -118,7 +117,7 @@ export default async function ProcedureAreaDetailPage({ params, searchParams }: 
               <p className="text-xs font-bold uppercase tracking-wide text-accent">
                 {dayNames[d.getUTCDay()]}, {d.toLocaleDateString(locale, { month: "short", day: "numeric" })}
               </p>
-              <ShiftCell label={es ? "Cierre" : "Closing"} submissions={forDay(date, "CLOSING")} isPast={isPast} isToday={isToday} storeId={user.storeId} locale={locale} es={es} />
+              <ShiftCell label={es ? "Cierre" : "Closing"} submissions={forDay(date, "CLOSING")} isPast={isPast} isToday={isToday} storeId={user.storeId} lang={user.language} es={es} />
             </div>
           );
         })}

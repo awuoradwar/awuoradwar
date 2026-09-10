@@ -13,12 +13,12 @@ import {
   getMissedAreasForDate,
   getSubmissionsForDate,
   ProcedureCategory,
-  ProcedureSubmission,
 } from "@/lib/services/procedureService";
-import { formatStoreDateTime, storeToday } from "@/lib/storeTime";
+import { storeToday } from "@/lib/storeTime";
 import PageHeader from "@/components/PageHeader";
 import ProceduresLinkCard from "@/components/ProceduresLinkCard";
 import ProcedureAreasManager from "@/components/ProcedureAreasManager";
+import ProcedureSubmissionRow from "@/components/ProcedureSubmissionRow";
 import HistoryByWeek from "@/components/HistoryByWeek";
 
 function addDaysStr(dateStr: string, days: number): string {
@@ -30,43 +30,6 @@ const CATEGORY_LABEL: Record<ProcedureCategory, { en: string; es: string }> = {
   BOH: { en: "Back of House", es: "Área de Cocina" },
   PATIO_WINDOWS: { en: "Patio & Windows", es: "Patio y Ventanas" },
 };
-
-function SubmissionRow({ submission, storeId, lang }: { submission: ProcedureSubmission; storeId: string; lang: "en" | "es" }) {
-  const es = lang === "es";
-  const items = JSON.parse(submission.items_json) as Array<{ text: string; textEs: string | null; checked: boolean }>;
-  const checkedCount = items.filter((i) => i.checked).length;
-  const locale = es ? "es-MX" : "en-US";
-
-  return (
-    <details className="card overflow-hidden">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5 text-sm">
-        <div className="min-w-0">
-          <p className="truncate font-semibold">
-            {submission.area_name} · {submission.shift_type === "OPENING" ? (es ? "Apertura" : "Opening") : es ? "Cierre" : "Closing"}
-          </p>
-          <p className="truncate text-xs text-muted">
-            {submission.associate_name} · {submission.area_category && CATEGORY_LABEL[submission.area_category][lang]} ·{" "}
-            {formatStoreDateTime(storeId, submission.created_at, locale, { hour: "numeric", minute: "2-digit" })}
-          </p>
-        </div>
-        <span className={`shrink-0 text-xs font-semibold ${checkedCount === items.length ? "text-ok" : "text-warning"}`}>
-          {checkedCount}/{items.length}
-        </span>
-      </summary>
-      <div className="flex flex-col gap-1 border-t border-border p-3 text-sm">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className={item.checked ? "text-ok" : "text-muted"}>{item.checked ? "✓" : "○"}</span>
-            <span className={item.checked ? "" : "text-muted"}>{es && item.textEs ? item.textEs : item.text}</span>
-          </div>
-        ))}
-        {submission.notes && (
-          <p className="mt-2 rounded-lg bg-card-subtle px-2.5 py-2 text-xs text-muted">{submission.notes}</p>
-        )}
-      </div>
-    </details>
-  );
-}
 
 export default async function ProceduresPage() {
   const user = await getCurrentUser();
@@ -180,8 +143,15 @@ export default async function ProceduresPage() {
 
       {canManage && (
         <section>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent">{es ? "Administrar estaciones y listas" : "Manage stations & checklists"}</h2>
-          <ProcedureAreasManager areas={areas} itemsByArea={itemsByArea} lang={user.language} />
+          <details className="card overflow-hidden">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5">
+              <span className="text-xs font-bold uppercase tracking-wide text-accent">{es ? "Administrar estaciones y listas" : "Manage stations & checklists"}</span>
+              <span className="text-muted">→</span>
+            </summary>
+            <div className="border-t border-border p-4">
+              <ProcedureAreasManager areas={areas} itemsByArea={itemsByArea} lang={user.language} />
+            </div>
+          </details>
         </section>
       )}
 
@@ -192,7 +162,8 @@ export default async function ProceduresPage() {
           getDate={(item) => item.submitted_date}
           keyOf={(item) => item.id}
           storeId={user.storeId}
-          renderItem={(item) => <SubmissionRow submission={item} storeId={user.storeId} lang={user.language} />}
+          renderItem={(item) => <ProcedureSubmissionRow submission={item} storeId={user.storeId} lang={user.language} />}
+          groupByDay
           lang={user.language}
           emptyLabel={es ? "Nada enviado todavía." : "Nothing submitted yet."}
         />

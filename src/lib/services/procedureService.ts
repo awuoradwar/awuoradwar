@@ -5,6 +5,10 @@ import { newId, nowIso, writeAudit } from "../audit";
 import { storeToday } from "../storeTime";
 import { SessionUser } from "../types";
 
+function addDaysStr(dateStr: string, days: number): string {
+  return new Date(new Date(dateStr + "T00:00:00Z").getTime() + days * 86400000).toISOString().slice(0, 10);
+}
+
 export type ProcedureCategory = "FOH" | "BOH" | "PATIO_WINDOWS";
 export type ProcedureShiftType = "OPENING" | "CLOSING";
 
@@ -177,16 +181,26 @@ export function submitProcedure(params: {
   associateName: string;
   items: ProcedureSubmissionItem[];
   notes: string | null;
+  /** For a closing checklist finished after midnight (see ProcedureKiosk's
+   * "which night did you close?" picker) -- the associate's own pick of
+   * which night this belongs to. Public, unauthenticated write path, so
+   * never trusted blindly: only "today" or "yesterday" (store-local) is
+   * ever accepted, anything else silently falls back to today rather than
+   * letting a crafted request backdate a record to an arbitrary date. */
+  submittedDate?: string;
 }): { id?: string; error?: string } {
   const name = params.associateName.trim();
   if (!name) return { error: "Name is required." };
   if (params.items.length === 0) return { error: "Nothing to submit." };
   const db = getDb();
   const id = newId();
+  const today = storeToday(params.storeId);
+  const yesterday = addDaysStr(today, -1);
+  const submittedDate = params.submittedDate === yesterday ? yesterday : today;
   db.prepare(
     `INSERT INTO procedure_submissions (id, store_id, area_id, shift_type, associate_name, items_json, notes, submitted_date, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, params.storeId, params.areaId, params.shiftType, name, JSON.stringify(params.items), params.notes?.trim() || null, storeToday(params.storeId), nowIso());
+  ).run(id, params.storeId, params.areaId, params.shiftType, name, JSON.stringify(params.items), params.notes?.trim() || null, submittedDate, nowIso());
   writeAudit({ entityType: "procedure_submission", entityId: id, actor: null, action: "CREATED", newValue: { associateName: name, areaId: params.areaId, shiftType: params.shiftType } });
   return { id };
 }
