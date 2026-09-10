@@ -99,7 +99,7 @@ async function main() {
               reason: flag.reason,
               storeNumber: submission.storeNumber,
               date: submission.date,
-              shift: submission.shift,
+              shift: submission.shift ?? null,
               conductedBy: submission.conductedBy,
               temperatureF: flag.temperatureF ?? null,
               confidence: flag.confidence ?? null,

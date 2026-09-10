@@ -727,7 +727,7 @@ async function renderAiFlagsModal() {
                   <span class="detail-item-text">${escapeHtml(storeLabel(flag.storeNumber, store?.name))} — ${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
                   <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
                 </div>
-                <div class="history-card-meta">${escapeHtml(flag.date)} · ${escapeHtml(t("shift_" + flag.shift))} · ${escapeHtml(flag.conductedBy)}</div>
+                <div class="history-card-meta">${escapeHtml(flag.date)}${flag.shift ? ` · ${escapeHtml(t("shift_" + flag.shift))}` : ""} · ${escapeHtml(flag.conductedBy)}</div>
                 ${reasonDetailHtml}
                 <div style="display:flex; gap:8px; margin-top:8px;">
                   <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}">${t("viewDetail")}</button>

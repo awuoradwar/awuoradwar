@@ -83,7 +83,7 @@ exports.checkSubmissionPhotos = onDocumentWritten(
             reason: flag.reason,
             storeNumber: after.storeNumber,
             date: after.date,
-            shift: after.shift,
+            shift: after.shift ?? null,
             conductedBy: after.conductedBy,
             temperatureF: flag.temperatureF ?? null,
             confidence: flag.confidence ?? null,
