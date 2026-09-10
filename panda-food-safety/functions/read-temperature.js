@@ -16,8 +16,13 @@ async function readTemperatureFromPhoto(client, dataUrl) {
   if (!match) return UNREADABLE;
   const [, mediaType, base64Data] = match;
 
+  // Started on Haiku 4.5 for cost, but real backfilled photos showed it
+  // misreading clearly-legible digital thermometer displays (e.g. 172°F
+  // read as 154°F) — not a close call on a blurry photo, a clean wrong
+  // digit. Opus 5 costs a bit more per photo but the gap is trivial at
+  // this app's volume, and a wrong read here means a false accusation.
   const response = await client.messages.parse({
-    model: "claude-haiku-4-5",
+    model: "claude-opus-5",
     max_tokens: 512,
     messages: [
       {

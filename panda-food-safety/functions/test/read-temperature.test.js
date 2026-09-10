@@ -21,7 +21,7 @@ function check(cond, msg) {
     };
     const result = await readTemperatureFromPhoto(stubClient, "data:image/jpeg;base64,QUJD");
     check(result.temperatureF === 168, `Returns the model's parsed reading (got ${JSON.stringify(result)})`);
-    check(capturedRequest.model === "claude-haiku-4-5", `Calls Haiku 4.5, not a different model (got ${capturedRequest.model})`);
+    check(capturedRequest.model === "claude-opus-5", `Calls Opus 5, not a different model (got ${capturedRequest.model})`);
     const imageBlock = capturedRequest.messages[0].content.find((b) => b.type === "image");
     check(imageBlock.source.media_type === "image/jpeg" && imageBlock.source.data === "QUJD", `Image media_type and base64 data are extracted correctly from the data URL (got ${JSON.stringify(imageBlock.source)})`);
   }
