@@ -763,7 +763,7 @@ async function renderAiFlagsModal() {
       try {
         const submissionSnap = await withTimeout(getDoc(doc(db, "submissions", submissionId)));
         if (!submissionSnap.exists()) return;
-        const hydrated = await hydrateRecordPhotos({ id: submissionId, ...submissionSnap.data() });
+        const hydrated = await hydrateFlaggedPhotos({ id: submissionId, ...submissionSnap.data() }, [itemId]);
         renderDetailModal(hydrated, { scrollToItemId: itemId });
       } catch (err) {
         console.error(err);
@@ -1893,11 +1893,15 @@ async function hydrateRecordPhotos(record) {
 // downloading several unused embedded images per record — the real cost
 // behind Weekly's "Flagged" view (often pulling a whole week of records
 // at once) being slow to open.
-async function hydrateFlaggedPhotos(record) {
-  const flaggedIds = Object.keys(record.answers || {}).filter((id) => record.answers[id]?.value === "no");
+// extraItemIds covers an AI-flagged item, which is typically answered
+// "yes" (that's the whole point of a mismatch) and so wouldn't
+// otherwise be included alongside the real "no" flags.
+async function hydrateFlaggedPhotos(record, extraItemIds = []) {
+  const flaggedIds = new Set(Object.keys(record.answers || {}).filter((id) => record.answers[id]?.value === "no"));
+  for (const id of extraItemIds) flaggedIds.add(String(id));
   const answers = { ...record.answers };
   await Promise.all(
-    flaggedIds.map(async (id) => {
+    [...flaggedIds].map(async (id) => {
       const snap = await getDoc(doc(db, "submissions", record.id, "photos", id));
       if (snap.exists()) answers[id] = { ...answers[id], photoUrl: snap.data().dataUrl };
     })
