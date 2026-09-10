@@ -162,7 +162,7 @@ export default async function ProceduresPage() {
           getDate={(item) => item.submitted_date}
           keyOf={(item) => item.id}
           storeId={user.storeId}
-          renderItem={(item) => <ProcedureSubmissionRow submission={item} storeId={user.storeId} lang={user.language} />}
+          renderItem={(item) => <ProcedureSubmissionRow submission={item} storeId={user.storeId} lang={user.language} canEdit={canManage} />}
           groupByDay
           lang={user.language}
           emptyLabel={es ? "Nada enviado todavía." : "Nothing submitted yet."}

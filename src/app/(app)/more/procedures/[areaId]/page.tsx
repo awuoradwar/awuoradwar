@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { canDo } from "@/lib/permissions";
 import { getArea, getSubmissionsForAreaInRange, ProcedureShiftType, ProcedureSubmission } from "@/lib/services/procedureService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { storeToday } from "@/lib/storeTime";
@@ -15,7 +16,7 @@ function addDaysStr(dateStr: string, days: number): string {
   return new Date(new Date(dateStr + "T00:00:00Z").getTime() + days * 86400000).toISOString().slice(0, 10);
 }
 
-function ShiftCell({ label, submissions, isPast, isToday, storeId, lang, es }: {
+function ShiftCell({ label, submissions, isPast, isToday, storeId, lang, es, canEdit }: {
   label: string;
   submissions: ProcedureSubmission[];
   isPast: boolean;
@@ -23,6 +24,7 @@ function ShiftCell({ label, submissions, isPast, isToday, storeId, lang, es }: {
   storeId: string;
   lang: Language;
   es: boolean;
+  canEdit: boolean;
 }) {
   if (submissions.length > 0) {
     return (
@@ -30,7 +32,7 @@ function ShiftCell({ label, submissions, isPast, isToday, storeId, lang, es }: {
         <span className="font-medium text-muted">{label}</span>
         <div className="flex flex-col gap-1.5">
           {submissions.map((s) => (
-            <ProcedureSubmissionRow key={s.id} submission={s} storeId={storeId} lang={lang} compact />
+            <ProcedureSubmissionRow key={s.id} submission={s} storeId={storeId} lang={lang} compact canEdit={canEdit} />
           ))}
         </div>
       </div>
@@ -58,6 +60,7 @@ export default async function ProcedureAreaDetailPage({ params, searchParams }: 
   const es = user.language === "es";
   const locale = es ? "es-MX" : "en-US";
   const dayNames = es ? DAY_NAMES_ES : DAY_NAMES_EN;
+  const canManage = canDo(user, "procedures.manage");
 
   const { areaId } = await params;
   const area = getArea(areaId, user.storeId);
@@ -117,7 +120,7 @@ export default async function ProcedureAreaDetailPage({ params, searchParams }: 
               <p className="text-xs font-bold uppercase tracking-wide text-accent">
                 {dayNames[d.getUTCDay()]}, {d.toLocaleDateString(locale, { month: "short", day: "numeric" })}
               </p>
-              <ShiftCell label={es ? "Cierre" : "Closing"} submissions={forDay(date, "CLOSING")} isPast={isPast} isToday={isToday} storeId={user.storeId} lang={user.language} es={es} />
+              <ShiftCell label={es ? "Cierre" : "Closing"} submissions={forDay(date, "CLOSING")} isPast={isPast} isToday={isToday} storeId={user.storeId} lang={user.language} es={es} canEdit={canManage} />
             </div>
           );
         })}

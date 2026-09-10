@@ -9,6 +9,7 @@ import { translateFields, resolveBilingualPair } from "@/lib/services/translatio
 
 function refresh() {
   revalidatePath("/more/procedures");
+  revalidatePath("/more/procedures/[areaId]", "page");
 }
 
 // --- Public: no login, called from src/app/procedures/[token] --------------
@@ -88,4 +89,16 @@ export async function removeProcedureItemAction(id: string) {
   if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
   procedureService.removeItem(id, user);
   refresh();
+}
+
+/** Corrects a submission that landed on the wrong calendar day -- e.g. one
+ * recorded before the kiosk's "which night did you close?" picker existed.
+ * GM-only, and the id is re-validated against this manager's own store
+ * inside updateSubmissionDate, not assumed from the client. */
+export async function updateSubmissionDateAction(id: string, newDate: string): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
+  const result = procedureService.updateSubmissionDate(id, user.storeId, newDate, user);
+  if (!result.error) refresh();
+  return result;
 }

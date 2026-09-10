@@ -1,6 +1,7 @@
 import { formatStoreDateTime } from "@/lib/storeTime";
 import { ProcedureCategory, ProcedureSubmission } from "@/lib/services/procedureService";
 import { Language } from "@/lib/types";
+import EditSubmissionDateButton from "./EditSubmissionDateButton";
 
 const CATEGORY_LABEL: Record<ProcedureCategory, Record<Language, string>> = {
   FOH: { en: "Front of House", es: "Área de Clientes" },
@@ -19,6 +20,7 @@ export default function ProcedureSubmissionRow({
   storeId,
   lang,
   compact = false,
+  canEdit = false,
 }: {
   submission: ProcedureSubmission;
   storeId: string;
@@ -28,6 +30,11 @@ export default function ProcedureSubmissionRow({
    * the summary is just who + when instead of repeating what's already on
    * screen. */
   compact?: boolean;
+  /** Shows the "Edit date" affordance -- only for a manager with
+   * procedures.manage (the same permission every other edit on this
+   * feature already requires), and even then only a date correction, not
+   * the checklist answers themselves. */
+  canEdit?: boolean;
 }) {
   const es = lang === "es";
   const items = JSON.parse(submission.items_json) as Array<{ text: string; textEs: string | null; checked: boolean }>;
@@ -66,6 +73,11 @@ export default function ProcedureSubmissionRow({
           </div>
         ))}
         {submission.notes && <p className="mt-2 rounded-lg bg-card-subtle px-2.5 py-2 text-xs text-muted">{submission.notes}</p>}
+        {canEdit && (
+          <div className="mt-2 border-t border-border pt-2">
+            <EditSubmissionDateButton submissionId={submission.id} currentDate={submission.submitted_date} lang={lang} />
+          </div>
+        )}
       </div>
     </details>
   );

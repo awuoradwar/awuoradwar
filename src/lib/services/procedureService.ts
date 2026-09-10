@@ -205,6 +205,23 @@ export function submitProcedure(params: {
   return { id };
 }
 
+/** GM-only correction for a submission that landed on the wrong calendar
+ * day -- e.g. one submitted before the "which night did you close?" picker
+ * existed, or an associate who picked the wrong night anyway. Unlike
+ * submitProcedure's date, this is an authenticated, permissioned action
+ * (see procedureActions.ts), so it isn't clamped to today/yesterday -- just
+ * validated as a real date that isn't in the future. */
+export function updateSubmissionDate(id: string, storeId: string, newDate: string, actor: SessionUser): { error?: string } {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) return { error: "Invalid date." };
+  const db = getDb();
+  const row = db.prepare(`SELECT id FROM procedure_submissions WHERE id = ? AND store_id = ?`).get(id, storeId) as { id: string } | undefined;
+  if (!row) return { error: "Submission not found." };
+  if (newDate > storeToday(storeId)) return { error: "Date can't be in the future." };
+  db.prepare(`UPDATE procedure_submissions SET submitted_date = ? WHERE id = ?`).run(newDate, id);
+  writeAudit({ entityType: "procedure_submission", entityId: id, actor, action: "EDITED", newValue: { submitted_date: newDate } });
+  return {};
+}
+
 export function getRecentSubmissions(storeId: string, limit = 50): ProcedureSubmission[] {
   const db = getDb();
   return db
