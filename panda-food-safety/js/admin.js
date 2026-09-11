@@ -149,6 +149,7 @@ let editingChecklistSectionId = null;
 let addingSectionToGroupId = null;
 let weeklyOffset = 0;
 let repeatViolationsOffset = 0;
+let weeklyReportOffset = 0;
 let autoDateRefreshStarted = false;
 let lastKnownDate = null;
 
@@ -872,7 +873,7 @@ function secondaryTabGroups() {
   ];
   if (isOwnerSession) manageTabs.push(["admins", "manageAdminsTitle"]);
   return [
-    { labelKey: "reportsSectionLabel", tabs: [["repeatViolations", "repeatViolationsTitle"]] },
+    { labelKey: "reportsSectionLabel", tabs: [["repeatViolations", "repeatViolationsTitle"], ["weeklyReport", "weeklyReportTitle"]] },
     { labelKey: "manageSectionLabel", tabs: manageTabs },
   ];
 }
@@ -994,6 +995,7 @@ function renderDashboard() {
       activeTab = btn.dataset.tab;
       if (activeTab === "weekly") weeklyOffset = 0;
       if (activeTab === "repeatViolations") repeatViolationsOffset = 0;
+      if (activeTab === "weeklyReport") weeklyReportOffset = 0;
       renderDashboard();
     });
   });
@@ -1003,6 +1005,7 @@ function renderDashboard() {
   else if (activeTab === "history") renderHistoryTab();
   else if (activeTab === "checklist") renderManageChecklistTab();
   else if (activeTab === "repeatViolations") renderRepeatViolationsTab();
+  else if (activeTab === "weeklyReport") renderWeeklyReportTab();
   else if (activeTab === "admins" && isOwnerSession) renderManageAdminsTab();
   else renderManageStoresTab();
 }
@@ -1311,6 +1314,28 @@ function flagReasonDetailHtml(flag) {
           <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
 }
 
+// storeNumber -> itemId -> { item, count, dates: [] } -- how many times
+// each item was flagged "no" at each store, across a set of submission
+// docs. Shared between the Repeat Violations tab (per-store threshold)
+// and the Weekly Report (which also needs the cross-store view of the
+// same counts), so the counting logic only lives in one place.
+function buildItemNoCounts(submissionDataList) {
+  const byStore = {};
+  submissionDataList.forEach((data) => {
+    if (!data.submitted) return;
+    const bucket = (byStore[data.storeNumber] ||= {});
+    for (const id of Object.keys(data.answers || {})) {
+      const a = data.answers[id];
+      if (a?.value !== "no") continue;
+      const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}`, category: "other", risk: "medium" };
+      const entry = (bucket[id] ||= { item, count: 0, dates: [] });
+      entry.count += 1;
+      entry.dates.push(data.date);
+    }
+  });
+  return byStore;
+}
+
 async function renderRepeatViolationsTab() {
   const content = root.querySelector("#tab-content");
   if (!content) return;
@@ -1325,21 +1350,7 @@ async function renderRepeatViolationsTab() {
     return;
   }
 
-  // storeNumber -> itemId -> { item, count, dates: [] }
-  const byStore = {};
-  snap.docs.forEach((d) => {
-    const data = d.data();
-    if (!data.submitted) return;
-    const bucket = (byStore[data.storeNumber] ||= {});
-    for (const id of Object.keys(data.answers || {})) {
-      const a = data.answers[id];
-      if (a?.value !== "no") continue;
-      const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}`, category: "other", risk: "medium" };
-      const entry = (bucket[id] ||= { item, count: 0, dates: [] });
-      entry.count += 1;
-      entry.dates.push(data.date);
-    }
-  });
+  const byStore = buildItemNoCounts(snap.docs.map((d) => d.data()));
 
   const storeRows = storesCache
     .map((s) => {
@@ -1393,6 +1404,290 @@ async function renderRepeatViolationsTab() {
     repeatViolationsOffset -= 1;
     renderRepeatViolationsTab();
   });
+}
+
+// ---------- Weekly Report ----------
+
+// A single printable page covering the whole week at once: store
+// completion, cross-store trending violations, repeat violations by
+// store, every flagged item, and the automated photo flags -- everything
+// that currently requires visiting four separate tabs, laid out for
+// "Print" -> "Save as PDF" to produce a real end-of-week document.
+// Deliberately text-only (no embedded photos) to stay concise and
+// printable; anything needing a closer look is still one click away in
+// History.
+const AI_FLAG_REASON_SECTION_KEYS = {
+  mismatch: "weeklyReportMismatchSectionLabel",
+  duplicate: "weeklyReportDuplicateSectionLabel",
+  wrongPhoto: "weeklyReportWrongPhotoSectionLabel",
+  unreadable: "weeklyReportUnreadableSectionLabel",
+};
+const AI_FLAG_REASON_ORDER = ["mismatch", "duplicate", "wrongPhoto", "unreadable"];
+
+async function renderWeeklyReportTab() {
+  const content = root.querySelector("#tab-content");
+  if (!content) return;
+  content.innerHTML = `<div class="card">${t("loadingButton")}</div>`;
+
+  const { from, to } = weekRangeDates(weeklyReportOffset);
+  let submissionsSnap, aiFlagsSnap;
+  try {
+    [submissionsSnap, aiFlagsSnap] = await withTimeout(
+      Promise.all([
+        getDocs(query(collection(db, "submissions"), where("date", ">=", from), where("date", "<=", to))),
+        getDocs(query(collection(db, "aiFlagged"), where("date", ">=", from), where("date", "<=", to))),
+      ])
+    );
+  } catch (err) {
+    content.innerHTML = `<div class="hint-banner">${escapeHtml(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err))}</div>`;
+    return;
+  }
+
+  const submissions = submissionsSnap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((s) => s.submitted);
+  const aiFlags = aiFlagsSnap.docs.map((d) => d.data());
+  const lang = getLang();
+
+  // ---------- Store completion ----------
+  const byStoreDates = {};
+  submissions.forEach((s) => {
+    const bucket = (byStoreDates[s.storeNumber] ||= {});
+    (bucket[s.date] ||= []).push(s);
+  });
+  const weekDates = weekDatesList(from);
+  const today = todayDateString();
+  const storeCompletionRows = storesCache
+    .map((store) => {
+      const docsByDate = byStoreDates[store.number] || {};
+      const dayStates = weekDates.map((date) => weeklyDayState(date, shiftsCoveredForDay(docsByDate[date] || []).doneCount, today));
+      const doneDays = dayStates.filter((st) => st === "done").length;
+      return { store, dayStates, doneDays };
+    })
+    .sort((a, b) => a.doneDays - b.doneDays || Number(a.store.number) - Number(b.store.number));
+  const fullyCompliantCount = storeCompletionRows.filter((r) => r.doneDays === 7).length;
+
+  // ---------- Repeat violations per store + the cross-store trending view ----------
+  const byStoreItemCounts = buildItemNoCounts(submissions);
+  const repeatByStoreRows = storesCache
+    .map((store) => {
+      const items = Object.values(byStoreItemCounts[store.number] || {}).filter((e) => e.count >= REPEAT_VIOLATION_THRESHOLD);
+      items.sort((a, b) => (RISK_SORT_RANK[a.item.risk] ?? 1) - (RISK_SORT_RANK[b.item.risk] ?? 1) || b.count - a.count);
+      return { store, items };
+    })
+    .filter((r) => r.items.length > 0)
+    .sort((a, b) => b.items.length - a.items.length || Number(a.store.number) - Number(b.store.number));
+
+  // itemId -> { item, totalCount, storeEntries: [{storeNumber, count}] } --
+  // the same per-store counts, re-grouped by item instead of by store, so
+  // an item flagged at several DIFFERENT stores this week (a chain-wide
+  // signal) shows up even when no single store hit it twice on its own.
+  const crossStoreMap = {};
+  for (const storeNumber of Object.keys(byStoreItemCounts)) {
+    for (const [itemId, entry] of Object.entries(byStoreItemCounts[storeNumber])) {
+      const bucket = (crossStoreMap[itemId] ||= { item: entry.item, totalCount: 0, storeEntries: [] });
+      bucket.totalCount += entry.count;
+      bucket.storeEntries.push({ storeNumber, count: entry.count });
+    }
+  }
+  const trendingRows = Object.values(crossStoreMap)
+    .filter((e) => e.storeEntries.length >= 2)
+    .sort(
+      (a, b) =>
+        (RISK_SORT_RANK[a.item.risk] ?? 1) - (RISK_SORT_RANK[b.item.risk] ?? 1) ||
+        b.storeEntries.length - a.storeEntries.length ||
+        b.totalCount - a.totalCount
+    );
+
+  // ---------- Every flagged item, per store ----------
+  const allFlaggedByStore = {};
+  submissions.forEach((s) => {
+    for (const id of Object.keys(s.answers || {})) {
+      const a = s.answers[id];
+      if (a?.value !== "no") continue;
+      const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}`, category: "other", risk: "medium" };
+      (allFlaggedByStore[s.storeNumber] ||= []).push({ item, date: s.date, shift: s.shift, conductedBy: s.conductedBy, note: a.note });
+    }
+  });
+  const totalFlagged = Object.values(allFlaggedByStore).reduce((sum, rows) => sum + rows.length, 0);
+  const allFlaggedRows = storesCache
+    .map((store) => {
+      const rows = (allFlaggedByStore[store.number] || []).sort(
+        (a, b) => (RISK_SORT_RANK[a.item.risk] ?? 1) - (RISK_SORT_RANK[b.item.risk] ?? 1) || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)
+      );
+      return { store, rows };
+    })
+    .filter((r) => r.rows.length > 0)
+    .sort((a, b) => b.rows.length - a.rows.length || Number(a.store.number) - Number(b.store.number));
+
+  // ---------- Automated photo flags, grouped by reason ----------
+  const aiFlagsByReason = {};
+  aiFlags.forEach((flag) => {
+    const reason = flag.reason || "mismatch";
+    (aiFlagsByReason[reason] ||= []).push(flag);
+  });
+
+  const hasAnyData = submissions.length > 0 || aiFlags.length > 0;
+
+  const storeCompletionHtml = `
+    <div class="card">
+      <div class="detail-section-title" style="margin-top:0;">${t("weeklyReportCompletionSection")}</div>
+      <div class="history-list">
+        ${storeCompletionRows
+          .map(
+            ({ store, dayStates, doneDays }) => `
+          <div class="history-card">
+            <div class="history-card-top">
+              <strong>${escapeHtml(storeLabel(store.number, store.name))}</strong>
+              <span class="week-progress-label">${doneDays} / 7</span>
+            </div>
+            <div class="week-day-strip">
+              ${dayStates.map((state, i) => `<div class="week-day-cell day-cell-${state}">${escapeHtml(dayLetter(weekDates[i], lang))}</div>`).join("")}
+            </div>
+          </div>`
+          )
+          .join("")}
+      </div>
+    </div>`;
+
+  const trendingHtml =
+    trendingRows.length === 0
+      ? ""
+      : `
+    <div class="card">
+      <div class="detail-section-title" style="margin-top:0;">${t("weeklyReportTrendingSection")}</div>
+      ${trendingRows
+        .map(
+          (e) => `
+        <div class="detail-row ${e.item.risk === "high" ? "detail-row-critical" : ""}">
+          <div class="detail-row-main">
+            <span class="detail-item-text">${!String(e.item.id).startsWith("custom-") ? `${e.item.id}. ` : ""}${escapeHtml(tf(e.item))}</span>
+            <span class="detail-row-badges">${repeatViolationBadgesHtml(e.item.risk)}<span class="badge badge-neutral">${e.totalCount}×</span></span>
+          </div>
+          <div class="history-card-meta">${escapeHtml(t("weeklyReportTrendingStores", { count: e.storeEntries.length }))}: ${e.storeEntries.map((se) => escapeHtml(se.storeNumber)).join(", ")}</div>
+        </div>`
+        )
+        .join("")}
+    </div>`;
+
+  const repeatByStoreHtml =
+    repeatByStoreRows.length === 0
+      ? ""
+      : `
+    <div class="card">
+      <div class="detail-section-title" style="margin-top:0;">${t("weeklyReportRepeatSection")}</div>
+      ${repeatByStoreRows
+        .map(
+          ({ store, items }) => `
+        <div style="margin-bottom:10px;">
+          <strong>${escapeHtml(storeLabel(store.number, store.name))}</strong>
+          ${items
+            .map(
+              (entry) => `
+            <div class="detail-row ${entry.item.risk === "high" ? "detail-row-critical" : ""}">
+              <div class="detail-row-main">
+                <span class="detail-item-text">${!String(entry.item.id).startsWith("custom-") ? `${entry.item.id}. ` : ""}${escapeHtml(tf(entry.item))}</span>
+                <span class="detail-row-badges">${repeatViolationBadgesHtml(entry.item.risk)}<span class="badge badge-neutral">${entry.count}×</span></span>
+              </div>
+            </div>`
+            )
+            .join("")}
+        </div>`
+        )
+        .join("")}
+    </div>`;
+
+  const allFlaggedHtml =
+    allFlaggedRows.length === 0
+      ? ""
+      : `
+    <div class="card">
+      <div class="detail-section-title" style="margin-top:0;">${t("weeklyReportAllFlaggedSection")}</div>
+      ${allFlaggedRows
+        .map(
+          ({ store, rows }) => `
+        <div style="margin-bottom:10px;">
+          <strong>${escapeHtml(storeLabel(store.number, store.name))}</strong>
+          ${rows
+            .map(
+              (r) => `
+            <div class="detail-row ${r.item.risk === "high" ? "detail-row-critical" : ""}">
+              <div class="detail-row-main">
+                <span class="detail-item-text">${!String(r.item.id).startsWith("custom-") ? `${r.item.id}. ` : ""}${escapeHtml(tf(r.item))}</span>
+                <span class="detail-row-badges">${repeatViolationBadgesHtml(r.item.risk)}</span>
+              </div>
+              <div class="history-card-meta">${escapeHtml(r.date)}${r.shift ? ` · ${escapeHtml(t("shift_" + r.shift))}` : ""} · ${escapeHtml(r.conductedBy)}${r.note ? ` — ${escapeHtml(r.note)}` : ""}</div>
+            </div>`
+            )
+            .join("")}
+        </div>`
+        )
+        .join("")}
+    </div>`;
+
+  const aiFlagsHtml =
+    aiFlags.length === 0
+      ? ""
+      : `
+    <div class="card">
+      <div class="detail-section-title" style="margin-top:0;">${t("weeklyReportAiFlagsSection")}</div>
+      ${AI_FLAG_REASON_ORDER.filter((r) => aiFlagsByReason[r]?.length)
+        .map(
+          (reason) => `
+        <div style="margin-bottom:10px;">
+          <strong>${escapeHtml(t(AI_FLAG_REASON_SECTION_KEYS[reason]))}</strong>
+          ${aiFlagsByReason[reason]
+            .map((flag) => {
+              const item = findItemDefinitionById(flag.itemId) || { id: flag.itemId, en: `#${flag.itemId}`, es: `#${flag.itemId}`, risk: "medium" };
+              const store = storesCache.find((s) => s.number === flag.storeNumber);
+              return `
+            <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}">
+              <div class="detail-row-main">
+                <span class="detail-item-text">${escapeHtml(storeLabel(flag.storeNumber, store?.name))} — ${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
+                <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
+              </div>
+              <div class="history-card-meta">${escapeHtml(flag.date)}${flag.shift ? ` · ${escapeHtml(t("shift_" + flag.shift))}` : ""} · ${escapeHtml(flag.conductedBy)}</div>
+              ${flagReasonDetailHtml(flag)}
+            </div>`;
+            })
+            .join("")}
+        </div>`
+        )
+        .join("")}
+    </div>`;
+
+  content.innerHTML = `
+    <div class="card no-print">
+      <div class="week-nav-row">
+        <button class="btn btn-sm btn-secondary" id="btn-report-week-prev">${t("previousWeek")}</button>
+        <div class="week-center"><span class="week-range-label">${escapeHtml(formatWeekRangeLabel(from, to))}</span></div>
+        <button class="btn btn-sm btn-secondary" id="btn-report-week-next" ${weeklyReportOffset === 0 ? "disabled" : ""}>${t("nextWeek")}</button>
+      </div>
+      <button class="btn btn-sm btn-primary" id="btn-report-print" style="margin-top:10px; width:100%;">${t("printButton")}</button>
+    </div>
+    <div class="card">
+      <h2 style="margin:0 0 4px;">${escapeHtml(t("weeklyReportTitle"))}</h2>
+      <div style="color:var(--text-muted); font-size:13px;">${escapeHtml(formatWeekRangeLabel(from, to))}</div>
+      <strong style="display:block; margin-top:8px;">${escapeHtml(
+        t("weeklyReportSummaryLine", { done: fullyCompliantCount, total: storesCache.length, flagged: totalFlagged, repeat: repeatByStoreRows.reduce((sum, r) => sum + r.items.length, 0), aiFlags: aiFlags.length })
+      )}</strong>
+    </div>
+    ${!hasAnyData ? `<div class="card">${t("weeklyReportNoData")}</div>` : ""}
+    ${storeCompletionHtml}
+    ${trendingHtml}
+    ${repeatByStoreHtml}
+    ${allFlaggedHtml}
+    ${aiFlagsHtml}
+  `;
+
+  content.querySelector("#btn-report-week-prev").addEventListener("click", () => {
+    weeklyReportOffset += 1;
+    renderWeeklyReportTab();
+  });
+  content.querySelector("#btn-report-week-next").addEventListener("click", () => {
+    if (weeklyReportOffset === 0) return;
+    weeklyReportOffset -= 1;
+    renderWeeklyReportTab();
+  });
+  content.querySelector("#btn-report-print").addEventListener("click", () => window.print());
 }
 
 // ---------- Weekly Summary ----------

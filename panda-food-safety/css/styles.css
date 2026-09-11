@@ -377,3 +377,11 @@ tr:last-child td { border-bottom: none; }
 @media (min-width: 640px) {
   .segmented button { font-size: 16px; }
 }
+
+/* Printing the Weekly Report (Print -> Save as PDF) should produce just
+   the report itself -- no nav chrome, no week-picker/Print button. */
+@media print {
+  .top-bar, .admin-account-row, .admin-tabs-wrap, .no-print { display: none !important; }
+  body, .card { background: #fff !important; color: #000 !important; }
+  .card { box-shadow: none !important; border: 1px solid #ccc; }
+}
