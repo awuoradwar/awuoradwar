@@ -155,6 +155,13 @@ const STRINGS = {
   weeklyReportDuplicateSectionLabel: { en: "Reused Photos", es: "Fotos Reutilizadas" },
   weeklyReportWrongPhotoSectionLabel: { en: "Wrong Photos", es: "Fotos Incorrectas" },
   weeklyReportUnreadableSectionLabel: { en: "Unclear Photos", es: "Fotos Poco Claras" },
+  weeklyReportDecksSection: { en: "Weekly Slide Decks", es: "Presentaciones Semanales" },
+  weeklyReportDecksHint: { en: "Auto-generated every Sunday for the week that just ended.", es: "Generadas automáticamente cada domingo para la semana que acaba de terminar." },
+  weeklyReportDecksEmpty: { en: "No slide decks generated yet.", es: "Aún no se han generado presentaciones." },
+  weeklyReportDeckDownload: { en: "Download", es: "Descargar" },
+  weeklyReportDeckDownloading: { en: "Downloading…", es: "Descargando…" },
+  weeklyReportDeckGeneratedOn: { en: "Generated {date}", es: "Generado el {date}" },
+  weeklyReportDeckDownloadFailed: { en: "Couldn't download this slide deck. Try again.", es: "No se pudo descargar esta presentación. Inténtalo de nuevo." },
   criticalLabel: { en: "⚠ Critical", es: "⚠ Crítico" },
   checklistEditorNote: { en: "Hide a question to remove it from future walkthroughs — past submissions still show it. Add new questions to any section below.", es: "Oculte una pregunta para quitarla de los próximos recorridos — los envíos anteriores todavía la muestran. Agregue nuevas preguntas a cualquier sección abajo." },
   hideQuestion: { en: "Hide", es: "Ocultar" },
@@ -220,6 +227,12 @@ const STRINGS = {
   // reads as nonsensical when it matches this same submission's own date
   // (a different shift earlier the same day reused the photo).
   aiFlagDuplicateDetailWithShift: { en: "Same photo used for the {shift} shift on {date}.", es: "Misma foto usada en el turno de {shift} el {date}." },
+  // Shown alongside aiFlagWrongPhotoDetail when this same store+item's
+  // photo was ALSO wrong before -- not necessarily the same photo file
+  // (that case is aiFlagDuplicateDetail instead), just a repeated pattern
+  // of the wrong thing being photographed for this question.
+  aiFlagWrongPhotoRepeat: { en: "Also flagged as the wrong photo on {date}.", es: "También marcada como foto incorrecta el {date}." },
+  aiFlagWrongPhotoRepeatWithShift: { en: "Also flagged as the wrong photo for the {shift} shift on {date}.", es: "También marcada como foto incorrecta en el turno de {shift} el {date}." },
 };
 
 let currentLang = localStorage.getItem("pfs_lang") || "en";

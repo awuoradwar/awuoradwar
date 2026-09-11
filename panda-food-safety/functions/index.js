@@ -8,6 +8,8 @@ const { TEMP_CHECK_ITEMS, evaluateTempReading } = require("./temp-check-logic");
 const { readTemperatureFromPhoto } = require("./read-temperature");
 const { hashPhotoDataUrl } = require("./photo-hash");
 const { checkDuplicate } = require("./check-duplicate");
+const { checkWrongPhotoRepeat } = require("./check-wrong-photo-repeat");
+const { generateWeeklyReport } = require("./weekly-report-generator");
 
 initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 10 });
@@ -48,7 +50,18 @@ exports.checkSubmissionPhotos = onDocumentWritten(
           if (TEMP_CHECK_ITEMS[itemId] && answers[itemId]) {
             client = client || new Anthropic({ apiKey: anthropicApiKey.value() });
             const reading = await readTemperatureFromPhoto(client, dataUrl);
-            return evaluateTempReading(itemId, answers[itemId].value, reading);
+            const result = evaluateTempReading(itemId, answers[itemId].value, reading);
+
+            // A wrong photo (doesn't show what was asked at all) is worth
+            // knowing is a REPEAT even when it's not byte-identical to a
+            // prior one -- checkDuplicate only catches the exact same
+            // file reused, not "a different photo, but still the wrong
+            // thing, again."
+            if (result?.reason === "wrongPhoto") {
+              const repeatInfo = await checkWrongPhotoRepeat(db, after.storeNumber, itemId, after.date, after.shift ?? null, after.submittedAt ?? null, event.params.submissionId);
+              if (repeatInfo) return { ...result, ...repeatInfo };
+            }
+            return result;
           }
           return null;
         } catch (err) {
@@ -94,6 +107,10 @@ exports.checkSubmissionPhotos = onDocumentWritten(
             duplicateOfShift: flag.duplicateOfShift ?? null,
             duplicateOfSubmittedAt: flag.duplicateOfSubmittedAt ?? null,
             duplicateOfSubmissionId: flag.duplicateOfSubmissionId ?? null,
+            priorWrongPhotoDate: flag.priorWrongPhotoDate ?? null,
+            priorWrongPhotoShift: flag.priorWrongPhotoShift ?? null,
+            priorWrongPhotoSubmittedAt: flag.priorWrongPhotoSubmittedAt ?? null,
+            priorWrongPhotoSubmissionId: flag.priorWrongPhotoSubmissionId ?? null,
             reviewed: false,
             checkedAt: FieldValue.serverTimestamp(),
           })

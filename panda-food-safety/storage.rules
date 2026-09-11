@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Same admin roster as firestore.rules -- kept in sync with it manually
+// (Storage Rules can't share a function definition across files), and
+// deliberately mirrors firestore.rules' isOwner()/isAdmin() logic via
+// cross-service Rules (firestore.exists()) rather than duplicating the
+// admin roster into Storage itself.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isOwner() {
+      return request.auth != null &&
+        request.auth.token.email == "radwar0224@gmail.com";
+    }
+    function isAdmin() {
+      return isOwner() ||
+        (request.auth != null &&
+          firestore.exists(/databases/(default)/documents/admins/$(request.auth.token.email)));
+    }
+
+    // The generated weekly slide decks -- only the Cloud Function (Admin
+    // SDK, bypasses these rules entirely) ever writes here, so client
+    // writes are always denied. Reads are admin-only, same as the
+    // report's own metadata in Firestore's weeklyReports collection.
+    match /weeklyReports/{fileName} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+  }
+}

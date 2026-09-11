@@ -23,16 +23,24 @@ anonymous QR-code scan from a store associate's phone. A real hosted web
 app has no such restriction, which is why this is a standalone app you
 deploy yourself rather than something living inside claude.ai.
 
-## Why no Cloud Storage
+## Why submission photos skip Cloud Storage
 
 As of October 2024, Cloud Storage for Firebase requires the pay-as-you-go
 **Blaze** plan — a linked billing account — even though actual usage
 would stay well within its free quota for an app this size. Rather than
-require a credit card on file at all, photos are stored as compressed
-base64 image data directly in Firestore instead, one document per
-flagged item (`submissions/{id}/photos/{itemId}`). Firestore itself has
-stayed free (Spark plan, no billing account) throughout, so the whole
+require a credit card on file at all, submission photos are stored as
+compressed base64 image data directly in Firestore instead, one document
+per flagged item (`submissions/{id}/photos/{itemId}`). Firestore itself
+has stayed free (Spark plan, no billing account) throughout, so the base
 app runs at zero cost with nothing to attach a card to.
+
+Cloud Storage *is* used for one thing: the auto-generated weekly slide
+decks (see "Automatic weekly slide deck" below). That feature only
+exists at all once you've already opted into the automatic photo
+checking feature above, which requires Blaze regardless — so enabling
+Storage on top of that doesn't cross any new billing line. If you skip
+automatic photo checking and stay on the free Spark plan, skip Storage
+setup too; the rest of the app works exactly the same without it.
 
 ## One-time setup (~15 minutes)
 
@@ -48,7 +56,9 @@ app runs at zero cost with nothing to attach a card to.
 
 3. **Enable Firestore.** *Build → Firestore Database* → *Create
    database* → production mode → pick a region close to your stores.
-   (No Storage step — see "Why no Cloud Storage" above.)
+   (No Storage step here — see "Why submission photos skip Cloud
+   Storage" above; Storage is only needed if you later set up automatic
+   weekly slide decks, covered in its own section below.)
 
 4. **Register a web app to get your config.** *Project settings*
    (gear icon) → *General* tab → under "Your apps" click the web icon
@@ -107,13 +117,13 @@ without a paid-tier Admin SDK, so the leftover just sits there unused).
 
 **One-time setup after first deploying this feature:** it needs a
 `usernames` Firestore collection with its own rule (already in
-`firestore.rules` in this repo) — but rule changes aren't part of the
-GitHub Actions auto-deploy (that only redeploys Hosting; see "First
-composite-index search" under Known limitations for why). Copy the
-contents of `firestore.rules` into the Firebase Console under
-**Firestore Database → Rules** and click **Publish** once. Skip this
-and username accounts will fail with permission-denied errors instead
-of being created.
+`firestore.rules` in this repo) — but rule changes are deliberately left
+out of the GitHub Actions auto-deploy (it only covers Hosting and Cloud
+Functions; see "First composite-index search" under Known limitations
+for why). Copy the contents of `firestore.rules` into the Firebase
+Console under **Firestore Database → Rules** and click **Publish** once.
+Skip this and username accounts will fail with permission-denied errors
+instead of being created.
 
 ## Deploy
 
@@ -165,8 +175,13 @@ password → **Today's Status** shows which stores have or haven't
 submitted yet (this is a flag you check on the dashboard, not a push
 notification — see limitations below) → **Weekly Summary** ranks every
 store by days submitted in the last 7 days (worst first) plus flagged
-item counts, so problem stores surface automatically → **History** to
-filter by store and date range, drill into any submission's flagged
+item counts, so problem stores surface automatically, and tapping any
+day on a store's strip opens that day's submissions directly →
+**Weekly Report** is the same week's data laid out as one printable
+summary (store completion, trending/repeat violations, every flagged
+item, automated photo flags) plus, if you've set up the scheduled
+function below, the auto-generated slide deck to download → **History**
+to filter by store and date range, drill into any submission's flagged
 items and photos, and export CSV → **Manage Stores** to add/remove
 stores.
 
@@ -204,9 +219,9 @@ stores.
   index" error with a link in it — click the
   link, wait about a minute while it builds, then re-run the search. This
   is normal, one-time Firestore behavior, not a bug. The needed index is
-  tracked in `firestore.indexes.json` for reference, but it isn't
-  auto-deployed by the GitHub Action (that action's service account only
-  has Hosting permissions) — the console link is the actual fix.
+  tracked in `firestore.indexes.json` for reference, but the GitHub
+  Action only deploys Hosting and Cloud Functions, never Firestore
+  config — the console link is the actual fix.
 - **Free-tier limits.** Firestore's free Spark quota (roughly 1 GiB
   stored, 50K reads/20K writes/20K deletes per day, at time of writing —
   check the Firebase console for current figures) comfortably covers
@@ -247,12 +262,12 @@ need to hand-edit day to day. `js/i18n.js` holds every other UI label.
 **One-time setup after first deploying this feature:** the
 `checklistOverrides` collection needs a Firestore rule allowing admins
 to write to it and everyone signed in to read it (already in
-`firestore.rules` in this repo) — but rule changes aren't part of the
-GitHub Actions auto-deploy (that only redeploys Hosting; see "First
-composite-index search" below for why). Copy the contents of
-`firestore.rules` into the Firebase Console under **Firestore Database
-→ Rules** and click **Publish** once. Skip this and Manage Checklist
-will show permission-denied errors instead of saving.
+`firestore.rules` in this repo) — but rule changes are deliberately left
+out of the GitHub Actions auto-deploy (see "First composite-index
+search" below for why). Copy the contents of `firestore.rules` into the
+Firebase Console under **Firestore Database → Rules** and click
+**Publish** once. Skip this and Manage Checklist will show
+permission-denied errors instead of saving.
 
 ## Automatic photo checking (AI temperature + duplicate detection)
 
@@ -276,8 +291,12 @@ a badge on the flagged item wherever that submission's detail is
 viewed. This is a signal for a human to double-check, not an
 accusation — automated reads can be wrong.
 
-**This does NOT deploy automatically** — GitHub Actions only redeploys
-Hosting (see above), never Cloud Functions. One-time setup:
+**Cloud Functions redeploy automatically** on every push, same as
+Hosting (see "Deploy" above and the GitHub Actions workflow at
+`.github/workflows/deploy.yml`) — but the secret it needs and the
+`aiFlagged` collection's Firestore rule are both one-time manual setup,
+since a GitHub Actions service account can't hold API keys or edit
+security rules on its own:
 
 1. Confirm the Firebase project is on the **Blaze** (pay-as-you-go)
    plan — Console → gear icon → **Usage and billing**. Cloud Functions
@@ -290,11 +309,18 @@ Hosting (see above), never Cloud Functions. One-time setup:
 3. From the `functions/` directory: `npm install -g firebase-tools`
    (if not already installed), then `firebase login`.
 4. `firebase functions:secrets:set ANTHROPIC_API_KEY` — paste the key
-   when prompted (never commit it or paste it anywhere else).
-5. `firebase deploy --only functions,firestore:rules` from the repo
-   root — deploys the Cloud Function and the `aiFlagged` collection's
-   rules together. After this one-time deploy, it just runs forever;
-   no redeploying needed for ordinary app changes.
+   when prompted (never commit it or paste it anywhere else). Do this
+   before the function's first deploy; a deploy that references a secret
+   which doesn't exist yet fails.
+5. Deploy the `aiFlagged` collection's rule once: copy the contents of
+   `firestore.rules` into the Firebase Console under **Firestore
+   Database → Rules** and click **Publish** (or run
+   `firebase deploy --only firestore:rules` from the repo root).
+6. Push to your deploy branch (or run
+   `firebase deploy --only functions` yourself once) to get the
+   function live for the first time. After that, it stays live and
+   up to date automatically with every ordinary push — no more manual
+   redeploys for this feature.
 
 **Applying this to submissions from before the function existed:**
 `functions/backfill.js` runs the same checks against every already-existing
@@ -311,3 +337,56 @@ photos, and Anthropic API calls (i.e. real cost) a real run would make,
 without calling the API or writing anything. Drop `--dry-run` once
 those numbers look right. Safe to re-run: anything already checked is
 skipped, so it never double-charges for the same photo.
+
+## Automatic weekly slide deck
+
+A second scheduled Cloud Function (`functions/weekly-report-generator.js`)
+builds a real `.pptx` presentation every Sunday at 00:00 business time
+(right after Saturday 11:59pm) for the Sunday-Saturday week that just
+ended — store completion, cross-store trending violations, repeat
+violations by store, every flagged item, and automated photo flags,
+grouped by reason. It's the presentation-ready counterpart to the
+Weekly Report tab's on-screen text report (same underlying data, laid
+out as slides).
+
+The finished file uploads to Cloud Storage and its metadata (week label,
+size, when it was generated) is recorded in Firestore. Admins download
+it from the dashboard's **Weekly Report** tab, under **Weekly Slide
+Decks** — no separate login or console access needed.
+
+This depends on Cloud Functions, so it requires everything in
+"Automatic photo checking" above (Blaze plan, `firebase-tools`,
+`firebase login`) already done — plus Cloud Storage specifically, which
+isn't enabled by default even on Blaze:
+
+1. **Enable Cloud Storage.** Console → **Build → Storage** → get
+   started, same default bucket/region prompts as Firestore. (If you
+   never enabled Cloud Storage before, this is the one genuinely new
+   step this feature adds — see "Why submission photos skip Cloud
+   Storage" above for why it wasn't needed until now.)
+2. **Deploy `storage.rules` once** — it isn't covered by the GitHub
+   Actions auto-deploy any more than `firestore.rules` is:
+   `firebase deploy --only storage` from the repo root. These rules
+   check the same admin roster as Firestore's rules
+   (`firestore.exists(...)` from inside a Storage rule) — Firebase may
+   show a one-time console permission prompt the first time you deploy
+   a cross-service rule like this; approve it if so.
+3. **Deploy the updated `firestore.rules`** too (the `weeklyReports`
+   collection's metadata rule is new) — same one-time manual step as
+   the other rule changes above: copy into the Console and Publish, or
+   `firebase deploy --only firestore:rules`.
+4. Push to your deploy branch (or run `firebase deploy --only functions`
+   yourself once) to get the scheduled function live. From then on it
+   redeploys automatically with every ordinary push, same as the photo
+   checker.
+
+**Testing without waiting for Sunday:** `functions/generate-weekly-report-now.js`
+runs the exact same generation logic on demand, for last week by default
+or any specific Sunday-starting week you pass it:
+
+```
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json node functions/generate-weekly-report-now.js
+```
+
+It prints a confirmation once the deck's uploaded — check the Weekly
+Report tab's Weekly Slide Decks section afterward to download it.

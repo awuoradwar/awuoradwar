@@ -1,6 +1,9 @@
 import {
   auth,
   db,
+  storage,
+  ref,
+  getBytes,
   OWNER_EMAIL,
   persistenceReady,
   onAuthStateChanged,
@@ -281,6 +284,12 @@ function formatDateTime(ts) {
   return d.toLocaleString(getLang() === "es" ? "es-US" : "en-US", {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: BUSINESS_TIMEZONE,
   });
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return "0 KB";
+  const kb = bytes / 1024;
+  return kb < 1024 ? `${kb.toFixed(0)} KB` : `${(kb / 1024).toFixed(1)} MB`;
 }
 
 function topBarHtml() {
@@ -673,6 +682,93 @@ function renderAiFlagsButtonContent(btn) {
   btn.innerHTML = `🔔${unresolvedAiFlagsCount > 0 ? `<span class="badge-count">${count}</span>` : ""}`;
 }
 
+// One flag's row inside a date/store group -- no store or date label of
+// its own since both are already established by the group headers it
+// lives under; just the item, its risk, who/what shift, and why it was
+// flagged.
+function aiFlagRowHtml(flag) {
+  const item = flag.item;
+  return `
+  <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}" data-flag-row="${flag.id}">
+    <div class="detail-row-main">
+      <span class="detail-item-text">${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
+      <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
+    </div>
+    <div class="history-card-meta">${flag.shift ? `${escapeHtml(t("shift_" + flag.shift))} · ` : ""}${escapeHtml(flag.conductedBy)}</div>
+    ${flagReasonDetailHtml(flag)}
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}">${t("viewDetail")}</button>
+      <button type="button" class="btn btn-sm btn-secondary" data-mark-reviewed="${flag.id}">${t("markReviewedButton")}</button>
+    </div>
+  </div>`;
+}
+
+function formatFlagDateLabel(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(getLang() === "es" ? "es-US" : "en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+// A store's flags within one date group -- its own nested collapsible,
+// keyed by date+store together (the same store can appear under several
+// different dates, each expanding independently).
+function aiFlagsStoreSubGroupHtml(date, group, expandedStores) {
+  const key = `${date}__${group.storeNumber}`;
+  const hasCritical = group.flags.some((f) => f.item.risk === "high");
+  const isExpanded = expandedStores.has(key);
+  return `
+  <div class="section-block" style="margin-bottom:8px;">
+    <button type="button" class="section-toggle ${hasCritical ? "detail-row-critical" : ""}" data-toggle-store="${key}">
+      <span class="section-chevron">${isExpanded ? "▾" : "▸"}</span>
+      <span class="section-name">${escapeHtml(storeLabel(group.storeNumber, group.store?.name))}</span>
+      <span class="detail-row-badges">${hasCritical ? `<span class="badge badge-danger">${t("criticalLabel")}</span>` : ""}<span class="badge badge-neutral">${group.flags.length}</span></span>
+    </button>
+    <div class="section-body ${isExpanded ? "" : "collapsed"}" id="ai-flags-store-body-${key}">
+      ${group.flags
+        .sort((a, b) => (RISK_SORT_RANK[a.item.risk] ?? 1) - (RISK_SORT_RANK[b.item.risk] ?? 1) || (b.checkedAt?.toMillis?.() || 0) - (a.checkedAt?.toMillis?.() || 0))
+        .map((flag) => aiFlagRowHtml(flag))
+        .join("")}
+    </div>
+  </div>`;
+}
+
+// Grouped date -> store -> flags, each level collapsed to just a count
+// until tapped open. A flat list of every flag (the original design) got
+// genuinely overwhelming once one store had several flags piled up on
+// the same day or two -- this keeps the default view to one line per
+// date, with the stores under it (and each store's individual flags)
+// a tap away.
+function aiFlagsDateGroupsHtml(dateGroups, expandedDates, expandedStores) {
+  return dateGroups
+    .map((dateGroup) => {
+      const hasCritical = dateGroup.flags.some((f) => f.item.risk === "high");
+      const isExpanded = expandedDates.has(dateGroup.date);
+      const byStore = {};
+      dateGroup.flags.forEach((f) => (byStore[f.storeNumber] ||= []).push(f));
+      // Stores worst-first within a date: a store with a critical flag
+      // that day comes before one that doesn't, then by how many flags.
+      const storeGroups = Object.entries(byStore)
+        .map(([storeNumber, storeFlags]) => ({ storeNumber, store: storesCache.find((s) => s.number === storeNumber), flags: storeFlags }))
+        .sort((a, b) => {
+          const aHasCritical = a.flags.some((f) => f.item.risk === "high");
+          const bHasCritical = b.flags.some((f) => f.item.risk === "high");
+          if (aHasCritical !== bHasCritical) return aHasCritical ? -1 : 1;
+          return b.flags.length - a.flags.length || Number(a.storeNumber) - Number(b.storeNumber);
+        });
+      return `
+      <div class="section-block" style="margin-bottom:10px;">
+        <button type="button" class="section-toggle ${hasCritical ? "detail-row-critical" : ""}" data-toggle-date="${dateGroup.date}">
+          <span class="section-chevron">${isExpanded ? "▾" : "▸"}</span>
+          <span class="section-name">${escapeHtml(formatFlagDateLabel(dateGroup.date))}</span>
+          <span class="detail-row-badges">${hasCritical ? `<span class="badge badge-danger">${t("criticalLabel")}</span>` : ""}<span class="badge badge-neutral">${dateGroup.flags.length}</span></span>
+        </button>
+        <div class="section-body ${isExpanded ? "" : "collapsed"}" id="ai-flags-date-body-${dateGroup.date}">
+          ${storeGroups.map((group) => aiFlagsStoreSubGroupHtml(dateGroup.date, group, expandedStores)).join("")}
+        </div>
+      </div>`;
+    })
+    .join("");
+}
+
 async function renderAiFlagsModal() {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -692,14 +788,23 @@ async function renderAiFlagsModal() {
     return;
   }
 
-  // Every item shows its violation risk level here — that's the whole
+  // Every item carries its violation risk level -- that's the whole
   // point of this app: stores need to know how severe a finding is to
   // actually get ready for a real Ecosure/food-safety visit, not just
-  // that "something" disagreed. Sorted worst-first (high risk before
-  // medium/low) so the most severe findings triage to the top.
-  const flags = snap.docs
-    .map((d) => ({ id: d.id, ...d.data(), item: findItemDefinitionById(d.data().itemId) || { id: d.data().itemId, en: `#${d.data().itemId}`, es: `#${d.data().itemId}`, risk: "medium" } }))
-    .sort((a, b) => (RISK_SORT_RANK[a.item.risk] ?? 1) - (RISK_SORT_RANK[b.item.risk] ?? 1) || (b.checkedAt?.toMillis?.() || 0) - (a.checkedAt?.toMillis?.() || 0));
+  // that "something" disagreed.
+  const flags = snap.docs.map((d) => ({ id: d.id, ...d.data(), item: findItemDefinitionById(d.data().itemId) || { id: d.data().itemId, en: `#${d.data().itemId}`, es: `#${d.data().itemId}`, risk: "medium" } }));
+
+  // Grouped by date, most-recent-first -- date is a chronological axis,
+  // not a severity one, so (unlike stores within it) it isn't reordered
+  // by risk, just labeled with a Critical badge when a day has one.
+  const byDate = {};
+  flags.forEach((flag) => (byDate[flag.date] ||= []).push(flag));
+  const dateGroups = Object.entries(byDate)
+    .map(([date, dateFlags]) => ({ date, flags: dateFlags }))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+  const expandedDates = new Set();
+  const expandedStores = new Set();
 
   backdrop.querySelector(".modal").innerHTML = `
     <div class="modal-header">
@@ -707,41 +812,64 @@ async function renderAiFlagsModal() {
       <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
     </div>
     <div class="hint-banner">${t("aiFlagsModalHint")}</div>
-    ${
-      flags.length === 0
-        ? `<p>${t("noAiFlags")}</p>`
-        : flags
-            .map((flag) => {
-              const store = storesCache.find((s) => s.number === flag.storeNumber);
-              const item = flag.item;
-              return `
-              <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}" data-flag-row="${flag.id}">
-                <div class="detail-row-main">
-                  <span class="detail-item-text">${escapeHtml(storeLabel(flag.storeNumber, store?.name))} — ${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
-                  <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
-                </div>
-                <div class="history-card-meta">${escapeHtml(flag.date)}${flag.shift ? ` · ${escapeHtml(t("shift_" + flag.shift))}` : ""} · ${escapeHtml(flag.conductedBy)}</div>
-                ${flagReasonDetailHtml(flag)}
-                <div style="display:flex; gap:8px; margin-top:8px;">
-                  <button type="button" class="btn btn-sm btn-secondary" data-view-flag-submission="${flag.submissionId}">${t("viewDetail")}</button>
-                  <button type="button" class="btn btn-sm btn-secondary" data-mark-reviewed="${flag.id}">${t("markReviewedButton")}</button>
-                </div>
-              </div>`;
-            })
-            .join("")
-    }
+    <div id="ai-flags-groups">${dateGroups.length === 0 ? `<p>${t("noAiFlags")}</p>` : aiFlagsDateGroupsHtml(dateGroups, expandedDates, expandedStores)}</div>
   `;
 
   backdrop.querySelector("#modal-close").addEventListener("click", () => backdrop.remove());
-  backdrop.addEventListener("click", (e) => { if (e.target === backdrop) backdrop.remove(); });
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) {
+      backdrop.remove();
+      return;
+    }
+    const dateToggle = e.target.closest("[data-toggle-date]");
+    if (dateToggle) {
+      const date = dateToggle.dataset.toggleDate;
+      if (expandedDates.has(date)) expandedDates.delete(date);
+      else expandedDates.add(date);
+      backdrop.querySelector(`#ai-flags-date-body-${date}`)?.classList.toggle("collapsed");
+      dateToggle.querySelector(".section-chevron").textContent = expandedDates.has(date) ? "▾" : "▸";
+      return;
+    }
+    const storeToggle = e.target.closest("[data-toggle-store]");
+    if (storeToggle) {
+      const key = storeToggle.dataset.toggleStore;
+      if (expandedStores.has(key)) expandedStores.delete(key);
+      else expandedStores.add(key);
+      backdrop.querySelector(`#ai-flags-store-body-${key}`)?.classList.toggle("collapsed");
+      storeToggle.querySelector(".section-chevron").textContent = expandedStores.has(key) ? "▾" : "▸";
+    }
+  });
 
+  wireAiFlagActionButtons(backdrop, flags, dateGroups, expandedDates, expandedStores);
+}
+
+// (Re-)wires the View/Mark Reviewed buttons currently in the DOM -- split
+// out from renderAiFlagsModal so it can be re-run after a Mark Reviewed
+// re-renders the (now smaller) group list without losing scroll position
+// on the whole modal. Mark Reviewed removes the flag from its date's
+// group (collapsing an empty date, or an empty store within it, out of
+// the list entirely) and re-renders just the groups container, carrying
+// over which dates/stores were expanded so clearing several flags in a
+// row doesn't collapse everything back after each one -- and re-renders
+// the count badges so they stay accurate instead of drifting from what's
+// actually still unresolved.
+function wireAiFlagActionButtons(backdrop, flags, dateGroups, expandedDates, expandedStores) {
   backdrop.querySelectorAll("[data-mark-reviewed]").forEach((btn) => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = "1";
     btn.addEventListener("click", async () => {
       const flagId = btn.dataset.markReviewed;
       btn.disabled = true;
       try {
         await withTimeout(updateDoc(doc(db, "aiFlagged", flagId), { reviewed: true }));
-        backdrop.querySelector(`[data-flag-row="${flagId}"]`)?.remove();
+        const dateGroup = dateGroups.find((g) => g.flags.some((f) => f.id === flagId));
+        if (dateGroup) {
+          dateGroup.flags = dateGroup.flags.filter((f) => f.id !== flagId);
+          if (dateGroup.flags.length === 0) dateGroups.splice(dateGroups.indexOf(dateGroup), 1);
+        }
+        const container = backdrop.querySelector("#ai-flags-groups");
+        container.innerHTML = dateGroups.length === 0 ? `<p>${t("noAiFlags")}</p>` : aiFlagsDateGroupsHtml(dateGroups, expandedDates, expandedStores);
+        wireAiFlagActionButtons(backdrop, flags, dateGroups, expandedDates, expandedStores);
       } catch (err) {
         btn.disabled = false;
       }
@@ -749,6 +877,8 @@ async function renderAiFlagsModal() {
   });
 
   backdrop.querySelectorAll("[data-view-flag-submission]").forEach((btn) => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = "1";
     btn.addEventListener("click", async () => {
       const submissionId = btn.dataset.viewFlagSubmission;
       const originalLabel = btn.textContent;
@@ -1269,6 +1399,24 @@ function duplicateWhenLabel(flag) {
   return flag.duplicateOfSubmittedAt ? formatDateTime(flag.duplicateOfSubmittedAt) : flag.duplicateOfDate;
 }
 
+// Same "prefer the exact moment over just the date" logic as
+// duplicateWhenLabel above, but for a wrong-photo flag's EARLIER
+// wrong-photo occurrence at the same store+item (a different photo file
+// each time is fine -- see functions/check-wrong-photo-repeat.js).
+function priorWrongPhotoWhenLabel(flag) {
+  return flag.priorWrongPhotoSubmittedAt ? formatDateTime(flag.priorWrongPhotoSubmittedAt) : flag.priorWrongPhotoDate;
+}
+
+function wrongPhotoRepeatDetailHtml(flag) {
+  if (!flag.priorWrongPhotoDate) return "";
+  const when = priorWrongPhotoWhenLabel(flag);
+  return `<div>${escapeHtml(
+    flag.priorWrongPhotoShift
+      ? t("aiFlagWrongPhotoRepeatWithShift", { shift: t("shift_" + flag.priorWrongPhotoShift), date: when })
+      : t("aiFlagWrongPhotoRepeat", { date: when })
+  )}</div>`;
+}
+
 function aiFlagBadgeHtml(aiFlag) {
   if (!aiFlag) return "";
   const reason = aiFlag.reason || (aiFlag.mismatch ? "mismatch" : null);
@@ -1283,7 +1431,11 @@ function aiFlagBadgeHtml(aiFlag) {
     return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagUnreadableDetail"))}">${escapeHtml(t("aiFlagReasonUnreadable"))}</span>`;
   }
   if (reason === "wrongPhoto") {
-    return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagWrongPhotoDetail"))}">${escapeHtml(t("aiFlagReasonWrongPhoto"))}</span>`;
+    const when = aiFlag.priorWrongPhotoDate ? priorWrongPhotoWhenLabel(aiFlag) : null;
+    const title = when
+      ? `${t("aiFlagWrongPhotoDetail")} ${aiFlag.priorWrongPhotoShift ? t("aiFlagWrongPhotoRepeatWithShift", { shift: t("shift_" + aiFlag.priorWrongPhotoShift), date: when }) : t("aiFlagWrongPhotoRepeat", { date: when })}`
+      : t("aiFlagWrongPhotoDetail");
+    return `<span class="badge badge-warning" title="${escapeHtml(title)}">${escapeHtml(t("aiFlagReasonWrongPhoto"))}</span>`;
   }
   if (reason === "mismatch") {
     return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagsModalHint"))}">${escapeHtml(t("aiMismatchBadge", { temp: aiFlag.temperatureF }))}</span>`;
@@ -1309,7 +1461,7 @@ function flagReasonDetailHtml(flag) {
     )}</div>`;
   }
   if (reason === "unreadable") return `<div>${escapeHtml(t("aiFlagUnreadableDetail"))}</div>`;
-  if (reason === "wrongPhoto") return `<div>${escapeHtml(t("aiFlagWrongPhotoDetail"))}</div>`;
+  if (reason === "wrongPhoto") return `<div>${escapeHtml(t("aiFlagWrongPhotoDetail"))}</div>${wrongPhotoRepeatDetailHtml(flag)}`;
   return `<div>${escapeHtml(t("aiFlagReadingLabel", { temp: flag.temperatureF }))} (${escapeHtml(t("aiFlagExpectedLabel", { op: flag.expectedOp, threshold: flag.expectedThreshold }))})</div>
           <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
 }
@@ -1441,6 +1593,19 @@ async function renderWeeklyReportTab() {
   } catch (err) {
     content.innerHTML = `<div class="hint-banner">${escapeHtml(err.message === "timeout" ? t("requestTimedOut") : String(err.message || err))}</div>`;
     return;
+  }
+
+  // Independent of the week being navigated above -- lists every
+  // auto-generated slide deck so far, not just the currently viewed week.
+  // Kept in its own try/catch so a hiccup here (network, first-ever run
+  // with the collection still empty, etc.) never blanks the rest of the
+  // report the admin actually came here to read.
+  let decks = [];
+  try {
+    const decksSnap = await withTimeout(getDocs(query(collection(db, "weeklyReports"), orderBy("from", "desc"), limit(12))));
+    decks = decksSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    console.error("Failed to load weekly slide decks:", err);
   }
 
   const submissions = submissionsSnap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((s) => s.submitted);
@@ -1654,6 +1819,30 @@ async function renderWeeklyReportTab() {
         .join("")}
     </div>`;
 
+  const decksHtml = `
+    <div class="card no-print">
+      <div class="detail-section-title" style="margin-top:0;">${t("weeklyReportDecksSection")}</div>
+      <div style="color:var(--text-muted); font-size:13px; margin-bottom:10px;">${escapeHtml(t("weeklyReportDecksHint"))}</div>
+      ${
+        decks.length === 0
+          ? `<div class="hint-banner">${escapeHtml(t("weeklyReportDecksEmpty"))}</div>`
+          : `<div class="history-list">
+        ${decks
+          .map(
+            (deck) => `
+          <div class="history-card">
+            <div class="history-card-top">
+              <strong>${escapeHtml(deck.weekLabel)}</strong>
+              <button class="btn btn-sm btn-secondary btn-download-deck" data-storage-path="${escapeHtml(deck.storagePath)}" data-file-name="${escapeHtml(deck.fileName)}">${t("weeklyReportDeckDownload")}</button>
+            </div>
+            <div class="history-card-meta">${escapeHtml(t("weeklyReportDeckGeneratedOn", { date: formatDateTime(deck.generatedAt) }))} · ${formatFileSize(deck.fileSizeBytes)}</div>
+          </div>`
+          )
+          .join("")}
+      </div>`
+      }
+    </div>`;
+
   content.innerHTML = `
     <div class="card no-print">
       <div class="week-nav-row">
@@ -1670,6 +1859,7 @@ async function renderWeeklyReportTab() {
         t("weeklyReportSummaryLine", { done: fullyCompliantCount, total: storesCache.length, flagged: totalFlagged, repeat: repeatByStoreRows.reduce((sum, r) => sum + r.items.length, 0), aiFlags: aiFlags.length })
       )}</strong>
     </div>
+    ${decksHtml}
     ${!hasAnyData ? `<div class="card">${t("weeklyReportNoData")}</div>` : ""}
     ${storeCompletionHtml}
     ${trendingHtml}
@@ -1688,6 +1878,33 @@ async function renderWeeklyReportTab() {
     renderWeeklyReportTab();
   });
   content.querySelector("#btn-report-print").addEventListener("click", () => window.print());
+  content.querySelectorAll(".btn-download-deck").forEach((btn) => {
+    btn.addEventListener("click", () => downloadWeeklyReportDeck(btn));
+  });
+}
+
+async function downloadWeeklyReportDeck(btn) {
+  const storagePath = btn.dataset.storagePath;
+  const fileName = btn.dataset.fileName;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = t("weeklyReportDeckDownloading");
+  try {
+    const bytes = await getBytes(ref(storage, storagePath));
+    const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Failed to download weekly slide deck:", err);
+    alert(t("weeklyReportDeckDownloadFailed"));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
 }
 
 // ---------- Weekly Summary ----------

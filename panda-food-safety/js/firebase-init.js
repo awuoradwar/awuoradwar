@@ -2,11 +2,13 @@
 // the re-exported SDK helpers from here so there's one place that knows
 // the SDK version.
 //
-// No Cloud Storage here on purpose: as of Oct 2024 Cloud Storage for
-// Firebase requires the Blaze (billing-account) plan even for free-tier
-// usage. Photos are stored as compressed base64 image data directly in
-// Firestore instead (see js/app.js), which stays on the no-cost Spark
-// plan with no credit card required.
+// Submission photos are still base64 in Firestore, not Storage (see
+// js/app.js) -- that decision predates this project needing the Blaze
+// (billing-account) plan at all. Storage IS used for the weekly report
+// slide decks: the project already requires Blaze for Cloud Functions
+// to run, so enabling Storage doesn't cross a new billing line, and a
+// once-a-week generated file is a very different growth pattern than a
+// photo per submission.
 
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 import {
@@ -37,12 +39,14 @@ import {
   getDocs,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
+import { getStorage, ref, getBytes } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-storage.js";
 
 import { firebaseConfig, OWNER_EMAIL } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 // Explicit rather than relying on the SDK's default: keeps a signed-in
 // admin/associate logged in across page reloads and browser restarts on
@@ -88,6 +92,9 @@ async function createUserOnSecondaryApp(email, password) {
 export {
   auth,
   db,
+  storage,
+  ref,
+  getBytes,
   OWNER_EMAIL,
   persistenceReady,
   signInAnonymously,

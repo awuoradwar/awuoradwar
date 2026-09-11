@@ -7,6 +7,7 @@
       "**/node_modules/**",
       "firestore.rules",
       "firestore.indexes.json",
+      "storage.rules",
       "README.md",
       "functions/**"
     ],
@@ -29,11 +30,15 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "functions": [
     {
       "source": "functions",
       "codebase": "default",
-      "ignore": ["node_modules", ".git", "test", "*.log"]
+      "ignore": ["node_modules", ".git", "test", "*.log"],
+      "predeploy": ["cp \"$RESOURCE_DIR/../js/checklist-data.js\" \"$RESOURCE_DIR/checklist-data.js\""]
     }
   ]
 }

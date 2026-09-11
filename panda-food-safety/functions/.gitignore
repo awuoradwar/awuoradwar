@@ -1,1 +1,4 @@
 node_modules/
+# Copied in by firebase.json's predeploy hook from ../js/checklist-data.js
+# at deploy time -- js/checklist-data.js stays the one source of truth.
+checklist-data.js

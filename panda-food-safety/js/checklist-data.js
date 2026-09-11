@@ -413,3 +413,12 @@ function findItemDefinitionById(itemId) {
   if (o?.custom) return { id: itemId, en: o.en, es: o.es || o.en, requiresPhoto: !!o.requiresPhoto, alwaysPhoto: !!o.alwaysPhoto, category: o.category || "other", risk: o.risk || "medium" };
   return null;
 }
+
+// This file is loaded as a plain global <script> in the browser (no
+// bundler), but the weekly report Cloud Function also needs item
+// lookups server-side -- exporting here (guarded, so `module` being
+// undefined in the browser is a no-op) lets it `require()` this exact
+// file instead of maintaining a second copy of the checklist.
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { findItemDefinitionById, applyChecklistOverrides, categoryLabel, VIOLATION_CATEGORIES };
+}

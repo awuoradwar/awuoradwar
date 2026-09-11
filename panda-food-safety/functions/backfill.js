@@ -28,6 +28,7 @@ const { TEMP_CHECK_ITEMS, evaluateTempReading } = require("./temp-check-logic");
 const { readTemperatureFromPhoto } = require("./read-temperature");
 const { hashPhotoDataUrl } = require("./photo-hash");
 const { checkDuplicate } = require("./check-duplicate");
+const { checkWrongPhotoRepeat } = require("./check-wrong-photo-repeat");
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -75,6 +76,10 @@ async function main() {
         if (!result && needsApiCall) {
           const reading = await readTemperatureFromPhoto(client, dataUrl);
           result = evaluateTempReading(itemId, submission.answers[itemId].value, reading);
+          if (result?.reason === "wrongPhoto") {
+            const repeatInfo = await checkWrongPhotoRepeat(db, submission.storeNumber, itemId, submission.date, submission.shift ?? null, submission.submittedAt ?? null, submission.id);
+            if (repeatInfo) result = { ...result, ...repeatInfo };
+          }
         }
         if (result) newFlags[itemId] = { ...result, reviewed: false, checkedAt: FieldValue.serverTimestamp() };
       } catch (err) {
@@ -107,7 +112,13 @@ async function main() {
               expectedThreshold: flag.expectedThreshold ?? null,
               associateAnswer: flag.associateAnswer ?? null,
               duplicateOfDate: flag.duplicateOfDate ?? null,
+              duplicateOfShift: flag.duplicateOfShift ?? null,
+              duplicateOfSubmittedAt: flag.duplicateOfSubmittedAt ?? null,
               duplicateOfSubmissionId: flag.duplicateOfSubmissionId ?? null,
+              priorWrongPhotoDate: flag.priorWrongPhotoDate ?? null,
+              priorWrongPhotoShift: flag.priorWrongPhotoShift ?? null,
+              priorWrongPhotoSubmittedAt: flag.priorWrongPhotoSubmittedAt ?? null,
+              priorWrongPhotoSubmissionId: flag.priorWrongPhotoSubmissionId ?? null,
               reviewed: false,
               checkedAt: FieldValue.serverTimestamp(),
             })
