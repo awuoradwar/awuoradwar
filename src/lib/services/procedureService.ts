@@ -199,10 +199,51 @@ export function submitProcedure(params: {
   if (!name) return { error: "Name is required." };
   if (params.items.length === 0) return { error: "Nothing to submit." };
   const db = getDb();
-  const id = newId();
   const today = storeToday(params.storeId);
   const yesterday = addDaysStr(today, -1);
   const submittedDate = params.submittedDate === yesterday ? yesterday : today;
+
+  // Two cooks splitting one station rarely share a single phone -- each
+  // goes through the kiosk on their own, once they're done with their
+  // half. Rather than leaving that as two overlapping partial checklists
+  // for the same station/shift/day, fold this submission into whichever
+  // one's already there: newly-checked items merge in with their own
+  // attribution, names combine, and the manager sees one checklist with
+  // "who did what" instead of two side-by-side fragments.
+  const existing = db
+    .prepare(
+      `SELECT id, associate_name, items_json, notes FROM procedure_submissions
+       WHERE store_id = ? AND area_id = ? AND shift_type = ? AND submitted_date = ?`
+    )
+    .get(params.storeId, params.areaId, params.shiftType, submittedDate) as
+    | { id: string; associate_name: string; items_json: string; notes: string | null }
+    | undefined;
+
+  if (existing) {
+    const existingItems = JSON.parse(existing.items_json) as ProcedureSubmissionItem[];
+    const mergedItems = existingItems.map((existingItem) => {
+      const incoming = params.items.find((i) => i.text === existingItem.text);
+      if (incoming?.checked) {
+        return { ...existingItem, checked: true, checkedBy: incoming.checkedBy ?? existingItem.checkedBy ?? null };
+      }
+      return existingItem;
+    });
+    const existingNames = existing.associate_name.split(" & ").map((n) => n.trim());
+    const incomingNames = name.split(" & ").map((n) => n.trim());
+    const mergedNames = Array.from(new Set([...existingNames, ...incomingNames]));
+    const mergedNotes = [existing.notes, params.notes?.trim() || null].filter(Boolean).join(" / ") || null;
+    db.prepare(`UPDATE procedure_submissions SET associate_name = ?, items_json = ?, notes = ?, created_at = ? WHERE id = ?`).run(
+      mergedNames.join(" & "),
+      JSON.stringify(mergedItems),
+      mergedNotes,
+      nowIso(),
+      existing.id
+    );
+    writeAudit({ entityType: "procedure_submission", entityId: existing.id, actor: null, action: "EDITED", newValue: { mergedAssociateName: name } });
+    return { id: existing.id };
+  }
+
+  const id = newId();
   db.prepare(
     `INSERT INTO procedure_submissions (id, store_id, area_id, shift_type, associate_name, items_json, notes, submitted_date, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -252,9 +293,11 @@ export function getSubmissionsForDate(storeId: string, date: string): ProcedureS
 
 /** Every submission for one area across a date range, inclusive -- the raw
  * material for the per-station week view (who covered Opening/Closing each
- * day). A day can have more than one submission for the same shift (two
- * associates split a station, or a genuine re-submit); the caller groups
- * these by date+shift_type rather than assuming exactly one. */
+ * day). Two associates splitting one station now merge into a single row
+ * (see submitProcedure), but a day can still end up with more than one
+ * submission for the same shift -- e.g. a GM's date correction moving one
+ * onto a day that already has its own -- so the caller groups these by
+ * date+shift_type rather than assuming exactly one. */
 export function getSubmissionsForAreaInRange(areaId: string, storeId: string, startDate: string, endDate: string): ProcedureSubmission[] {
   const db = getDb();
   return db
