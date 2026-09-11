@@ -33,6 +33,18 @@ function firstName(fullName: string): string {
   return fullName.trim().split(/\s+/)[0] || "";
 }
 
+/** "Cooks" -> "Cook", "Dishes" -> "Dish", "Bathrooms" -> "Bathroom" -- station
+ * names are always plural, but the name-field placeholders read better
+ * naming the role a person on that station has ("First cook") than the
+ * station itself ("First Cooks"). Handles the common English plural
+ * endings well enough for the station names this app actually seeds;
+ * a name with no trailing "s" (Lobby, Patio) is returned unchanged. */
+function singularize(name: string): string {
+  if (/(sh|ch|x|s)es$/i.test(name)) return name.slice(0, -2);
+  if (/s$/i.test(name)) return name.slice(0, -1);
+  return name;
+}
+
 const bigTile =
   "tap-target flex w-full items-center justify-between rounded-2xl border-2 border-border bg-card px-5 py-4 text-left text-lg font-semibold transition-colors hover:border-accent hover:bg-accent/5 active:bg-accent/10";
 
@@ -242,13 +254,13 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
             <input
               value={names[0]}
               onChange={(e) => setNames((prev) => [e.target.value, prev[1]])}
-              placeholder={es ? "Nombre completo" : "Full name"}
+              placeholder={es ? `Primer ${singularize(area.name)}` : `First ${singularize(area.name)}`}
               className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
             <input
               value={names[1]}
               onChange={(e) => setNames((prev) => [prev[0], e.target.value])}
-              placeholder={es ? "Segundo asociado (si aplica)" : "Second associate (if any)"}
+              placeholder={es ? `Segundo ${singularize(area.name)} (si aplica)` : `Second ${singularize(area.name)} (if any)`}
               className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
           </div>
