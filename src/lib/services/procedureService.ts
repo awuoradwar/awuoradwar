@@ -20,6 +20,11 @@ export interface ProcedureArea {
   category: ProcedureCategory;
   sort_order: number;
   active: number;
+  /** A station that's only occasionally needed (e.g. Prep on a slow night,
+   * not every closing) -- an unsubmitted day for it never counts toward
+   * getMissedAreasForDate's "missed" flag the way every other station's
+   * does. */
+  skip_missed_flag: number;
   created_at: string;
 }
 
@@ -104,7 +109,7 @@ export function regenerateProceduresToken(storeId: string, actor: SessionUser): 
 
 // --- Areas ---------------------------------------------------------------
 
-const AREA_COLUMNS = "id, store_id, name, name_es, category, sort_order, active, created_at";
+const AREA_COLUMNS = "id, store_id, name, name_es, category, sort_order, active, skip_missed_flag, created_at";
 
 export function listActiveAreas(storeId: string): ProcedureArea[] {
   const db = getDb();
@@ -385,13 +390,15 @@ export function getSubmissionsForAreaInRange(areaId: string, storeId: string, st
  * signal on the area list itself, so a manager sees a problem without
  * drilling into every station. Only ever called with a date that has
  * already fully happened (yesterday, not today -- today's closing simply
- * hasn't happened yet, which is not the same thing as missed). */
+ * hasn't happened yet, which is not the same thing as missed). Excludes
+ * skip_missed_flag stations (e.g. Prep) -- a station that's only needed
+ * once in a while isn't "missed" just because last night didn't need it. */
 export function getMissedAreasForDate(storeId: string, date: string, shiftType: ProcedureShiftType): string[] {
   const db = getDb();
   const rows = db
     .prepare(
       `SELECT a.id FROM procedure_areas a
-       WHERE a.store_id = ? AND a.active = 1
+       WHERE a.store_id = ? AND a.active = 1 AND a.skip_missed_flag = 0
        AND NOT EXISTS (SELECT 1 FROM procedure_submissions s WHERE s.area_id = a.id AND s.shift_type = ? AND s.submitted_date = ?)`
     )
     .all(storeId, shiftType, date) as Array<{ id: string }>;

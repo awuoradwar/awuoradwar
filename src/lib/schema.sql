@@ -382,6 +382,9 @@ CREATE TABLE IF NOT EXISTS procedure_areas (
   category TEXT NOT NULL, -- FOH | BOH | PATIO_WINDOWS
   sort_order INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
+  skip_missed_flag INTEGER NOT NULL DEFAULT 0, -- 1 for a station that's only
+  -- occasionally needed (e.g. Prep on a slow night) -- an unsubmitted day
+  -- never shows the "missed" warning other stations get
   created_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL
 );

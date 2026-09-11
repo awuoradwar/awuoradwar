@@ -87,6 +87,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "procedure_items", "section", "section TEXT");
   ensureColumn(db, "procedure_items", "section_es", "section_es TEXT");
   ensureColumn(db, "procedure_areas", "name_es", "name_es TEXT");
+  ensureColumn(db, "procedure_areas", "skip_missed_flag", "skip_missed_flag INTEGER NOT NULL DEFAULT 0");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
@@ -238,7 +239,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClos
   },
 ];
 
-const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClosingItem[] }> = [
+const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClosingItem[]; skipMissedFlag?: boolean }> = [
   {
     name: "Cooks",
     nameEs: "Cocineros",
@@ -291,6 +292,29 @@ const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClos
       { en: "Floor is cleaned", es: "El piso está limpio" },
     ],
   },
+  {
+    name: "Prep",
+    nameEs: "Preparación",
+    // Only comes up once in a while on night shift (not every closing), so
+    // this is the one BOH station seeded with skipMissedFlag -- an
+    // unsubmitted day never shows the "missed" warning other stations get.
+    skipMissedFlag: true,
+    items: [
+      { en: "Prep area is cleaned", es: "El área de preparación está limpia" },
+      { en: "Sauces 1, 2, and 5 are made", es: "Las salsas 1, 2 y 5 están hechas" },
+      { en: "Meats are taken out onto trays", es: "Las carnes están sacadas en charolas" },
+      { en: "Teriyaki is taken out of the defroster", es: "El teriyaki está sacado del descongelador" },
+      { en: "Defroster is washed", es: "El descongelador está lavado" },
+      { en: "Defroster is refilled", es: "El descongelador está rellenado" },
+      { en: "Beef is set out to defrost", es: "La carne de res está puesta a descongelar" },
+      { en: "Rice is emptied into the white containers", es: "El arroz está vaciado en los contenedores blancos" },
+      { en: "Prep area, walls, and shelves are cleaned", es: "El área de preparación, las paredes y las repisas están limpias" },
+      { en: "Floor and drains are cleaned", es: "El piso y las coladeras están limpios" },
+      { en: "Mop area is cleaned", es: "El área de trapeadores está limpia" },
+      { en: "Walk-in cooler is cleaned", es: "El walk-in está limpio" },
+      { en: "Handwashing sink is cleaned", es: "El sink de lavamanos está limpio" },
+    ],
+  },
 ];
 
 /** Per-station idempotent: checks each station individually rather than
@@ -300,13 +324,17 @@ const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClos
  * seed, not just brand-new ones -- each store only ever gets whichever
  * named stations it doesn't already have, in whichever category they
  * belong to. */
-function seedClosingProcedures(db: Database.Database, category: ClosingCategory, stations: Array<{ name: string; nameEs: string; items: FohClosingItem[] }>) {
+function seedClosingProcedures(
+  db: Database.Database,
+  category: ClosingCategory,
+  stations: Array<{ name: string; nameEs: string; items: FohClosingItem[]; skipMissedFlag?: boolean }>
+) {
   const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
   if (stores.length === 0) return;
 
   const areaExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND category = ? AND name = ?`);
   const insertArea = db.prepare(
-    `INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)`
+    `INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, skip_missed_flag, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
   );
   const insertItem = db.prepare(
     `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, 1, ?)`
@@ -317,7 +345,7 @@ function seedClosingProcedures(db: Database.Database, category: ClosingCategory,
       if (areaExists.get(store.id, category, station.name)) return;
       const areaId = randomUUID();
       const now = new Date().toISOString();
-      insertArea.run(areaId, store.id, station.name, station.nameEs, category, areaIndex, now);
+      insertArea.run(areaId, store.id, station.name, station.nameEs, category, areaIndex, station.skipMissedFlag ? 1 : 0, now);
       station.items.forEach((item, itemIndex) => {
         insertItem.run(randomUUID(), areaId, item.en, item.es, itemIndex, now);
       });
