@@ -29,6 +29,10 @@ function fmtShortDate(dateStr: string, locale: string): string {
   return new Date(dateStr + "T12:00:00Z").toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
+function firstName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] || "";
+}
+
 const bigTile =
   "tap-target flex w-full items-center justify-between rounded-2xl border-2 border-border bg-card px-5 py-4 text-left text-lg font-semibold transition-colors hover:border-accent hover:bg-accent/5 active:bg-accent/10";
 
@@ -62,8 +66,12 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   // ProcedureShiftType value (not a literal sprinkled through submit/JSX) so
   // opening support can come back later by turning this into a picker again.
   const shiftType: ProcedureShiftType = "CLOSING";
-  const [name, setName] = useState("");
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  // Almost always one associate closes a station alone -- a second name slot
+  // is opt-in (see "+ Add another associate") for stations like Cooks where
+  // two people split the list, and only then do items switch from a plain
+  // checkbox to per-person chips so it's clear who did what.
+  const [names, setNames] = useState<string[]>([""]);
+  const [checkedBy, setCheckedBy] = useState<Record<string, string | undefined>>({});
   const [notes, setNotes] = useState("");
   const [submittedDate, setSubmittedDate] = useState(lateNightWindow ? yesterdayDate : todayDate);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +82,10 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   // built out yet -- so the kiosk skips straight from picking a station to
   // its closing checklist instead of also asking opening-vs-closing.
   const items: ProcedureItem[] = area ? itemsByAreaShift[`${area.id}:${shiftType}`] || [] : [];
-  const allChecked = items.length > 0 && items.every((i) => checked[i.id]);
-  const uncheckedCount = items.filter((i) => !checked[i.id]).length;
+  const activeNames = names.map((n) => n.trim()).filter(Boolean);
+  const multiAssociate = activeNames.length >= 2;
+  const allChecked = items.length > 0 && items.every((i) => checkedBy[i.id]);
+  const uncheckedCount = items.filter((i) => !checkedBy[i.id]).length;
 
   function itemLabel(item: ProcedureItem): string {
     return es && item.text_es ? item.text_es : item.text;
@@ -90,16 +100,20 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
     setStep(singleCategory ? "area" : "category");
     setCategory(singleCategory);
     setArea(null);
-    setName("");
-    setChecked({});
+    setNames([""]);
+    setCheckedBy({});
     setNotes("");
     setSubmittedDate(lateNightWindow ? yesterdayDate : todayDate);
     setError(null);
   }
 
+  function toggleItem(itemId: string, by: string) {
+    setCheckedBy((c) => ({ ...c, [itemId]: c[itemId] === by ? undefined : by }));
+  }
+
   function submit() {
     if (!area) return;
-    if (!name.trim()) {
+    if (activeNames.length === 0) {
       setError(es ? "Escribe tu nombre." : "Enter your name.");
       return;
     }
@@ -109,8 +123,8 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
         token,
         area.id,
         shiftType,
-        name,
-        items.map((i) => ({ text: i.text, textEs: i.text_es, checked: !!checked[i.id] })),
+        activeNames.join(" & "),
+        items.map((i) => ({ text: i.text, textEs: i.text_es, checked: !!checkedBy[i.id], checkedBy: checkedBy[i.id] ?? null })),
         notes,
         submittedDate
       );
@@ -223,30 +237,74 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
               </div>
             </div>
           )}
-          <label className="mb-4 flex flex-col gap-1.5 text-sm font-medium">
-            {es ? "Tu nombre" : "Your name"}
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={es ? "Nombre completo" : "Full name"}
-              className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
-            />
-          </label>
+          <div className="mb-4 flex flex-col gap-2">
+            <p className="text-sm font-medium">{names.length > 1 ? (es ? "Nombres" : "Names") : es ? "Tu nombre" : "Your name"}</p>
+            {names.map((n, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={n}
+                  onChange={(e) => setNames((prev) => prev.map((p, idx) => (idx === i ? e.target.value : p)))}
+                  placeholder={i === 0 ? (es ? "Nombre completo" : "Full name") : es ? "Segundo nombre completo" : "Second full name"}
+                  className="tap-target flex-1 rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
+                />
+                {i > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setNames((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="tap-target shrink-0 text-sm font-medium text-muted"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            {names.length < 2 && (
+              <button type="button" onClick={() => setNames((prev) => [...prev, ""])} className="self-start text-xs font-semibold text-accent">
+                {es ? "+ Agregar otro asociado" : "+ Add another associate"}
+              </button>
+            )}
+          </div>
           {items.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted">
               {es ? "Todavía no hay una lista para esto -- avísale a tu gerente." : "No checklist has been set up for this yet -- let your manager know."}
             </p>
+          ) : multiAssociate ? (
+            <div className="card divide-y divide-border">
+              {items.map((item) => (
+                <div key={item.id} className="flex items-center gap-2 px-4 py-3 text-sm">
+                  <span className={`flex-1 ${checkedBy[item.id] ? "text-muted line-through" : ""}`}>{itemLabel(item)}</span>
+                  <div className="flex shrink-0 gap-1.5">
+                    {activeNames.map((n) => {
+                      const first = firstName(n);
+                      const active = checkedBy[item.id] === first;
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => toggleItem(item.id, first)}
+                          className={`tap-target rounded-lg border-2 px-2.5 text-xs font-semibold transition-colors ${
+                            active ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted"
+                          }`}
+                        >
+                          {first}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="card divide-y divide-border">
               {items.map((item) => (
                 <label key={item.id} className="tap-target flex items-center gap-3 px-4 py-3 text-sm">
                   <input
                     type="checkbox"
-                    checked={!!checked[item.id]}
-                    onChange={(e) => setChecked((c) => ({ ...c, [item.id]: e.target.checked }))}
+                    checked={!!checkedBy[item.id]}
+                    onChange={(e) => setCheckedBy((c) => ({ ...c, [item.id]: e.target.checked ? firstName(names[0]) : undefined }))}
                     className="h-5 w-5 shrink-0 accent-accent"
                   />
-                  <span className={checked[item.id] ? "text-muted line-through" : ""}>{itemLabel(item)}</span>
+                  <span className={checkedBy[item.id] ? "text-muted line-through" : ""}>{itemLabel(item)}</span>
                 </label>
               ))}
             </div>
@@ -287,7 +345,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
           <p className="mt-1 text-sm text-muted">
             {area.name} · {es ? "Cierre" : "Closing"}
             {es ? " registrado para " : " checklist recorded for "}
-            {name.trim()}.
+            {names.map((n) => n.trim()).filter(Boolean).join(" & ")}.
           </p>
           <button type="button" onClick={reset} className="tap-target mt-8 rounded-xl bg-accent px-6 text-base font-semibold text-accent-foreground shadow-sm hover:bg-accent-hover">
             {es ? "Enviar otro" : "Submit another"}

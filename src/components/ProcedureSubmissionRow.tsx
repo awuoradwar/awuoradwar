@@ -37,8 +37,12 @@ export default function ProcedureSubmissionRow({
   canEdit?: boolean;
 }) {
   const es = lang === "es";
-  const items = JSON.parse(submission.items_json) as Array<{ text: string; textEs: string | null; checked: boolean }>;
+  const items = JSON.parse(submission.items_json) as Array<{ text: string; textEs: string | null; checked: boolean; checkedBy?: string | null }>;
   const checkedCount = items.filter((i) => i.checked).length;
+  // "Juan & Maria" is the only shape a multi-associate name ever takes (see
+  // ProcedureKiosk) -- only then does per-item checkedBy attribution mean
+  // anything, so a single associate's row stays exactly as plain as before.
+  const multiAssociate = submission.associate_name.includes(" & ");
   const locale = es ? "es-MX" : "en-US";
   const time = formatStoreDateTime(storeId, submission.created_at, locale, { hour: "numeric", minute: "2-digit" });
 
@@ -70,6 +74,7 @@ export default function ProcedureSubmissionRow({
           <div key={i} className="flex items-center gap-2">
             <span className={item.checked ? "text-ok" : "text-muted"}>{item.checked ? "✓" : "○"}</span>
             <span className={item.checked ? "" : "text-muted"}>{es && item.textEs ? item.textEs : item.text}</span>
+            {multiAssociate && item.checkedBy && <span className="text-xs text-muted">— {item.checkedBy}</span>}
           </div>
         ))}
         {submission.notes && <p className="mt-2 rounded-lg bg-card-subtle px-2.5 py-2 text-xs text-muted">{submission.notes}</p>}

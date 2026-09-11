@@ -36,6 +36,12 @@ export interface ProcedureSubmissionItem {
   text: string;
   textEs: string | null;
   checked: boolean;
+  /** First name of whoever checked this specific item -- only ever set when
+   * the kiosk had two associates entered (see ProcedureKiosk's name chips).
+   * Passed straight through to items_json with no server-side validation,
+   * same as text/textEs: this is a public, unauthenticated write path where
+   * the submission itself is the only accountability record. */
+  checkedBy?: string | null;
 }
 
 export interface ProcedureSubmission {
