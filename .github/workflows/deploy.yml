@@ -19,6 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # firebase-tools statically loads the functions source locally (to
+      # figure out what to deploy) before it ever reaches Cloud Build --
+      # that step needs node_modules present in the checkout, which
+      # git deliberately doesn't track.
+      - name: Install functions dependencies
+        working-directory: panda-food-safety/functions
+        run: npm ci
       - uses: w9jds/firebase-action@v15.30.0
         with:
           args: deploy --only hosting,functions
