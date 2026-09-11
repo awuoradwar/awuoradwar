@@ -21,6 +21,11 @@
   --success-bg: #e8f2ec;
   --danger: #c0392b;
   --danger-bg: #fbeae8;
+  /* A muted/secondary text color that still reads clearly against
+     --danger-bg specifically -- the ordinary --text-muted is tuned for
+     the app's normal background and loses contrast on a critical row's
+     reddish one. */
+  --danger-text-muted: #8a4a3f;
   --warning: #a3690e;
   --warning-bg: #fbf0da;
   --neutral-bg: #e9ddbf;
@@ -46,6 +51,7 @@
     --success-bg: #1c2e22;
     --danger: #ff8a7a;
     --danger-bg: #3a1f1a;
+    --danger-text-muted: #d9a99b;
     --warning: #e0aa4f;
     --warning-bg: #3a2c14;
     --neutral-bg: #2c2418;
@@ -68,6 +74,7 @@
   --success-bg: #1c2e22;
   --danger: #ff8a7a;
   --danger-bg: #3a1f1a;
+  --danger-text-muted: #d9a99b;
   --warning: #e0aa4f;
   --warning-bg: #3a2c14;
   --neutral-bg: #2c2418;
@@ -358,7 +365,24 @@ tr:last-child td { border-bottom: none; }
 .detail-row-flagged .detail-item-text { color: var(--danger); }
 .detail-row-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .detail-row-body.collapsed { display: none; }
-.detail-row-critical { border-left: 3px solid var(--danger); background: var(--danger-bg); padding-left: 8px; border-radius: 4px; }
+/* A left accent border is enough to flag a High Risk row -- it already
+   carries an explicit "⚠ Critical" text badge too, so a full-row red
+   background on top is redundant, and once several High Risk rows show
+   at once (common -- a lot of this checklist is High Risk), a wash of
+   red backgrounds stacked together reads as overwhelming rather than as
+   a signal. The collapsed group headers below (.section-toggle) are the
+   one place a fuller tint stays useful: there are only ever a couple of
+   those on screen at once, so it's still a real at-a-glance triage cue
+   rather than visual noise. */
+.detail-row-critical { border-left: 3px solid var(--danger); padding-left: 8px; border-radius: 4px; }
+.section-toggle.detail-row-critical { background: var(--danger-bg); }
+/* Ordinary --text-muted is tuned for the app's normal background and
+   loses contrast against a critical row's reddish one -- swap in the
+   version made for it instead, wherever muted text shows up inside one. */
+.detail-row-critical .history-card-meta,
+.detail-row-critical .detail-flagged-date {
+  color: var(--danger-text-muted);
+}
 .detail-flagged-date { color: var(--text-muted); font-weight: 400; }
 .detail-note {
   background: var(--surface-alt); border-left: 3px solid var(--accent); border-radius: 6px;
