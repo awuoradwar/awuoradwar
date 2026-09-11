@@ -95,7 +95,7 @@ function createConnection(): Database.Database {
   seedClosingProcedures(db, "BOH", BOH_CLOSING_STATIONS);
   backfillClosingTranslations(db, FOH_CLOSING_STATIONS);
   backfillClosingTranslations(db, BOH_CLOSING_STATIONS);
-  mergeLobbyDrinkStationRefreshers(db);
+  mergeDrinkStationRefreshers(db);
   return db;
 }
 
@@ -328,33 +328,49 @@ function backfillClosingTranslations(db: Database.Database, stations: Array<{ na
   }
 }
 
-/** One associate closes Lobby, Drink Station, and Refreshers together, so
- * as of this migration they're one station ("Lobby, Drink Station &
- * Refreshers") instead of three separate ones -- each original station's
- * items keep their own name as a `section` sub-heading within the combined
- * checklist (see ProcedureItem.section) rather than losing that context.
- * The three source areas are deactivated, not deleted, so every submission
- * already recorded under them keeps displaying exactly as it did. Runs once
- * per store: guarded on the combined area already existing, same idempotent
- * shape as seedClosingProcedures, so a store this has already reached is
- * left alone even if it once again has a plain "Lobby" area later. */
-function mergeLobbyDrinkStationRefreshers(db: Database.Database) {
-  const COMBINED_NAME = "Lobby, Drink Station & Refreshers";
-  const SOURCE_NAMES = ["Lobby", "Drink Station", "Refreshers"];
+/** One associate closes Drink Station and Refreshers together, so as of
+ * this migration they're one station ("Drink Station & Refreshers")
+ * instead of two separate ones -- Lobby stays its own station. Each
+ * original station's items keep their own name as a `section` sub-heading
+ * within the combined checklist (see ProcedureItem.section) rather than
+ * losing that context. The two source areas are deactivated, not deleted,
+ * so every submission already recorded under them keeps displaying exactly
+ * as it did.
+ *
+ * A first version of this migration wrongly folded Lobby in too -- for any
+ * store that already ran that version, this undoes it first (reactivating
+ * Lobby, deactivating the wrong combined area) before running the correct
+ * merge. That undo only ever touches active flags, never items or
+ * submissions, so it's safe to run against a store that never saw the
+ * wrong version at all (there's simply nothing to undo).
+ *
+ * Runs once per store: guarded on the combined area already existing, same
+ * idempotent shape as seedClosingProcedures. */
+function mergeDrinkStationRefreshers(db: Database.Database) {
+  const WRONG_COMBINED_NAME = "Lobby, Drink Station & Refreshers";
+  const COMBINED_NAME = "Drink Station & Refreshers";
+  const SOURCE_NAMES = ["Drink Station", "Refreshers"];
   const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
+  const findAreaByName = db.prepare(`SELECT id, active, sort_order FROM procedure_areas WHERE store_id = ? AND category = 'FOH' AND name = ?`);
+  const setActive = db.prepare(`UPDATE procedure_areas SET active = ? WHERE id = ?`);
   const combinedExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND name = ?`);
-  const findSourceArea = db.prepare(`SELECT id, sort_order FROM procedure_areas WHERE store_id = ? AND category = 'FOH' AND name = ? AND active = 1`);
   const insertArea = db.prepare(`INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, 'FOH', ?, 1, ?)`);
   const listItems = db.prepare(`SELECT text, text_es FROM procedure_items WHERE area_id = ? AND shift_type = 'CLOSING' AND active = 1 ORDER BY sort_order`);
   const insertItem = db.prepare(
     `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, section, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, ?, 1, ?)`
   );
-  const deactivateSourceArea = db.prepare(`UPDATE procedure_areas SET active = 0 WHERE id = ?`);
 
   for (const store of stores) {
+    const wrongCombined = findAreaByName.get(store.id, WRONG_COMBINED_NAME) as { id: string; active: number } | undefined;
+    if (wrongCombined && wrongCombined.active) {
+      setActive.run(0, wrongCombined.id);
+      const lobby = findAreaByName.get(store.id, "Lobby") as { id: string; active: number } | undefined;
+      if (lobby && !lobby.active) setActive.run(1, lobby.id);
+    }
+
     if (combinedExists.get(store.id, COMBINED_NAME)) continue;
 
-    const sourceAreas = SOURCE_NAMES.map((name) => ({ name, area: findSourceArea.get(store.id, name) as { id: string; sort_order: number } | undefined })).filter((s) => s.area);
+    const sourceAreas = SOURCE_NAMES.map((name) => ({ name, area: findAreaByName.get(store.id, name) as { id: string; sort_order: number } | undefined })).filter((s) => s.area);
     if (sourceAreas.length === 0) continue;
 
     const now = new Date().toISOString();
@@ -369,7 +385,7 @@ function mergeLobbyDrinkStationRefreshers(db: Database.Database) {
         insertItem.run(randomUUID(), combinedAreaId, item.text, item.text_es, name, itemIndex, now);
         itemIndex++;
       }
-      deactivateSourceArea.run(area!.id);
+      setActive.run(0, area!.id);
     }
   }
 }
