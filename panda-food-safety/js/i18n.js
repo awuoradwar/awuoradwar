@@ -197,6 +197,10 @@ const STRINGS = {
   aiFlagReasonDuplicate: { en: "Reused photo ({date})", es: "Foto reutilizada ({date})" },
   aiFlagUnreadableDetail: { en: "Photo isn't clear enough to check.", es: "La foto no es lo suficientemente clara para revisar." },
   aiFlagDuplicateDetail: { en: "Same photo used on {date}.", es: "Misma foto usada el {date}." },
+  // Used whenever the original's shift is known -- naming the date alone
+  // reads as nonsensical when it matches this same submission's own date
+  // (a different shift earlier the same day reused the photo).
+  aiFlagDuplicateDetailWithShift: { en: "Same photo used for the {shift} shift on {date}.", es: "Misma foto usada en el turno de {shift} el {date}." },
 };
 
 let currentLang = localStorage.getItem("pfs_lang") || "en";

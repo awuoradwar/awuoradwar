@@ -25,29 +25,37 @@ function makeStubDb() {
 
   // First time this exact hash is seen for store 1644 / item 16 -> not a
   // duplicate, and it registers the hash for future comparisons.
-  const first = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-01", "sub1");
+  const first = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-01", "opening", "sub1");
   check(first === null, "The first time a photo's hash is seen, it's not flagged as a duplicate");
 
   // Same store, same item, SAME hash, a DIFFERENT submission -> duplicate.
-  const second = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-08", "sub2");
+  const second = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-08", "midday", "sub2");
   check(second !== null && second.reason === "duplicate", `The same hash reused in a later submission IS flagged as a duplicate (got ${JSON.stringify(second)})`);
   check(second.duplicateOfDate === "2026-09-01", `Reports the date of the ORIGINAL photo, not the duplicate (got ${second.duplicateOfDate})`);
+  check(second.duplicateOfShift === "opening", `Reports which SHIFT the original came from -- needed to make sense of a duplicate flagged on the very same date as the original (got ${second.duplicateOfShift})`);
   check(second.duplicateOfSubmissionId === "sub1", `Reports which submission the original came from (got ${second.duplicateOfSubmissionId})`);
 
   // Re-processing the SAME submission again (e.g. a retried trigger) must
   // not flag itself as a duplicate of itself.
-  const third = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-01", "sub1");
+  const third = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-01", "opening", "sub1");
   check(third === null, "Re-checking the same submission's own photo never flags it as a duplicate of itself");
 
   // Same hash, but a DIFFERENT item at the same store -> not a duplicate
   // (scoped to store+item, not store-wide).
-  const fourth = await checkDuplicate(db, "1644", "3", "hash-abc", "2026-09-08", "sub3");
+  const fourth = await checkDuplicate(db, "1644", "3", "hash-abc", "2026-09-08", "midday", "sub3");
   check(fourth === null, "The same photo bytes under a DIFFERENT item are not flagged (duplicate check is scoped to store+item)");
 
   // Same hash, same item, but a DIFFERENT store -> not a duplicate
   // (scoped per-store, not across the whole chain).
-  const fifth = await checkDuplicate(db, "1651", "16", "hash-abc", "2026-09-08", "sub4");
+  const fifth = await checkDuplicate(db, "1651", "16", "hash-abc", "2026-09-08", "midday", "sub4");
   check(fifth === null, "The same photo bytes at a DIFFERENT store are not flagged (duplicate check is scoped per-store)");
+
+  // A legacy pre-shift submission (shift undefined) never crashes and
+  // just reports no shift for the original.
+  const sixth = await checkDuplicate(db, "1644", "16", "hash-legacy", "2026-08-01", undefined, "sub5");
+  check(sixth === null, "A legacy submission with no shift registers fine");
+  const seventh = await checkDuplicate(db, "1644", "16", "hash-legacy", "2026-08-15", "closing", "sub6");
+  check(seventh.duplicateOfShift === null, `A duplicate of a legacy (pre-shift) original reports duplicateOfShift as null, not undefined/crashing (got ${JSON.stringify(seventh.duplicateOfShift)})`);
 
   console.log(`\n${failures === 0 ? "ALL PASS" : failures + " FAILURE(S)"}`);
   process.exit(failures === 0 ? 0 : 1);

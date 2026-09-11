@@ -1262,7 +1262,10 @@ function aiFlagBadgeHtml(aiFlag) {
   if (!aiFlag) return "";
   const reason = aiFlag.reason || (aiFlag.mismatch ? "mismatch" : null);
   if (reason === "duplicate") {
-    return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagDuplicateDetail", { date: aiFlag.duplicateOfDate }))}">${escapeHtml(t("aiFlagReasonDuplicate", { date: aiFlag.duplicateOfDate }))}</span>`;
+    const detail = aiFlag.duplicateOfShift
+      ? t("aiFlagDuplicateDetailWithShift", { shift: t("shift_" + aiFlag.duplicateOfShift), date: aiFlag.duplicateOfDate })
+      : t("aiFlagDuplicateDetail", { date: aiFlag.duplicateOfDate });
+    return `<span class="badge badge-warning" title="${escapeHtml(detail)}">${escapeHtml(t("aiFlagReasonDuplicate", { date: aiFlag.duplicateOfDate }))}</span>`;
   }
   if (reason === "unreadable") {
     return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagUnreadableDetail"))}">${escapeHtml(t("aiFlagReasonUnreadable"))}</span>`;
@@ -1278,7 +1281,17 @@ function aiFlagBadgeHtml(aiFlag) {
 // what was expected, a duplicate's original date, or "couldn't read this").
 function flagReasonDetailHtml(flag) {
   const reason = flag.reason || "mismatch";
-  if (reason === "duplicate") return `<div>${escapeHtml(t("aiFlagDuplicateDetail", { date: flag.duplicateOfDate }))}</div>`;
+  if (reason === "duplicate") {
+    // Naming only the date reads as nonsensical when it's the SAME date
+    // as this submission itself (a different shift earlier that day
+    // reused the photo) -- name the original's shift too whenever it's
+    // known, so it's clear this refers to a different submission.
+    return `<div>${escapeHtml(
+      flag.duplicateOfShift
+        ? t("aiFlagDuplicateDetailWithShift", { shift: t("shift_" + flag.duplicateOfShift), date: flag.duplicateOfDate })
+        : t("aiFlagDuplicateDetail", { date: flag.duplicateOfDate })
+    )}</div>`;
+  }
   if (reason === "unreadable") return `<div>${escapeHtml(t("aiFlagUnreadableDetail"))}</div>`;
   return `<div>${escapeHtml(t("aiFlagReadingLabel", { temp: flag.temperatureF }))} (${escapeHtml(t("aiFlagExpectedLabel", { op: flag.expectedOp, threshold: flag.expectedThreshold }))})</div>
           <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
