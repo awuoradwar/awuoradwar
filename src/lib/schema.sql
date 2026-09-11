@@ -378,6 +378,7 @@ CREATE TABLE IF NOT EXISTS procedure_areas (
   id TEXT PRIMARY KEY,
   store_id TEXT NOT NULL REFERENCES stores(id),
   name TEXT NOT NULL,
+  name_es TEXT,
   category TEXT NOT NULL, -- FOH | BOH | PATIO_WINDOWS
   sort_order INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,

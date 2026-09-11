@@ -8,6 +8,7 @@ import {
   addProcedureItemAction,
   updateProcedureItemAction,
   removeProcedureItemAction,
+  updateAreaNameAction,
 } from "@/app/actions/procedureActions";
 import { ProcedureArea, ProcedureCategory, ProcedureItem, ProcedureShiftType } from "@/lib/services/procedureService";
 import { Language } from "@/lib/types";
@@ -168,6 +169,87 @@ function ChecklistSection({
   );
 }
 
+function AreaNameEditor({ area, lang }: { area: ProcedureArea; lang: Language }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(area.name);
+  const [nameEs, setNameEs] = useState(area.name_es ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  const es = lang === "es";
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <span className={`text-sm font-semibold ${area.active ? "" : "text-muted line-through"}`}>{area.name}</span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            setEditing(true);
+          }}
+          className="shrink-0 text-xs font-semibold text-accent"
+        >
+          {es ? "Editar" : "Edit"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5" onClick={(e) => e.preventDefault()}>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        autoFocus
+        aria-label={es ? "Nombre de la estación" : "Station name"}
+        className="tap-target rounded-lg border border-border bg-card px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
+      />
+      <input
+        value={nameEs}
+        onChange={(e) => setNameEs(e.target.value)}
+        placeholder={es ? "Traducción al inglés -- opcional" : "Spanish translation (optional)"}
+        className="tap-target rounded-lg border border-border bg-card px-2.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
+      />
+      {error && <p className="text-xs text-critical">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              const result = await updateAreaNameAction(area.id, name, nameEs);
+              if (result?.error) {
+                setError(result.error);
+                return;
+              }
+              setError(null);
+              setEditing(false);
+              router.refresh();
+            })
+          }
+          className="rounded-lg bg-foreground px-2.5 py-1 text-xs font-semibold text-background disabled:opacity-40"
+        >
+          {es ? "Guardar" : "Save"}
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            setName(area.name);
+            setNameEs(area.name_es ?? "");
+            setError(null);
+            setEditing(false);
+          }}
+          className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-muted"
+        >
+          {es ? "Cancelar" : "Cancel"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AreaCard({ area, items, lang }: { area: ProcedureArea; items: ProcedureItem[]; lang: Language }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -176,8 +258,10 @@ function AreaCard({ area, items, lang }: { area: ProcedureArea; items: Procedure
 
   return (
     <details className="card overflow-hidden">
-      <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5">
-        <span className={`text-sm font-semibold ${area.active ? "" : "text-muted line-through"}`}>{area.name}</span>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2.5">
+        <div className="min-w-0 flex-1">
+          <AreaNameEditor area={area} lang={lang} />
+        </div>
         <span className="shrink-0 text-xs font-semibold text-muted">{closing.length}</span>
       </summary>
       <div className="flex flex-col gap-4 border-t border-border p-3">
@@ -203,6 +287,7 @@ function AreaCard({ area, items, lang }: { area: ProcedureArea; items: Procedure
 
 export default function ProcedureAreasManager({ areas, itemsByArea, lang }: { areas: ProcedureArea[]; itemsByArea: Record<string, ProcedureItem[]>; lang: Language }) {
   const [name, setName] = useState("");
+  const [nameEs, setNameEs] = useState("");
   const [category, setCategory] = useState<ProcedureCategory>("FOH");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -223,6 +308,7 @@ export default function ProcedureAreasManager({ areas, itemsByArea, lang }: { ar
             }
             setError(null);
             setName("");
+            setNameEs("");
             router.refresh();
           });
         }}
@@ -242,6 +328,9 @@ export default function ProcedureAreasManager({ areas, itemsByArea, lang }: { ar
             </select>
           </Field>
         </div>
+        <Field label={es ? "Traducción al inglés -- opcional" : "Spanish translation (optional)"}>
+          <input name="nameEs" value={nameEs} onChange={(e) => setNameEs(e.target.value)} placeholder={es ? "Se traduce automáticamente si se deja en blanco" : "Auto-translated if left blank"} className={inputClass} />
+        </Field>
         {error && <p className="text-sm text-critical">{error}</p>}
         <button type="submit" disabled={pending} className={`self-start ${btnPrimary}`}>
           {pending ? "…" : es ? "Agregar estación" : "Add station"}

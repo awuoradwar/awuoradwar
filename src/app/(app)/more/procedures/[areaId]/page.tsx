@@ -99,7 +99,7 @@ export default async function ProcedureAreaDetailPage({ params, searchParams }: 
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-5">
-      <PageHeader backHref="/more/procedures" lang={user.language} title={area.name} />
+      <PageHeader backHref="/more/procedures" lang={user.language} title={es && area.name_es ? area.name_es : area.name} />
 
       <div className="flex items-center justify-between">
         <Link href={`/more/procedures/${areaId}?weekStart=${prevWeekStart}`} className="text-sm font-medium text-accent">

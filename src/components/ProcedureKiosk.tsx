@@ -65,7 +65,9 @@ function groupBySection(items: ProcedureItem[]): Array<{ section: string | null;
 }
 
 const bigTile =
-  "tap-target flex w-full items-center justify-between rounded-2xl border-2 border-border bg-card px-5 py-4 text-left text-lg font-semibold transition-colors hover:border-accent hover:bg-accent/5 active:bg-accent/10";
+  "tap-target group flex w-full items-center justify-between gap-3 rounded-2xl bg-card px-5 py-4 text-left text-base font-semibold text-foreground shadow-sm ring-1 ring-border transition-all hover:shadow-md hover:ring-accent/50 active:scale-[0.99] active:shadow-sm";
+const bigTileArrow =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent transition-colors group-hover:bg-accent group-hover:text-accent-foreground";
 
 export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShift, categories, todayDate, yesterdayDate, lateNightWindow }: {
   token: string;
@@ -120,6 +122,10 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
 
   function itemLabel(item: ProcedureItem): string {
     return es && item.text_es ? item.text_es : item.text;
+  }
+
+  function areaLabel(a: ProcedureArea): string {
+    return es && a.name_es ? a.name_es : a.name;
   }
 
   const locale = es ? "es-MX" : "en-US";
@@ -197,8 +203,8 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
                   setStep("area");
                 }}
               >
-                {CATEGORY_LABEL[c][lang]}
-                <span className="text-muted">→</span>
+                <span>{CATEGORY_LABEL[c][lang]}</span>
+                <span className={bigTileArrow}>→</span>
               </button>
             ))}
           </div>
@@ -208,6 +214,11 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
       {step === "area" && category && (
         <>
           <StepHeader step={areaStepNum} total={totalSteps} label={CATEGORY_LABEL[category][lang]} lang={lang} />
+          {!singleCategory && (
+            <button type="button" onClick={() => setStep("category")} className="-mt-3 mb-4 self-start text-sm font-medium text-muted">
+              {es ? "← Atrás" : "← Back"}
+            </button>
+          )}
           <div className="flex flex-col gap-3">
             {areasInCategory.length === 0 && (
               <p className="text-center text-sm text-muted">{es ? "Todavía no hay áreas para esta categoría." : "No areas set up for this category yet."}</p>
@@ -222,22 +233,17 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
                   setStep("checklist");
                 }}
               >
-                {a.name}
-                <span className="text-muted">→</span>
+                <span>{areaLabel(a)}</span>
+                <span className={bigTileArrow}>→</span>
               </button>
             ))}
           </div>
-          {!singleCategory && (
-            <button type="button" onClick={() => setStep("category")} className="mt-6 text-sm font-medium text-muted">
-              {es ? "← Atrás" : "← Back"}
-            </button>
-          )}
         </>
       )}
 
       {step === "checklist" && area && (
         <>
-          <StepHeader step={checklistStepNum} total={totalSteps} label={`${area.name} — ${es ? "Cierre" : "Closing"}`} lang={lang} />
+          <StepHeader step={checklistStepNum} total={totalSteps} label={`${areaLabel(area)} — ${es ? "Cierre" : "Closing"}`} lang={lang} />
           <button type="button" onClick={() => setStep("area")} disabled={pending} className="-mt-3 mb-4 self-start text-sm font-medium text-muted">
             {es ? "← Atrás" : "← Back"}
           </button>
@@ -376,7 +382,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-ok/10 text-3xl text-ok">✓</div>
           <h1 className="text-xl font-bold">{es ? "Enviado" : "Submitted"}</h1>
           <p className="mt-1 text-sm text-muted">
-            {area.name} · {es ? "Cierre" : "Closing"}
+            {areaLabel(area)} · {es ? "Cierre" : "Closing"}
             {es ? " registrado para " : " checklist recorded for "}
             {names.map((n) => n.trim()).filter(Boolean).join(" & ")}.
           </p>

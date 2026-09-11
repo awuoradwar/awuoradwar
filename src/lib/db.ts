@@ -85,6 +85,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "manager_activities", "start_time", "start_time TEXT");
   ensureColumn(db, "manager_activities", "end_time", "end_time TEXT");
   ensureColumn(db, "procedure_items", "section", "section TEXT");
+  ensureColumn(db, "procedure_areas", "name_es", "name_es TEXT");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
@@ -96,6 +97,7 @@ function createConnection(): Database.Database {
   backfillClosingTranslations(db, FOH_CLOSING_STATIONS);
   backfillClosingTranslations(db, BOH_CLOSING_STATIONS);
   mergeDrinkStationRefreshers(db);
+  backfillAreaNameTranslations(db);
   return db;
 }
 
@@ -115,9 +117,10 @@ interface FohClosingItem {
 
 type ClosingCategory = "FOH" | "BOH" | "PATIO_WINDOWS";
 
-const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
+const FOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClosingItem[] }> = [
   {
     name: "Lobby",
+    nameEs: "Vestíbulo",
     items: [
       { en: "Tables are wiped down", es: "Las mesas están limpias" },
       { en: "Floor is swept and mopped twice", es: "El piso está barrido y trapeado dos veces" },
@@ -129,6 +132,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Drink Station",
+    nameEs: "Estación de Bebidas",
     items: [
       { en: "Teas are cleaned with soap (no harsh chemicals)", es: "Los tés están limpios con jabón (sin químicos fuertes)" },
       { en: "Tea nozzles and station are cleaned", es: "Las boquillas de té y la estación están limpias" },
@@ -142,6 +146,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Refreshers",
+    nameEs: "Refrescos",
     items: [
       { en: "All remaining juices are stored in the walk-in cooler", es: "Todos los jugos restantes están guardados en el walk-in" },
       { en: "All containers are cleaned with soap", es: "Todos los contenedores están limpios con jabón" },
@@ -153,6 +158,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "OLO Restocker",
+    nameEs: "Reabastecedor de OLO",
     items: [
       { en: "Windows and doors are cleaned", es: "Las ventanas y las puertas están limpias" },
       { en: "All sauces are neatly restocked", es: "Todas las salsas están reabastecidas ordenadamente" },
@@ -164,6 +170,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Drive Thru Register",
+    nameEs: "Caja del Autoservicio",
     items: [
       {
         en: "Sauces, drive-thru fridge, drink station, utensils, plates, and containers are restocked",
@@ -187,6 +194,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Drive Thru Runner",
+    nameEs: "Corredor del Autoservicio",
     items: [
       { en: "All rings are pulled and cleaned by 9:00 PM", es: "Todos los aros están sacados y limpios antes de las 9:00 PM" },
       { en: "Steam table is clean", es: "La mesa de vapor está limpia" },
@@ -202,6 +210,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Patio",
+    nameEs: "Patio",
     items: [
       { en: "Cones and the menu sign are brought inside", es: "Los conos y el letrero del menú están guardados adentro" },
       { en: "Chairs are stacked", es: "Las sillas están apiladas" },
@@ -215,6 +224,7 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Bathrooms",
+    nameEs: "Baños",
     items: [
       { en: "Toilet seat and base are cleaned with bleach", es: "El asiento y la base del inodoro están limpios con cloro" },
       { en: "Sink and mirror are wiped down with Spic n Span", es: "El lavabo y el espejo están limpios con Spic n Span" },
@@ -226,9 +236,10 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
 ];
 
-const BOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
+const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClosingItem[] }> = [
   {
     name: "Cooks",
+    nameEs: "Cocineros",
     items: [
       { en: "Woks and the hood (left side) are cleaned", es: "Los woks y la campana (lado izquierdo) están limpios" },
       { en: "Prep cooler is cleaned", es: "El prep cooler está limpio" },
@@ -248,6 +259,7 @@ const BOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Sides",
+    nameEs: "Guarniciones",
     items: [
       { en: "Chow mein wok area is cleaned", es: "El área del wok de chao mein está limpia" },
       { en: "Rice cabinet is cleaned", es: "El gabinete del arroz está limpio" },
@@ -264,6 +276,7 @@ const BOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
   },
   {
     name: "Dishes",
+    nameEs: "Trastes",
     items: [
       { en: "Dish area is cleaned", es: "El área de trastes está limpia" },
       { en: "Walls are cleaned", es: "Las paredes están limpias" },
@@ -285,13 +298,13 @@ const BOH_CLOSING_STATIONS: Array<{ name: string; items: FohClosingItem[] }> = [
  * seed, not just brand-new ones -- each store only ever gets whichever
  * named stations it doesn't already have, in whichever category they
  * belong to. */
-function seedClosingProcedures(db: Database.Database, category: ClosingCategory, stations: Array<{ name: string; items: FohClosingItem[] }>) {
+function seedClosingProcedures(db: Database.Database, category: ClosingCategory, stations: Array<{ name: string; nameEs: string; items: FohClosingItem[] }>) {
   const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
   if (stores.length === 0) return;
 
   const areaExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND category = ? AND name = ?`);
   const insertArea = db.prepare(
-    `INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)`
+    `INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?)`
   );
   const insertItem = db.prepare(
     `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, 1, ?)`
@@ -302,7 +315,7 @@ function seedClosingProcedures(db: Database.Database, category: ClosingCategory,
       if (areaExists.get(store.id, category, station.name)) return;
       const areaId = randomUUID();
       const now = new Date().toISOString();
-      insertArea.run(areaId, store.id, station.name, category, areaIndex, now);
+      insertArea.run(areaId, store.id, station.name, station.nameEs, category, areaIndex, now);
       station.items.forEach((item, itemIndex) => {
         insertItem.run(randomUUID(), areaId, item.en, item.es, itemIndex, now);
       });
@@ -349,12 +362,13 @@ function backfillClosingTranslations(db: Database.Database, stations: Array<{ na
 function mergeDrinkStationRefreshers(db: Database.Database) {
   const WRONG_COMBINED_NAME = "Lobby, Drink Station & Refreshers";
   const COMBINED_NAME = "Drink Station & Refreshers";
+  const COMBINED_NAME_ES = "Estación de Bebidas y Refrescos";
   const SOURCE_NAMES = ["Drink Station", "Refreshers"];
   const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
   const findAreaByName = db.prepare(`SELECT id, active, sort_order FROM procedure_areas WHERE store_id = ? AND category = 'FOH' AND name = ?`);
   const setActive = db.prepare(`UPDATE procedure_areas SET active = ? WHERE id = ?`);
   const combinedExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND name = ?`);
-  const insertArea = db.prepare(`INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, 'FOH', ?, 1, ?)`);
+  const insertArea = db.prepare(`INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, created_at) VALUES (?, ?, ?, ?, 'FOH', ?, 1, ?)`);
   const listItems = db.prepare(`SELECT text, text_es FROM procedure_items WHERE area_id = ? AND shift_type = 'CLOSING' AND active = 1 ORDER BY sort_order`);
   const insertItem = db.prepare(
     `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, section, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, ?, 1, ?)`
@@ -376,7 +390,7 @@ function mergeDrinkStationRefreshers(db: Database.Database) {
     const now = new Date().toISOString();
     const combinedAreaId = randomUUID();
     const combinedSortOrder = Math.min(...sourceAreas.map((s) => s.area!.sort_order));
-    insertArea.run(combinedAreaId, store.id, COMBINED_NAME, combinedSortOrder, now);
+    insertArea.run(combinedAreaId, store.id, COMBINED_NAME, COMBINED_NAME_ES, combinedSortOrder, now);
 
     let itemIndex = 0;
     for (const { name, area } of sourceAreas) {
@@ -388,6 +402,21 @@ function mergeDrinkStationRefreshers(db: Database.Database) {
       setActive.run(0, area!.id);
     }
   }
+}
+
+/** seedClosingProcedures now stores name_es alongside every built-in
+ * station it creates, but a store already seeded before name_es existed
+ * has NULL there for every one of those stations -- same "text_es was
+ * added after the fact" gap backfillClosingTranslations closes for item
+ * text. Matches by exact English name against the same built-in stations'
+ * Spanish names and only fills name_es where it's still NULL, so a GM who
+ * has since renamed a station is left alone. */
+function backfillAreaNameTranslations(db: Database.Database) {
+  const stmt = db.prepare(`UPDATE procedure_areas SET name_es = ? WHERE name = ? AND name_es IS NULL`);
+  for (const station of [...FOH_CLOSING_STATIONS, ...BOH_CLOSING_STATIONS]) {
+    stmt.run(station.nameEs, station.name);
+  }
+  stmt.run("Estación de Bebidas y Refrescos", "Drink Station & Refreshers");
 }
 
 /** Every store needs an org_id once franchise_orgs exists, even a store that

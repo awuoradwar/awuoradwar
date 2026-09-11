@@ -120,8 +120,11 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
        WHERE pa.store_id = ? AND pi.active = 1 AND pi.text_es IS NULL LIMIT ?`
     )
     .all(storeId, BACKFILL_LIMIT) as Array<{ id: string; text: string }>;
+  const procedureAreas = db
+    .prepare(`SELECT id, name FROM procedure_areas WHERE store_id = ? AND name_es IS NULL LIMIT ?`)
+    .all(storeId, BACKFILL_LIMIT) as Array<{ id: string; name: string }>;
 
-  if (templates.length === 0 && tasks.length === 0 && notes.length === 0 && procedureItems.length === 0) return;
+  if (templates.length === 0 && tasks.length === 0 && notes.length === 0 && procedureItems.length === 0 && procedureAreas.length === 0) return;
 
   const toTranslate: Record<string, string> = {};
   templates.forEach((t) => (toTranslate[`tpl_${t.id}`] = t.title));
@@ -131,6 +134,7 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
   });
   notes.forEach((n) => (toTranslate[`note_${n.id}`] = n.title));
   procedureItems.forEach((i) => (toTranslate[`procitem_${i.id}`] = i.text));
+  procedureAreas.forEach((a) => (toTranslate[`procarea_${a.id}`] = a.name));
 
   const translated = await translateFields(toTranslate);
   if (!translated) return;
@@ -140,6 +144,7 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
   const updateTaskDesc = db.prepare(`UPDATE tasks SET description_es = ? WHERE id = ? AND description_es IS NULL`);
   const updateNote = db.prepare(`UPDATE shift_notes SET title_es = ? WHERE id = ? AND title_es IS NULL`);
   const updateProcedureItem = db.prepare(`UPDATE procedure_items SET text_es = ? WHERE id = ? AND text_es IS NULL`);
+  const updateProcedureArea = db.prepare(`UPDATE procedure_areas SET name_es = ? WHERE id = ? AND name_es IS NULL`);
 
   for (const t of templates) {
     const entry = translated[`tpl_${t.id}`];
@@ -158,5 +163,9 @@ export async function backfillStoreTranslations(storeId: string): Promise<void> 
   for (const i of procedureItems) {
     const entry = translated[`procitem_${i.id}`];
     if (entry) updateProcedureItem.run(entry.lang === "es" ? i.text : entry.translated, i.id);
+  }
+  for (const a of procedureAreas) {
+    const entry = translated[`procarea_${a.id}`];
+    if (entry) updateProcedureArea.run(entry.lang === "es" ? a.name : entry.translated, a.id);
   }
 }

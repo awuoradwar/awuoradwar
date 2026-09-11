@@ -118,7 +118,7 @@ export default async function ProceduresPage() {
                     const flagged = !done && missedClosing.has(a.id);
                     return (
                       <Link key={a.id} href={`/more/procedures/${a.id}`} className="tap-target flex items-center justify-between gap-2 px-4 py-3 text-sm font-medium hover:bg-card-subtle">
-                        <span>{a.name}</span>
+                        <span>{es && a.name_es ? a.name_es : a.name}</span>
                         <span className="flex shrink-0 items-center gap-2">
                           {done ? (
                             <span className="rounded-full bg-ok/10 px-2 py-0.5 text-xs font-semibold text-ok">{es ? "✓ Hecho" : "✓ Done"}</span>

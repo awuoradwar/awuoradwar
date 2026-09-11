@@ -61,7 +61,8 @@ export default function ProcedureSubmissionRow({
           ) : (
             <>
               <p className="truncate font-semibold">
-                {submission.area_name} · {submission.shift_type === "OPENING" ? (es ? "Apertura" : "Opening") : es ? "Cierre" : "Closing"}
+                {es && submission.area_name_es ? submission.area_name_es : submission.area_name} ·{" "}
+                {submission.shift_type === "OPENING" ? (es ? "Apertura" : "Opening") : es ? "Cierre" : "Closing"}
               </p>
               <p className="truncate text-xs text-muted">
                 {submission.associate_name} · {submission.area_category && CATEGORY_LABEL[submission.area_category][lang]} · {time}

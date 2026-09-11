@@ -16,6 +16,7 @@ export interface ProcedureArea {
   id: string;
   store_id: string;
   name: string;
+  name_es: string | null;
   category: ProcedureCategory;
   sort_order: number;
   active: number;
@@ -66,6 +67,7 @@ export interface ProcedureSubmission {
   submitted_date: string;
   created_at: string;
   area_name?: string;
+  area_name_es?: string | null;
   area_category?: ProcedureCategory;
 }
 
@@ -100,7 +102,7 @@ export function regenerateProceduresToken(storeId: string, actor: SessionUser): 
 
 // --- Areas ---------------------------------------------------------------
 
-const AREA_COLUMNS = "id, store_id, name, category, sort_order, active, created_at";
+const AREA_COLUMNS = "id, store_id, name, name_es, category, sort_order, active, created_at";
 
 export function listActiveAreas(storeId: string): ProcedureArea[] {
   const db = getDb();
@@ -119,17 +121,28 @@ export function getArea(areaId: string, storeId: string): ProcedureArea | undefi
   return db.prepare(`SELECT ${AREA_COLUMNS} FROM procedure_areas WHERE id = ? AND store_id = ?`).get(areaId, storeId) as ProcedureArea | undefined;
 }
 
-export function createArea(storeId: string, name: string, category: ProcedureCategory, actor: SessionUser): { id?: string; error?: string } {
+export function createArea(storeId: string, name: string, nameEs: string | null, category: ProcedureCategory, actor: SessionUser): { id?: string; error?: string } {
   const trimmed = name.trim();
   if (!trimmed) return { error: "Name is required." };
   const db = getDb();
   const maxOrder = db.prepare(`SELECT MAX(sort_order) as m FROM procedure_areas WHERE store_id = ? AND category = ?`).get(storeId, category) as { m: number | null };
   const id = newId();
   db.prepare(
-    `INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_by, created_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)`
-  ).run(id, storeId, trimmed, category, (maxOrder.m ?? -1) + 1, actor.id, nowIso());
+    `INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+  ).run(id, storeId, trimmed, nameEs?.trim() || null, category, (maxOrder.m ?? -1) + 1, actor.id, nowIso());
   writeAudit({ entityType: "procedure_area", entityId: id, actor, action: "CREATED", newValue: { name: trimmed, category } });
   return { id };
+}
+
+/** GM correction for a station name that's wrong, missing its Spanish
+ * translation, or both -- same shape as updateItem for checklist text. */
+export function updateAreaName(id: string, name: string, nameEs: string | null, actor: SessionUser): { error?: string } {
+  const trimmed = name.trim();
+  if (!trimmed) return { error: "Name is required." };
+  const db = getDb();
+  db.prepare(`UPDATE procedure_areas SET name = ?, name_es = ? WHERE id = ?`).run(trimmed, nameEs?.trim() || null, id);
+  writeAudit({ entityType: "procedure_area", entityId: id, actor, action: "EDITED", newValue: { name: trimmed } });
+  return {};
 }
 
 /** Deactivate only, never delete -- past submissions keep referencing this
@@ -331,7 +344,7 @@ export function getRecentSubmissions(storeId: string, limit = 50): ProcedureSubm
   const db = getDb();
   return db
     .prepare(
-      `SELECT s.*, a.name as area_name, a.category as area_category
+      `SELECT s.*, a.name as area_name, a.name_es as area_name_es, a.category as area_category
        FROM procedure_submissions s JOIN procedure_areas a ON a.id = s.area_id
        WHERE s.store_id = ? ORDER BY s.created_at DESC LIMIT ?`
     )
@@ -342,7 +355,7 @@ export function getSubmissionsForDate(storeId: string, date: string): ProcedureS
   const db = getDb();
   return db
     .prepare(
-      `SELECT s.*, a.name as area_name, a.category as area_category
+      `SELECT s.*, a.name as area_name, a.name_es as area_name_es, a.category as area_category
        FROM procedure_submissions s JOIN procedure_areas a ON a.id = s.area_id
        WHERE s.store_id = ? AND s.submitted_date = ? ORDER BY s.created_at DESC`
     )

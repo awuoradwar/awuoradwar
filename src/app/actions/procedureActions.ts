@@ -48,9 +48,22 @@ export async function createAreaAction(formData: FormData): Promise<{ id?: strin
   const user = await requireCurrentUser();
   if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
   const name = String(formData.get("name") || "");
+  const nameEs = String(formData.get("nameEs") || "");
   const category = String(formData.get("category") || "") as ProcedureCategory;
   if (!["FOH", "BOH", "PATIO_WINDOWS"].includes(category)) return { error: "Invalid category." };
-  const result = procedureService.createArea(user.storeId, name, category, user);
+  const translated = nameEs.trim() ? {} : await translateFields({ name });
+  const pair = resolveBilingualPair(translated?.name, name, nameEs);
+  const result = procedureService.createArea(user.storeId, pair.primary, pair.secondary, category, user);
+  if (!result.error) refresh();
+  return result;
+}
+
+export async function updateAreaNameAction(id: string, name: string, nameEs: string): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
+  const translated = nameEs.trim() ? {} : await translateFields({ name });
+  const pair = resolveBilingualPair(translated?.name, name, nameEs);
+  const result = procedureService.updateAreaName(id, pair.primary, pair.secondary, user);
   if (!result.error) refresh();
   return result;
 }
