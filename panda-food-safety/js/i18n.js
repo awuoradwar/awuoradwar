@@ -194,8 +194,10 @@ const STRINGS = {
   markReviewedButton: { en: "Mark Reviewed", es: "Marcar Revisado" },
   aiMismatchBadge: { en: "~{temp}°F", es: "~{temp}°F" },
   aiFlagReasonUnreadable: { en: "Unclear photo", es: "Foto poco clara" },
+  aiFlagReasonWrongPhoto: { en: "Wrong photo", es: "Foto incorrecta" },
   aiFlagReasonDuplicate: { en: "Reused photo ({date})", es: "Foto reutilizada ({date})" },
   aiFlagUnreadableDetail: { en: "Photo isn't clear enough to check.", es: "La foto no es lo suficientemente clara para revisar." },
+  aiFlagWrongPhotoDetail: { en: "Photo doesn't show a thermometer reading.", es: "La foto no muestra una lectura del termómetro." },
   aiFlagDuplicateDetail: { en: "Same photo used on {date}.", es: "Misma foto usada el {date}." },
   // Used whenever the original's shift is known -- naming the date alone
   // reads as nonsensical when it matches this same submission's own date

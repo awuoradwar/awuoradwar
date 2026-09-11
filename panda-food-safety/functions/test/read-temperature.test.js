@@ -42,6 +42,17 @@ function check(cond, msg) {
     check(result.readable === false, "A failed structured-output parse falls back to readable:false instead of throwing");
   }
 
+  // The model's thermometerVisible verdict passes straight through --
+  // this is what lets evaluateTempReading tell "wrong photo entirely"
+  // apart from "a real thermometer, just too blurry to read".
+  {
+    const stubClient = {
+      messages: { parse: async () => ({ parsed_output: { readable: false, temperatureF: null, confidence: "low", thermometerVisible: false } }) },
+    };
+    const result = await readTemperatureFromPhoto(stubClient, "data:image/jpeg;base64,QUJD");
+    check(result.thermometerVisible === false, `A photo the model says shows no thermometer at all reports thermometerVisible:false (got ${JSON.stringify(result)})`);
+  }
+
   console.log(`\n${failures === 0 ? "ALL PASS" : failures + " FAILURE(S)"}`);
   process.exit(failures === 0 ? 0 : 1);
 })();

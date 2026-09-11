@@ -1280,6 +1280,9 @@ function aiFlagBadgeHtml(aiFlag) {
   if (reason === "unreadable") {
     return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagUnreadableDetail"))}">${escapeHtml(t("aiFlagReasonUnreadable"))}</span>`;
   }
+  if (reason === "wrongPhoto") {
+    return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagWrongPhotoDetail"))}">${escapeHtml(t("aiFlagReasonWrongPhoto"))}</span>`;
+  }
   if (reason === "mismatch") {
     return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagsModalHint"))}">${escapeHtml(t("aiMismatchBadge", { temp: aiFlag.temperatureF }))}</span>`;
   }
@@ -1304,6 +1307,7 @@ function flagReasonDetailHtml(flag) {
     )}</div>`;
   }
   if (reason === "unreadable") return `<div>${escapeHtml(t("aiFlagUnreadableDetail"))}</div>`;
+  if (reason === "wrongPhoto") return `<div>${escapeHtml(t("aiFlagWrongPhotoDetail"))}</div>`;
   return `<div>${escapeHtml(t("aiFlagReadingLabel", { temp: flag.temperatureF }))} (${escapeHtml(t("aiFlagExpectedLabel", { op: flag.expectedOp, threshold: flag.expectedThreshold }))})</div>
           <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
 }

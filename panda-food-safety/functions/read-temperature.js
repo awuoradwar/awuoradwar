@@ -5,6 +5,12 @@ const TempReadingSchema = z.object({
   readable: z.boolean(),
   temperatureF: z.number().nullable(),
   confidence: z.enum(["high", "medium", "low"]),
+  // Distinguishes "a thermometer is in frame but its number can't be made
+  // out" (genuinely unclear photo) from "this photo doesn't show a
+  // thermometer/display at all" (the wrong photo was uploaded) -- two
+  // very different problems that both used to collapse into the same
+  // "unreadable" flag.
+  thermometerVisible: z.boolean(),
 });
 
 const UNREADABLE = { readable: false, temperatureF: null, confidence: "low" };
@@ -31,7 +37,7 @@ async function readTemperatureFromPhoto(client, dataUrl) {
           { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
           {
             type: "text",
-            text: "This photo was taken during a restaurant food-safety walkthrough to document a thermometer or temperature display reading. Read the numeric temperature (in Fahrenheit) shown in the photo. If no clear numeric reading is visible (blurry, obstructed, wrong subject, no display in frame), set readable to false and temperatureF to null.",
+            text: "This photo was taken during a restaurant food-safety walkthrough to document a thermometer or temperature display reading. First decide whether a thermometer or digital temperature display is visible anywhere in the photo at all -- set thermometerVisible to true or false accordingly. This is separate from whether its number is legible. Then read the numeric temperature (in Fahrenheit) it shows. If a thermometer/display IS in frame but its reading can't be made out (blurry, obstructed, glare, too small), set readable to false, temperatureF to null, and thermometerVisible to true. If the photo doesn't show a thermometer or temperature display at all -- it shows food, packaging, a shelf, or something else entirely -- set readable to false, temperatureF to null, and thermometerVisible to false.",
           },
         ],
       },

@@ -45,6 +45,20 @@ function check(cond, msg) {
   check(r.mismatch === false && r.readable === false && r.reason === "unreadable", `An unreadable photo is flagged as "unreadable", never as a mismatch (got ${JSON.stringify(r)})`);
 }
 
+// A thermometer genuinely IS in frame, just too blurry/obstructed to
+// read -- stays "unreadable" (a photography problem, worth a retake).
+{
+  const r = evaluateTempReading("15", "yes", { readable: false, temperatureF: null, confidence: "low", thermometerVisible: true });
+  check(r.reason === "unreadable", `A blurry-but-present thermometer is "unreadable", not "wrongPhoto" (got ${JSON.stringify(r.reason)})`);
+}
+
+// No thermometer/display in the photo at all -> a different, more
+// serious problem than blurriness: the wrong picture was uploaded.
+{
+  const r = evaluateTempReading("16", "yes", { readable: false, temperatureF: null, confidence: "low", thermometerVisible: false });
+  check(r.reason === "wrongPhoto", `A photo with no thermometer in frame at all is tagged "wrongPhoto", distinct from a merely unclear one (got ${JSON.stringify(r.reason)})`);
+}
+
 // A readable, agreeing photo has reason: null -- stored for the audit
 // trail but not surfaced as a notable flag.
 {

@@ -15,17 +15,21 @@ function thresholdPasses(temperatureF, itemId) {
 
 // Compares what the photo actually shows against what the associate
 // answered. Returns null only when the item is out of scope entirely.
-// An unreadable photo is its own flagged reason ("unreadable") rather
-// than silently dropped — a blank, wrong-subject, or unusably blurry
-// photo is itself worth a human glance, not proof of a failed reading,
-// so it's never labeled a "mismatch" (that would falsely assert the
-// photo contradicts the answer when there's no reading to compare at
-// all).
+// A photo with no usable reading is its own flagged reason rather than
+// silently dropped — worth a human glance, not proof of a failed
+// reading, so it's never labeled a "mismatch" (that would falsely
+// assert the photo contradicts the answer when there's no reading to
+// compare at all). Split into two distinct reasons: "unreadable" (a
+// thermometer IS in frame but its number can't be made out -- a
+// photography problem, worth a retake) vs "wrongPhoto" (no thermometer
+// in the photo at all -- the wrong picture was uploaded entirely, a
+// bigger compliance issue than a blurry shot).
 function evaluateTempReading(itemId, associateAnswer, reading) {
   const check = TEMP_CHECK_ITEMS[itemId];
   if (!check) return null;
   if (!reading || !reading.readable || typeof reading.temperatureF !== "number") {
-    return { itemId, readable: false, reason: "unreadable", mismatch: false };
+    const reason = reading && reading.thermometerVisible === false ? "wrongPhoto" : "unreadable";
+    return { itemId, readable: false, reason, mismatch: false };
   }
   const computedPass = thresholdPasses(reading.temperatureF, itemId);
   const associatePass = associateAnswer === "yes";
