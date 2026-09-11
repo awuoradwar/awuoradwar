@@ -66,11 +66,11 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   // ProcedureShiftType value (not a literal sprinkled through submit/JSX) so
   // opening support can come back later by turning this into a picker again.
   const shiftType: ProcedureShiftType = "CLOSING";
-  // Almost always one associate closes a station alone -- a second name slot
-  // is opt-in (see "+ Add another associate") for stations like Cooks where
-  // two people split the list, and only then do items switch from a plain
-  // checkbox to per-person chips so it's clear who did what.
-  const [names, setNames] = useState<string[]>([""]);
+  // Two name fields always show -- most stations only ever fill in the
+  // first, and leaving the second blank keeps items as plain checkboxes.
+  // Filling both (stations like Cooks where two people split the list)
+  // switches items to per-person chips so it's clear who did what.
+  const [names, setNames] = useState<[string, string]>(["", ""]);
   const [checkedBy, setCheckedBy] = useState<Record<string, string | undefined>>({});
   const [notes, setNotes] = useState("");
   const [submittedDate, setSubmittedDate] = useState(lateNightWindow ? yesterdayDate : todayDate);
@@ -100,7 +100,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
     setStep(singleCategory ? "area" : "category");
     setCategory(singleCategory);
     setArea(null);
-    setNames([""]);
+    setNames(["", ""]);
     setCheckedBy({});
     setNotes("");
     setSubmittedDate(lateNightWindow ? yesterdayDate : todayDate);
@@ -238,31 +238,19 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
             </div>
           )}
           <div className="mb-4 flex flex-col gap-2">
-            <p className="text-sm font-medium">{names.length > 1 ? (es ? "Nombres" : "Names") : es ? "Tu nombre" : "Your name"}</p>
-            {names.map((n, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  value={n}
-                  onChange={(e) => setNames((prev) => prev.map((p, idx) => (idx === i ? e.target.value : p)))}
-                  placeholder={i === 0 ? (es ? "Nombre completo" : "Full name") : es ? "Segundo nombre completo" : "Second full name"}
-                  className="tap-target flex-1 rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
-                />
-                {i > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setNames((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="tap-target shrink-0 text-sm font-medium text-muted"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            {names.length < 2 && (
-              <button type="button" onClick={() => setNames((prev) => [...prev, ""])} className="self-start text-xs font-semibold text-accent">
-                {es ? "+ Agregar otro asociado" : "+ Add another associate"}
-              </button>
-            )}
+            <p className="text-sm font-medium">{es ? "Nombre(s)" : "Name(s)"}</p>
+            <input
+              value={names[0]}
+              onChange={(e) => setNames((prev) => [e.target.value, prev[1]])}
+              placeholder={es ? "Nombre completo" : "Full name"}
+              className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
+            />
+            <input
+              value={names[1]}
+              onChange={(e) => setNames((prev) => [prev[0], e.target.value])}
+              placeholder={es ? "Segundo asociado (si aplica)" : "Second associate (if any)"}
+              className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
+            />
           </div>
           {items.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted">
