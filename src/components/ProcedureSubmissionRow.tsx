@@ -37,7 +37,14 @@ export default function ProcedureSubmissionRow({
   canEdit?: boolean;
 }) {
   const es = lang === "es";
-  const items = JSON.parse(submission.items_json) as Array<{ text: string; textEs: string | null; checked: boolean; checkedBy?: string | null; section?: string | null }>;
+  const items = JSON.parse(submission.items_json) as Array<{
+    text: string;
+    textEs: string | null;
+    checked: boolean;
+    checkedBy?: string | null;
+    section?: string | null;
+    sectionEs?: string | null;
+  }>;
   const checkedCount = items.filter((i) => i.checked).length;
   // Same section grouping as ProcedureKiosk -- an area that covers what
   // used to be several separate stations keeps each one's items under its
@@ -80,7 +87,9 @@ export default function ProcedureSubmissionRow({
           lastSection = item.section ?? null;
           return (
             <div key={i}>
-              {showHeader && <p className="mt-1 text-xs font-bold uppercase tracking-wide text-muted first:mt-0">{item.section}</p>}
+              {showHeader && (
+                <p className="mt-1 text-xs font-bold uppercase tracking-wide text-muted first:mt-0">{es && item.sectionEs ? item.sectionEs : item.section}</p>
+              )}
               <div className="flex items-center gap-2">
                 <span className={item.checked ? "text-ok" : "text-muted"}>{item.checked ? "✓" : "○"}</span>
                 <span className={item.checked ? "" : "text-muted"}>{es && item.textEs ? item.textEs : item.text}</span>

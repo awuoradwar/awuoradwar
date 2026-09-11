@@ -85,6 +85,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "manager_activities", "start_time", "start_time TEXT");
   ensureColumn(db, "manager_activities", "end_time", "end_time TEXT");
   ensureColumn(db, "procedure_items", "section", "section TEXT");
+  ensureColumn(db, "procedure_items", "section_es", "section_es TEXT");
   ensureColumn(db, "procedure_areas", "name_es", "name_es TEXT");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
@@ -98,6 +99,7 @@ function createConnection(): Database.Database {
   backfillClosingTranslations(db, BOH_CLOSING_STATIONS);
   mergeDrinkStationRefreshers(db);
   backfillAreaNameTranslations(db);
+  backfillSectionTranslations(db);
   return db;
 }
 
@@ -363,6 +365,7 @@ function mergeDrinkStationRefreshers(db: Database.Database) {
   const WRONG_COMBINED_NAME = "Lobby, Drink Station & Refreshers";
   const COMBINED_NAME = "Drink Station & Refreshers";
   const COMBINED_NAME_ES = "Estación de Bebidas y Refrescos";
+  const SOURCE_NAMES_ES: Record<string, string> = { "Drink Station": "Estación de Bebidas", Refreshers: "Refrescos" };
   const SOURCE_NAMES = ["Drink Station", "Refreshers"];
   const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
   const findAreaByName = db.prepare(`SELECT id, active, sort_order FROM procedure_areas WHERE store_id = ? AND category = 'FOH' AND name = ?`);
@@ -371,7 +374,7 @@ function mergeDrinkStationRefreshers(db: Database.Database) {
   const insertArea = db.prepare(`INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, created_at) VALUES (?, ?, ?, ?, 'FOH', ?, 1, ?)`);
   const listItems = db.prepare(`SELECT text, text_es FROM procedure_items WHERE area_id = ? AND shift_type = 'CLOSING' AND active = 1 ORDER BY sort_order`);
   const insertItem = db.prepare(
-    `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, section, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, ?, 1, ?)`
+    `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, section, section_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, ?, ?, 1, ?)`
   );
 
   for (const store of stores) {
@@ -396,7 +399,7 @@ function mergeDrinkStationRefreshers(db: Database.Database) {
     for (const { name, area } of sourceAreas) {
       const items = listItems.all(area!.id) as Array<{ text: string; text_es: string | null }>;
       for (const item of items) {
-        insertItem.run(randomUUID(), combinedAreaId, item.text, item.text_es, name, itemIndex, now);
+        insertItem.run(randomUUID(), combinedAreaId, item.text, item.text_es, name, SOURCE_NAMES_ES[name] ?? null, itemIndex, now);
         itemIndex++;
       }
       setActive.run(0, area!.id);
@@ -417,6 +420,15 @@ function backfillAreaNameTranslations(db: Database.Database) {
     stmt.run(station.nameEs, station.name);
   }
   stmt.run("Estación de Bebidas y Refrescos", "Drink Station & Refreshers");
+}
+
+/** Same gap as backfillAreaNameTranslations, but for section_es -- a store
+ * whose "Drink Station & Refreshers" merge ran before section_es existed
+ * has its sub-heading items' section_es still NULL. */
+function backfillSectionTranslations(db: Database.Database) {
+  const stmt = db.prepare(`UPDATE procedure_items SET section_es = ? WHERE section = ? AND section_es IS NULL`);
+  stmt.run("Estación de Bebidas", "Drink Station");
+  stmt.run("Refrescos", "Refreshers");
 }
 
 /** Every store needs an org_id once franchise_orgs exists, even a store that

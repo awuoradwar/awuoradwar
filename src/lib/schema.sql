@@ -398,6 +398,7 @@ CREATE TABLE IF NOT EXISTS procedure_items (
   text_es TEXT,
   section TEXT, -- optional sub-heading within one area's checklist, e.g. an
                 -- area covering what used to be several separate stations
+  section_es TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL

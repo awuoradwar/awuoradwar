@@ -51,14 +51,14 @@ function singularize(name: string): string {
  * original station's items under their own header. Every other area's
  * items all have `section: null`, which comes back as one group with no
  * header -- unchanged from before sections existed. */
-function groupBySection(items: ProcedureItem[]): Array<{ section: string | null; items: ProcedureItem[] }> {
-  const groups: Array<{ section: string | null; items: ProcedureItem[] }> = [];
+function groupBySection(items: ProcedureItem[]): Array<{ section: string | null; sectionEs: string | null; items: ProcedureItem[] }> {
+  const groups: Array<{ section: string | null; sectionEs: string | null; items: ProcedureItem[] }> = [];
   for (const item of items) {
     const last = groups[groups.length - 1];
     if (last && last.section === item.section) {
       last.items.push(item);
     } else {
-      groups.push({ section: item.section, items: [item] });
+      groups.push({ section: item.section, sectionEs: item.section_es, items: [item] });
     }
   }
   return groups;
@@ -161,7 +161,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
         area.id,
         shiftType,
         activeNames.join(" & "),
-        items.map((i) => ({ text: i.text, textEs: i.text_es, checked: !!checkedBy[i.id], checkedBy: checkedBy[i.id] ?? null, section: i.section })),
+        items.map((i) => ({ text: i.text, textEs: i.text_es, checked: !!checkedBy[i.id], checkedBy: checkedBy[i.id] ?? null, section: i.section, sectionEs: i.section_es })),
         notes,
         submittedDate
       );
@@ -279,13 +279,13 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
             <input
               value={names[0]}
               onChange={(e) => setNames((prev) => [e.target.value, prev[1]])}
-              placeholder={es ? `Primer ${singularize(area.name)}` : `First ${singularize(area.name)}`}
+              placeholder={es ? `Primer ${singularize(areaLabel(area))}` : `First ${singularize(area.name)}`}
               className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
             <input
               value={names[1]}
               onChange={(e) => setNames((prev) => [prev[0], e.target.value])}
-              placeholder={es ? `Segundo ${singularize(area.name)}` : `Second ${singularize(area.name)}`}
+              placeholder={es ? `Segundo ${singularize(areaLabel(area))}` : `Second ${singularize(area.name)}`}
               className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
           </div>
@@ -298,7 +298,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
               {groupBySection(items).map((group, gi) => (
                 <Fragment key={gi}>
                   {group.section && (
-                    <p className="bg-card-subtle px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted">{group.section}</p>
+                    <p className="bg-card-subtle px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted">{es && group.sectionEs ? group.sectionEs : group.section}</p>
                   )}
                   {group.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-2 px-4 py-3 text-sm">
@@ -331,7 +331,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
               {groupBySection(items).map((group, gi) => (
                 <Fragment key={gi}>
                   {group.section && (
-                    <p className="bg-card-subtle px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted">{group.section}</p>
+                    <p className="bg-card-subtle px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted">{es && group.sectionEs ? group.sectionEs : group.section}</p>
                   )}
                   {group.items.map((item) => (
                     <label key={item.id} className="tap-target flex items-center gap-3 px-4 py-3 text-sm">
