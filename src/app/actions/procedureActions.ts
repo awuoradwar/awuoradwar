@@ -102,3 +102,19 @@ export async function updateSubmissionDateAction(id: string, newDate: string): P
   if (!result.error) refresh();
   return result;
 }
+
+/** Combines every id in `otherIds` into `primaryId`, one merge at a time --
+ * for the (now rare, since submitProcedure merges on its own) case of two
+ * associates whose separate kiosk visits landed as separate submissions
+ * anyway. Stops at the first failure so a bad id can't silently discard the
+ * ones before it. */
+export async function mergeSubmissionsAction(primaryId: string, otherIds: string[]): Promise<{ error?: string }> {
+  const user = await requireCurrentUser();
+  if (!canDo(user, "procedures.manage")) throw new Error("FORBIDDEN");
+  for (const otherId of otherIds) {
+    const result = procedureService.mergeSubmissions(primaryId, otherId, user.storeId, user);
+    if (result.error) return result;
+  }
+  refresh();
+  return {};
+}

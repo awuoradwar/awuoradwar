@@ -176,6 +176,30 @@ export function removeItem(id: string, actor: SessionUser) {
 
 // --- Submissions -----------------------------------------------------------
 
+/** Folds `incoming` items onto `base`: an item newly checked in `incoming`
+ * carries its own attribution into the result, anything else stays as
+ * `base` already had it. Shared by submitProcedure's own-station-merge and
+ * the GM's manual mergeSubmissions, since both are "combine two checklists
+ * for the same station/shift/day into one." */
+function mergeChecklistItems(base: ProcedureSubmissionItem[], incoming: ProcedureSubmissionItem[]): ProcedureSubmissionItem[] {
+  return base.map((item) => {
+    const match = incoming.find((i) => i.text === item.text);
+    if (match?.checked) {
+      return { ...item, checked: true, checkedBy: match.checkedBy ?? item.checkedBy ?? null };
+    }
+    return item;
+  });
+}
+
+function mergeAssociateNames(a: string, b: string): string {
+  const names = [...a.split(" & "), ...b.split(" & ")].map((n) => n.trim()).filter(Boolean);
+  return Array.from(new Set(names)).join(" & ");
+}
+
+function mergeNotes(a: string | null, b: string | null): string | null {
+  return [a, b].filter(Boolean).join(" / ") || null;
+}
+
 /** The public checklist's one write path -- no logged-in actor exists here
  * (see writeAudit's actor: null), so the associate's typed name on the row
  * itself is the only accountability record, by design (per how this
@@ -221,19 +245,11 @@ export function submitProcedure(params: {
 
   if (existing) {
     const existingItems = JSON.parse(existing.items_json) as ProcedureSubmissionItem[];
-    const mergedItems = existingItems.map((existingItem) => {
-      const incoming = params.items.find((i) => i.text === existingItem.text);
-      if (incoming?.checked) {
-        return { ...existingItem, checked: true, checkedBy: incoming.checkedBy ?? existingItem.checkedBy ?? null };
-      }
-      return existingItem;
-    });
-    const existingNames = existing.associate_name.split(" & ").map((n) => n.trim());
-    const incomingNames = name.split(" & ").map((n) => n.trim());
-    const mergedNames = Array.from(new Set([...existingNames, ...incomingNames]));
-    const mergedNotes = [existing.notes, params.notes?.trim() || null].filter(Boolean).join(" / ") || null;
+    const mergedItems = mergeChecklistItems(existingItems, params.items);
+    const mergedName = mergeAssociateNames(existing.associate_name, name);
+    const mergedNotes = mergeNotes(existing.notes, params.notes?.trim() || null);
     db.prepare(`UPDATE procedure_submissions SET associate_name = ?, items_json = ?, notes = ?, created_at = ? WHERE id = ?`).run(
-      mergedNames.join(" & "),
+      mergedName,
       JSON.stringify(mergedItems),
       mergedNotes,
       nowIso(),
@@ -266,6 +282,37 @@ export function updateSubmissionDate(id: string, storeId: string, newDate: strin
   if (newDate > storeToday(storeId)) return { error: "Date can't be in the future." };
   db.prepare(`UPDATE procedure_submissions SET submitted_date = ? WHERE id = ?`).run(newDate, id);
   writeAudit({ entityType: "procedure_submission", entityId: id, actor, action: "EDITED", newValue: { submitted_date: newDate } });
+  return {};
+}
+
+/** GM-only cleanup for submissions that predate submitProcedure's own
+ * same-station/shift/day merge (or otherwise slipped past it) -- two
+ * associates who each went through the kiosk separately and ended up as
+ * two side-by-side entries instead of one. Folds `secondaryId` onto
+ * `primaryId` with the same item/name/notes merge submitProcedure uses,
+ * then removes the now-redundant secondary row entirely (unlike
+ * updateSubmissionDate, there's nothing left to keep once its content is
+ * folded in). Both must belong to this manager's store, and to the same
+ * station and shift -- merging across stations would silently misattribute
+ * who did what. */
+export function mergeSubmissions(primaryId: string, secondaryId: string, storeId: string, actor: SessionUser): { error?: string } {
+  if (primaryId === secondaryId) return { error: "Can't merge a submission with itself." };
+  const db = getDb();
+  const primary = db.prepare(`SELECT * FROM procedure_submissions WHERE id = ? AND store_id = ?`).get(primaryId, storeId) as ProcedureSubmission | undefined;
+  const secondary = db.prepare(`SELECT * FROM procedure_submissions WHERE id = ? AND store_id = ?`).get(secondaryId, storeId) as ProcedureSubmission | undefined;
+  if (!primary || !secondary) return { error: "Submission not found." };
+  if (primary.area_id !== secondary.area_id || primary.shift_type !== secondary.shift_type) {
+    return { error: "Can only merge submissions for the same station and shift." };
+  }
+  const primaryItems = JSON.parse(primary.items_json) as ProcedureSubmissionItem[];
+  const secondaryItems = JSON.parse(secondary.items_json) as ProcedureSubmissionItem[];
+  const mergedItems = mergeChecklistItems(primaryItems, secondaryItems);
+  const mergedName = mergeAssociateNames(primary.associate_name, secondary.associate_name);
+  const mergedNotes = mergeNotes(primary.notes, secondary.notes);
+  db.prepare(`UPDATE procedure_submissions SET associate_name = ?, items_json = ?, notes = ? WHERE id = ?`).run(mergedName, JSON.stringify(mergedItems), mergedNotes, primaryId);
+  db.prepare(`DELETE FROM procedure_submissions WHERE id = ?`).run(secondaryId);
+  writeAudit({ entityType: "procedure_submission", entityId: primaryId, actor, action: "EDITED", newValue: { mergedFrom: secondaryId } });
+  writeAudit({ entityType: "procedure_submission", entityId: secondaryId, actor, action: "CANCELLED", newValue: { mergedInto: primaryId } });
   return {};
 }
 

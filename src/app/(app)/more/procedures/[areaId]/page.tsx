@@ -8,6 +8,7 @@ import { storeToday } from "@/lib/storeTime";
 import { Language } from "@/lib/types";
 import PageHeader from "@/components/PageHeader";
 import ProcedureSubmissionRow from "@/components/ProcedureSubmissionRow";
+import MergeSubmissionsButton from "@/components/MergeSubmissionsButton";
 
 const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_NAMES_ES = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -27,6 +28,12 @@ function ShiftCell({ label, submissions, isPast, isToday, storeId, lang, es, can
   canEdit: boolean;
 }) {
   if (submissions.length > 0) {
+    // Normally exactly one submission per station/shift/day (submitProcedure
+    // merges same-day duplicates on its own) -- more than one here means two
+    // associates' kiosk visits didn't merge (e.g. a submission from before
+    // that merge existed), so offer the same combine action a GM would
+    // otherwise have no way to trigger by hand.
+    const oldestFirst = [...submissions].sort((a, b) => a.created_at.localeCompare(b.created_at));
     return (
       <div className="flex flex-col gap-1.5 text-sm">
         <span className="font-medium text-muted">{label}</span>
@@ -35,6 +42,7 @@ function ShiftCell({ label, submissions, isPast, isToday, storeId, lang, es, can
             <ProcedureSubmissionRow key={s.id} submission={s} storeId={storeId} lang={lang} compact canEdit={canEdit} />
           ))}
         </div>
+        {canEdit && submissions.length > 1 && <MergeSubmissionsButton submissionIds={oldestFirst.map((s) => s.id)} lang={lang} />}
       </div>
     );
   }
