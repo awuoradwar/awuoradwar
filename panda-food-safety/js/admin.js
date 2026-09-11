@@ -1178,10 +1178,9 @@ async function renderTodayTab() {
 // the 3 shifts' status for today (or, for a legacy pre-shift-feature
 // submission, the single day-covering submission it came from) with a
 // way to open the full detail for any that were actually submitted.
-function renderDayShiftsModal(store, docs, covered) {
+function renderDayShiftsModal(store, docs, covered, date = todayDateString()) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
-  const today = todayDateString();
 
   const bodyHtml = covered.legacy
     ? `
@@ -1193,7 +1192,7 @@ function renderDayShiftsModal(store, docs, covered) {
       </div>`
     : SHIFTS.map((shiftKey) => {
         const submittedDoc = covered[shiftKey];
-        const inProgressDoc = docs.find((d) => d.id === shiftDocId(store.number, today, shiftKey) && !d.submitted);
+        const inProgressDoc = docs.find((d) => d.id === shiftDocId(store.number, date, shiftKey) && !d.submitted);
         const activeDoc = submittedDoc || inProgressDoc;
         const badgeClass = submittedDoc ? "badge-success" : inProgressDoc ? "badge-info" : "badge-neutral";
         const badgeLabel = submittedDoc ? t("submittedStatus") : inProgressDoc ? t("inProgressStatus") : t("missingStatus");
@@ -1210,7 +1209,7 @@ function renderDayShiftsModal(store, docs, covered) {
   backdrop.innerHTML = `
     <div class="modal">
       <div class="modal-header">
-        <h3 style="margin:0;">${escapeHtml(storeLabel(store.number, store.name))} — ${escapeHtml(today)}</h3>
+        <h3 style="margin:0;">${escapeHtml(storeLabel(store.number, store.name))} — ${escapeHtml(date)}</h3>
         <button class="btn btn-sm btn-secondary" id="modal-close">${t("closeButton")}</button>
       </div>
       ${bodyHtml}
@@ -1499,7 +1498,13 @@ async function renderWeeklyTab() {
                 <span class="week-progress-label">${r.doneDays} / 7</span>
               </div>
               <div class="week-day-strip">
-                ${r.dayStates.map((state, i) => `<div class="week-day-cell day-cell-${state}">${escapeHtml(dayLetter(weekDates[i], lang))}</div>`).join("")}
+                ${r.dayStates
+                  .map((state, i) =>
+                    state === "future"
+                      ? `<div class="week-day-cell day-cell-${state}">${escapeHtml(dayLetter(weekDates[i], lang))}</div>`
+                      : `<div class="week-day-cell day-cell-${state} clickable" data-view-weekly-day="${escapeHtml(r.store.number)}" data-view-weekly-date="${escapeHtml(weekDates[i])}">${escapeHtml(dayLetter(weekDates[i], lang))}</div>`
+                  )
+                  .join("")}
               </div>
               <div class="history-card-actions">
                 <span class="history-card-meta" style="margin-top:0;">${escapeHtml(t("weeklyLastSubmission"))}: ${escapeHtml(lastSub)}</span>
@@ -1533,6 +1538,19 @@ async function renderWeeklyTab() {
         btn.disabled = false;
         btn.textContent = originalLabel;
       }
+    });
+  });
+
+  // Every submission for the week was already fetched into `byStore` to
+  // build the day strips above -- no extra query needed to show what was
+  // submitted on a given day, just reuse it.
+  content.querySelectorAll("[data-view-weekly-day]").forEach((cell) => {
+    cell.addEventListener("click", () => {
+      const storeNumber = cell.dataset.viewWeeklyDay;
+      const date = cell.dataset.viewWeeklyDate;
+      const store = storesCache.find((s) => s.number === storeNumber);
+      const docsForDay = byStore[storeNumber]?.docsByDate[date] || [];
+      renderDayShiftsModal(store, docsForDay, shiftsCoveredForDay(docsForDay), date);
     });
   });
 }

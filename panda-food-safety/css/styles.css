@@ -296,6 +296,8 @@ textarea { resize: vertical; min-height: 70px; }
 .week-day-cell.day-cell-partial { background: var(--info-bg); color: var(--info); }
 .week-day-cell.day-cell-missing { background: var(--danger-bg); color: var(--danger); }
 .week-day-cell.day-cell-future { background: var(--neutral-bg); color: var(--text-muted); opacity: 0.55; }
+.week-day-cell.clickable { cursor: pointer; transition: opacity 0.12s ease; }
+.week-day-cell.clickable:hover { opacity: 0.75; }
 .view-mode-row { display: flex; gap: 8px; margin-bottom: 16px; }
 .view-mode-row[hidden] { display: none; }
 .hist-date-row { display: flex; gap: 12px; }
