@@ -70,7 +70,7 @@ async function main() {
       if (DRY_RUN) continue;
 
       try {
-        const dupResult = await checkDuplicate(db, submission.storeNumber, itemId, hash, submission.date, submission.shift ?? null, submission.id);
+        const dupResult = await checkDuplicate(db, submission.storeNumber, itemId, hash, submission.date, submission.shift ?? null, submission.submittedAt ?? null, submission.id);
         let result = dupResult;
         if (!result && needsApiCall) {
           const reading = await readTemperatureFromPhoto(client, dataUrl);

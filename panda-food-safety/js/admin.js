@@ -1258,14 +1258,24 @@ function repeatViolationBadgesHtml(risk) {
 // the Cloud Function) is the reading-vs-answer disagreement; `duplicate`
 // and `unreadable` are shown here so the UI is ready for those checks
 // once they're built, but nothing writes those reasons yet.
+// "Same day" alone isn't precise enough when the original and the
+// duplicate were submitted hours apart but happen to land on the same
+// business date -- prefer the exact submitted time whenever it's on
+// record, and only fall back to the bare date for older flags/legacy
+// submissions that never captured one.
+function duplicateWhenLabel(flag) {
+  return flag.duplicateOfSubmittedAt ? formatDateTime(flag.duplicateOfSubmittedAt) : flag.duplicateOfDate;
+}
+
 function aiFlagBadgeHtml(aiFlag) {
   if (!aiFlag) return "";
   const reason = aiFlag.reason || (aiFlag.mismatch ? "mismatch" : null);
   if (reason === "duplicate") {
+    const when = duplicateWhenLabel(aiFlag);
     const detail = aiFlag.duplicateOfShift
-      ? t("aiFlagDuplicateDetailWithShift", { shift: t("shift_" + aiFlag.duplicateOfShift), date: aiFlag.duplicateOfDate })
-      : t("aiFlagDuplicateDetail", { date: aiFlag.duplicateOfDate });
-    return `<span class="badge badge-warning" title="${escapeHtml(detail)}">${escapeHtml(t("aiFlagReasonDuplicate", { date: aiFlag.duplicateOfDate }))}</span>`;
+      ? t("aiFlagDuplicateDetailWithShift", { shift: t("shift_" + aiFlag.duplicateOfShift), date: when })
+      : t("aiFlagDuplicateDetail", { date: when });
+    return `<span class="badge badge-warning" title="${escapeHtml(detail)}">${escapeHtml(t("aiFlagReasonDuplicate", { date: when }))}</span>`;
   }
   if (reason === "unreadable") {
     return `<span class="badge badge-warning" title="${escapeHtml(t("aiFlagUnreadableDetail"))}">${escapeHtml(t("aiFlagReasonUnreadable"))}</span>`;
@@ -1286,10 +1296,11 @@ function flagReasonDetailHtml(flag) {
     // as this submission itself (a different shift earlier that day
     // reused the photo) -- name the original's shift too whenever it's
     // known, so it's clear this refers to a different submission.
+    const when = duplicateWhenLabel(flag);
     return `<div>${escapeHtml(
       flag.duplicateOfShift
-        ? t("aiFlagDuplicateDetailWithShift", { shift: t("shift_" + flag.duplicateOfShift), date: flag.duplicateOfDate })
-        : t("aiFlagDuplicateDetail", { date: flag.duplicateOfDate })
+        ? t("aiFlagDuplicateDetailWithShift", { shift: t("shift_" + flag.duplicateOfShift), date: when })
+        : t("aiFlagDuplicateDetail", { date: when })
     )}</div>`;
   }
   if (reason === "unreadable") return `<div>${escapeHtml(t("aiFlagUnreadableDetail"))}</div>`;

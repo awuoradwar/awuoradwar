@@ -1,7 +1,7 @@
 // Isolated from index.js (which also wires up firebase-admin/initializeApp)
 // so this can be unit-tested with a stub Firestore `db` and no real
 // Firebase project involved.
-async function checkDuplicate(db, storeNumber, itemId, hash, date, shift, submissionId) {
+async function checkDuplicate(db, storeNumber, itemId, hash, date, shift, submittedAt, submissionId) {
   const hashRef = db.collection("photoHashes").doc(`${storeNumber}_${itemId}_${hash}`);
   const existing = await hashRef.get();
   if (existing.exists && existing.data().submissionId !== submissionId) {
@@ -11,11 +11,15 @@ async function checkDuplicate(db, storeNumber, itemId, hash, date, shift, submis
       reason: "duplicate",
       duplicateOfDate: prior.date,
       duplicateOfShift: prior.shift ?? null,
+      // The exact time the original was submitted -- "same day" alone
+      // isn't precise enough when the two submissions are hours apart
+      // but land on the same business date.
+      duplicateOfSubmittedAt: prior.submittedAt ?? null,
       duplicateOfSubmissionId: prior.submissionId,
       mismatch: false,
     };
   }
-  await hashRef.set({ submissionId, date, shift: shift ?? null, storeNumber, itemId });
+  await hashRef.set({ submissionId, date, shift: shift ?? null, submittedAt: submittedAt ?? null, storeNumber, itemId });
   return null;
 }
 

@@ -42,7 +42,7 @@ exports.checkSubmissionPhotos = onDocumentWritten(
 
           // A reused photo is conclusive on its own — don't also spend an
           // API call reading a temperature off it.
-          const dupResult = await checkDuplicate(db, after.storeNumber, itemId, hash, after.date, after.shift ?? null, event.params.submissionId);
+          const dupResult = await checkDuplicate(db, after.storeNumber, itemId, hash, after.date, after.shift ?? null, after.submittedAt ?? null, event.params.submissionId);
           if (dupResult) return dupResult;
 
           if (TEMP_CHECK_ITEMS[itemId] && answers[itemId]) {
@@ -92,6 +92,7 @@ exports.checkSubmissionPhotos = onDocumentWritten(
             associateAnswer: flag.associateAnswer ?? null,
             duplicateOfDate: flag.duplicateOfDate ?? null,
             duplicateOfShift: flag.duplicateOfShift ?? null,
+            duplicateOfSubmittedAt: flag.duplicateOfSubmittedAt ?? null,
             duplicateOfSubmissionId: flag.duplicateOfSubmissionId ?? null,
             reviewed: false,
             checkedAt: FieldValue.serverTimestamp(),
