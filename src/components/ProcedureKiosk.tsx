@@ -260,7 +260,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
             <input
               value={names[1]}
               onChange={(e) => setNames((prev) => [prev[0], e.target.value])}
-              placeholder={es ? `Segundo ${singularize(area.name)} (si aplica)` : `Second ${singularize(area.name)} (if any)`}
+              placeholder={es ? `Segundo ${singularize(area.name)}` : `Second ${singularize(area.name)}`}
               className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
           </div>
