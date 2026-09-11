@@ -28,6 +28,13 @@ export interface ProcedureItem {
   shift_type: ProcedureShiftType;
   text: string;
   text_es: string | null;
+  /** Optional sub-heading grouping items within one area -- for an area that
+   * now covers what used to be several separate stations (e.g. "Lobby,
+   * Drink Station & Refreshers" closed by one associate), each original
+   * station's items keep their own header instead of blending into one
+   * undifferentiated list. Null for every other area -- no visible change
+   * there. */
+  section: string | null;
   sort_order: number;
   active: number;
 }
@@ -42,6 +49,10 @@ export interface ProcedureSubmissionItem {
    * same as text/textEs: this is a public, unauthenticated write path where
    * the submission itself is the only accountability record. */
   checkedBy?: string | null;
+  /** Carries ProcedureItem.section through to the frozen submission so a
+   * reviewed checklist can still group by sub-heading, same reasoning as
+   * items_json freezing text/textEs at submission time. */
+  section?: string | null;
 }
 
 export interface ProcedureSubmission {
@@ -135,14 +146,14 @@ export function deactivateArea(id: string, actor: SessionUser) {
 export function listItemsForArea(areaId: string, shiftType: ProcedureShiftType): ProcedureItem[] {
   const db = getDb();
   return db
-    .prepare(`SELECT id, area_id, shift_type, text, text_es, sort_order, active FROM procedure_items WHERE area_id = ? AND shift_type = ? AND active = 1 ORDER BY sort_order, text`)
+    .prepare(`SELECT id, area_id, shift_type, text, text_es, section, sort_order, active FROM procedure_items WHERE area_id = ? AND shift_type = ? AND active = 1 ORDER BY sort_order, text`)
     .all(areaId, shiftType) as ProcedureItem[];
 }
 
 export function listAllItemsForArea(areaId: string): ProcedureItem[] {
   const db = getDb();
   return db
-    .prepare(`SELECT id, area_id, shift_type, text, text_es, sort_order, active FROM procedure_items WHERE area_id = ? AND active = 1 ORDER BY shift_type, sort_order, text`)
+    .prepare(`SELECT id, area_id, shift_type, text, text_es, section, sort_order, active FROM procedure_items WHERE area_id = ? AND active = 1 ORDER BY shift_type, sort_order, text`)
     .all(areaId) as ProcedureItem[];
 }
 

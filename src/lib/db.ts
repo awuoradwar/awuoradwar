@@ -84,6 +84,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "stores", "procedures_token", "procedures_token TEXT");
   ensureColumn(db, "manager_activities", "start_time", "start_time TEXT");
   ensureColumn(db, "manager_activities", "end_time", "end_time TEXT");
+  ensureColumn(db, "procedure_items", "section", "section TEXT");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
@@ -94,6 +95,7 @@ function createConnection(): Database.Database {
   seedClosingProcedures(db, "BOH", BOH_CLOSING_STATIONS);
   backfillClosingTranslations(db, FOH_CLOSING_STATIONS);
   backfillClosingTranslations(db, BOH_CLOSING_STATIONS);
+  mergeLobbyDrinkStationRefreshers(db);
   return db;
 }
 
@@ -322,6 +324,52 @@ function backfillClosingTranslations(db: Database.Database, stations: Array<{ na
   for (const station of stations) {
     for (const item of station.items) {
       stmt.run(item.es, item.en);
+    }
+  }
+}
+
+/** One associate closes Lobby, Drink Station, and Refreshers together, so
+ * as of this migration they're one station ("Lobby, Drink Station &
+ * Refreshers") instead of three separate ones -- each original station's
+ * items keep their own name as a `section` sub-heading within the combined
+ * checklist (see ProcedureItem.section) rather than losing that context.
+ * The three source areas are deactivated, not deleted, so every submission
+ * already recorded under them keeps displaying exactly as it did. Runs once
+ * per store: guarded on the combined area already existing, same idempotent
+ * shape as seedClosingProcedures, so a store this has already reached is
+ * left alone even if it once again has a plain "Lobby" area later. */
+function mergeLobbyDrinkStationRefreshers(db: Database.Database) {
+  const COMBINED_NAME = "Lobby, Drink Station & Refreshers";
+  const SOURCE_NAMES = ["Lobby", "Drink Station", "Refreshers"];
+  const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
+  const combinedExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND name = ?`);
+  const findSourceArea = db.prepare(`SELECT id, sort_order FROM procedure_areas WHERE store_id = ? AND category = 'FOH' AND name = ? AND active = 1`);
+  const insertArea = db.prepare(`INSERT INTO procedure_areas (id, store_id, name, category, sort_order, active, created_at) VALUES (?, ?, ?, 'FOH', ?, 1, ?)`);
+  const listItems = db.prepare(`SELECT text, text_es FROM procedure_items WHERE area_id = ? AND shift_type = 'CLOSING' AND active = 1 ORDER BY sort_order`);
+  const insertItem = db.prepare(
+    `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, section, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, ?, 1, ?)`
+  );
+  const deactivateSourceArea = db.prepare(`UPDATE procedure_areas SET active = 0 WHERE id = ?`);
+
+  for (const store of stores) {
+    if (combinedExists.get(store.id, COMBINED_NAME)) continue;
+
+    const sourceAreas = SOURCE_NAMES.map((name) => ({ name, area: findSourceArea.get(store.id, name) as { id: string; sort_order: number } | undefined })).filter((s) => s.area);
+    if (sourceAreas.length === 0) continue;
+
+    const now = new Date().toISOString();
+    const combinedAreaId = randomUUID();
+    const combinedSortOrder = Math.min(...sourceAreas.map((s) => s.area!.sort_order));
+    insertArea.run(combinedAreaId, store.id, COMBINED_NAME, combinedSortOrder, now);
+
+    let itemIndex = 0;
+    for (const { name, area } of sourceAreas) {
+      const items = listItems.all(area!.id) as Array<{ text: string; text_es: string | null }>;
+      for (const item of items) {
+        insertItem.run(randomUUID(), combinedAreaId, item.text, item.text_es, name, itemIndex, now);
+        itemIndex++;
+      }
+      deactivateSourceArea.run(area!.id);
     }
   }
 }

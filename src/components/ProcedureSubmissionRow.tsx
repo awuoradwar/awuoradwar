@@ -37,8 +37,12 @@ export default function ProcedureSubmissionRow({
   canEdit?: boolean;
 }) {
   const es = lang === "es";
-  const items = JSON.parse(submission.items_json) as Array<{ text: string; textEs: string | null; checked: boolean; checkedBy?: string | null }>;
+  const items = JSON.parse(submission.items_json) as Array<{ text: string; textEs: string | null; checked: boolean; checkedBy?: string | null; section?: string | null }>;
   const checkedCount = items.filter((i) => i.checked).length;
+  // Same section grouping as ProcedureKiosk -- an area that covers what
+  // used to be several separate stations keeps each one's items under its
+  // own header here too, not just while the checklist is being taken.
+  let lastSection: string | null | undefined = undefined;
   // "Juan & Maria" is the only shape a multi-associate name ever takes (see
   // ProcedureKiosk) -- only then does per-item checkedBy attribution mean
   // anything, so a single associate's row stays exactly as plain as before.
@@ -70,13 +74,20 @@ export default function ProcedureSubmissionRow({
         </span>
       </summary>
       <div className="flex flex-col gap-1 border-t border-border p-3 text-sm">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className={item.checked ? "text-ok" : "text-muted"}>{item.checked ? "✓" : "○"}</span>
-            <span className={item.checked ? "" : "text-muted"}>{es && item.textEs ? item.textEs : item.text}</span>
-            {multiAssociate && item.checkedBy && <span className="text-xs text-muted">— {item.checkedBy}</span>}
-          </div>
-        ))}
+        {items.map((item, i) => {
+          const showHeader = item.section && item.section !== lastSection;
+          lastSection = item.section ?? null;
+          return (
+            <div key={i}>
+              {showHeader && <p className="mt-1 text-xs font-bold uppercase tracking-wide text-muted first:mt-0">{item.section}</p>}
+              <div className="flex items-center gap-2">
+                <span className={item.checked ? "text-ok" : "text-muted"}>{item.checked ? "✓" : "○"}</span>
+                <span className={item.checked ? "" : "text-muted"}>{es && item.textEs ? item.textEs : item.text}</span>
+                {multiAssociate && item.checkedBy && <span className="text-xs text-muted">— {item.checkedBy}</span>}
+              </div>
+            </div>
+          );
+        })}
         {submission.notes && <p className="mt-2 rounded-lg bg-card-subtle px-2.5 py-2 text-xs text-muted">{submission.notes}</p>}
         {canEdit && (
           <div className="mt-2 border-t border-border pt-2">

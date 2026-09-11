@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import { submitProcedureAction } from "@/app/actions/procedureActions";
 import { ProcedureArea, ProcedureCategory, ProcedureItem, ProcedureShiftType } from "@/lib/services/procedureService";
 
@@ -43,6 +43,25 @@ function singularize(name: string): string {
   if (/(sh|ch|x|s)es$/i.test(name)) return name.slice(0, -2);
   if (/s$/i.test(name)) return name.slice(0, -1);
   return name;
+}
+
+/** Groups already-sorted items into consecutive runs sharing the same
+ * `section` -- an area that covers what used to be several separate
+ * stations (see mergeLobbyDrinkStationRefreshers in db.ts) keeps each
+ * original station's items under their own header. Every other area's
+ * items all have `section: null`, which comes back as one group with no
+ * header -- unchanged from before sections existed. */
+function groupBySection(items: ProcedureItem[]): Array<{ section: string | null; items: ProcedureItem[] }> {
+  const groups: Array<{ section: string | null; items: ProcedureItem[] }> = [];
+  for (const item of items) {
+    const last = groups[groups.length - 1];
+    if (last && last.section === item.section) {
+      last.items.push(item);
+    } else {
+      groups.push({ section: item.section, items: [item] });
+    }
+  }
+  return groups;
 }
 
 const bigTile =
@@ -136,7 +155,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
         area.id,
         shiftType,
         activeNames.join(" & "),
-        items.map((i) => ({ text: i.text, textEs: i.text_es, checked: !!checkedBy[i.id], checkedBy: checkedBy[i.id] ?? null })),
+        items.map((i) => ({ text: i.text, textEs: i.text_es, checked: !!checkedBy[i.id], checkedBy: checkedBy[i.id] ?? null, section: i.section })),
         notes,
         submittedDate
       );
@@ -270,42 +289,56 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
             </p>
           ) : multiAssociate ? (
             <div className="card divide-y divide-border">
-              {items.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 px-4 py-3 text-sm">
-                  <span className={`flex-1 ${checkedBy[item.id] ? "text-muted line-through" : ""}`}>{itemLabel(item)}</span>
-                  <div className="flex shrink-0 gap-1.5">
-                    {activeNames.map((n) => {
-                      const first = firstName(n);
-                      const active = checkedBy[item.id] === first;
-                      return (
-                        <button
-                          key={n}
-                          type="button"
-                          onClick={() => toggleItem(item.id, first)}
-                          className={`tap-target rounded-lg border-2 px-2.5 text-xs font-semibold transition-colors ${
-                            active ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted"
-                          }`}
-                        >
-                          {first}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              {groupBySection(items).map((group, gi) => (
+                <Fragment key={gi}>
+                  {group.section && (
+                    <p className="bg-card-subtle px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted">{group.section}</p>
+                  )}
+                  {group.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 px-4 py-3 text-sm">
+                      <span className={`flex-1 ${checkedBy[item.id] ? "text-muted line-through" : ""}`}>{itemLabel(item)}</span>
+                      <div className="flex shrink-0 gap-1.5">
+                        {activeNames.map((n) => {
+                          const first = firstName(n);
+                          const active = checkedBy[item.id] === first;
+                          return (
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => toggleItem(item.id, first)}
+                              className={`tap-target rounded-lg border-2 px-2.5 text-xs font-semibold transition-colors ${
+                                active ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted"
+                              }`}
+                            >
+                              {first}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </Fragment>
               ))}
             </div>
           ) : (
             <div className="card divide-y divide-border">
-              {items.map((item) => (
-                <label key={item.id} className="tap-target flex items-center gap-3 px-4 py-3 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={!!checkedBy[item.id]}
-                    onChange={(e) => setCheckedBy((c) => ({ ...c, [item.id]: e.target.checked ? firstName(names[0]) : undefined }))}
-                    className="h-5 w-5 shrink-0 accent-accent"
-                  />
-                  <span className={checkedBy[item.id] ? "text-muted line-through" : ""}>{itemLabel(item)}</span>
-                </label>
+              {groupBySection(items).map((group, gi) => (
+                <Fragment key={gi}>
+                  {group.section && (
+                    <p className="bg-card-subtle px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-muted">{group.section}</p>
+                  )}
+                  {group.items.map((item) => (
+                    <label key={item.id} className="tap-target flex items-center gap-3 px-4 py-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={!!checkedBy[item.id]}
+                        onChange={(e) => setCheckedBy((c) => ({ ...c, [item.id]: e.target.checked ? firstName(names[0]) : undefined }))}
+                        className="h-5 w-5 shrink-0 accent-accent"
+                      />
+                      <span className={checkedBy[item.id] ? "text-muted line-through" : ""}>{itemLabel(item)}</span>
+                    </label>
+                  ))}
+                </Fragment>
               ))}
             </div>
           )}
