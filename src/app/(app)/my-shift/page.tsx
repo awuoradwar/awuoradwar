@@ -176,9 +176,18 @@ export default async function MyShiftPage() {
   // happens, rather than only finding out once the week's already over.
   // Anything overdue from before this week is real backlog too, but isn't
   // "this week's" problem, so it's left out of this specific count.
+  // computeSection buckets purely on scheduled_date, with no status check
+  // at all -- getMyShiftTasks deliberately keeps a task completed earlier
+  // today in the list (see its own comment) so it stays visible, struck
+  // through, right where it was. That's exactly wrong here: once done, it
+  // needs to actually leave this count and this list, not just render
+  // checked off while still occupying a slot -- so COMPLETE/CANCELLED are
+  // filtered out on top of computeSection's own bucketing.
   const MISSED_TASKS_BANNER_THRESHOLD = 3;
   const currentWeekStart = weekStartOf(today);
-  const overdueThisWeek = buckets.OVERDUE.filter((t) => t.scheduled_date && t.scheduled_date >= currentWeekStart);
+  const overdueThisWeek = buckets.OVERDUE.filter(
+    (t) => t.scheduled_date && t.scheduled_date >= currentWeekStart && t.status !== "COMPLETE" && t.status !== "CANCELLED"
+  );
 
   const summary = buildLiveSummary(user.storeId, user.language);
   // Tasks are excluded from "from last shift" since MY SHIFT/TODAY above
