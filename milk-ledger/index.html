@@ -180,18 +180,19 @@
   .btn.primary{ background:var(--ink); color:var(--cream); }
   .btn.ghost{ background:none; color:var(--ink-soft); }
 
-  .vitamin{
+  .doses-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+  .dose{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
     background:var(--card); border:1px solid var(--line); border-radius:14px;
-    padding:13px 16px; margin-bottom:16px;
+    padding:13px 16px;
   }
-  .vitamin.due{ border-color:var(--alert); background:var(--alert-bg); }
-  .vitamin-left{ display:flex; align-items:center; gap:10px; }
-  .vdrop{ width:14px; height:14px; border-radius:0 50% 50% 50%; background:var(--teal); transform:rotate(45deg); flex-shrink:0; }
-  .vitamin.due .vdrop{ background:var(--alert); }
-  .vitamin-text .vt-title{ font-weight:600; font-size:0.92rem; }
-  .vitamin-text .vt-sub{ font-size:0.76rem; color:var(--ink-soft); }
-  .vitamin .btn{ flex-shrink:0; }
+  .dose.due{ border-color:var(--alert); background:var(--alert-bg); }
+  .dose-left{ display:flex; align-items:center; gap:10px; }
+  .ddrop{ width:14px; height:14px; border-radius:0 50% 50% 50%; background:var(--teal); transform:rotate(45deg); flex-shrink:0; }
+  .dose.due .ddrop{ background:var(--alert); }
+  .dose-text .dt-title{ font-weight:600; font-size:0.92rem; }
+  .dose-text .dt-sub{ font-size:0.76rem; color:var(--ink-soft); }
+  .dose .btn{ flex-shrink:0; }
 
   .history-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
   .history-head h2{ font-size:1rem; }
@@ -345,16 +346,8 @@
   </div>
 </div>
 
-<div class="vitamin" id="vitaminStrip">
-  <div class="vitamin-left">
-    <span class="vdrop"></span>
-    <div class="vitamin-text">
-      <div class="vt-title" id="vitaminTitle">Vitamin drops</div>
-      <div class="vt-sub" id="vitaminSub">Loading…</div>
-    </div>
-  </div>
-  <button class="btn primary" id="vitaminBtn">Mark given</button>
-</div>
+<div class="history-head"><h2>Daily doses</h2></div>
+<div class="doses-list" id="dosesList"></div>
 
 <div class="history-head">
   <h2>Last 7 days</h2>
@@ -389,12 +382,20 @@
   var PUMP_CHIPS = [1,1.5,2,2.5,3,4];
   var FEED_CHIPS = [1,2,3,4,5];
 
-  var state = { logs: [], vitamins: {}, synced: false, usingExamples: false };
+  // Daily doses this app tracks — add another entry here (vitamin, reflux
+  // medicine, probiotic, ...) and it shows up as its own card automatically.
+  // `dueHour` is when an un-given dose starts flagging as overdue.
+  var DOSE_TYPES = [
+    { id: "vitaminD", label: "Vitamin D drops", dueHour: 11 }
+  ];
+
+  var state = { logs: [], doses: {}, synced: false, usingExamples: false };
   var unsubs = [];
 
   function pad(n){ return String(n).padStart(2,"0"); }
   function dateKey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
   function todayKey(){ return dateKey(new Date()); }
+  function doseDocId(doseId, key){ return doseId + "__" + key; }
   function windowIndex(d){
     var h = d.getHours();
     if (h < 6) return 0;
@@ -450,9 +451,9 @@
   }
   function exampleVitamins(){
     var v = {};
-    v[todayKey()] = { given:false };
+    v[doseDocId("vitaminD", todayKey())] = { doseId:"vitaminD", given:false };
     var y = new Date(); y.setDate(y.getDate()-1);
-    v[dateKey(y)] = { given:true, at: y.toISOString(), by:"dad" };
+    v[doseDocId("vitaminD", dateKey(y))] = { doseId:"vitaminD", given:true, at: y.toISOString(), by:"dad" };
     return v;
   }
 
@@ -460,7 +461,7 @@
   var store = null;
 
   function localStore(){
-    var LOGS_KEY = "milkledger_logs", VIT_KEY = "milkledger_vitamins";
+    var LOGS_KEY = "milkledger_logs", VIT_KEY = "milkledger_doses";
     function readLogs(){ try { return JSON.parse(localStorage.getItem(LOGS_KEY) || "[]"); } catch(e){ return []; } }
     function writeLogs(l){ try { localStorage.setItem(LOGS_KEY, JSON.stringify(l)); } catch(e){} }
     function readVit(){ try { return JSON.parse(localStorage.getItem(VIT_KEY) || "{}"); } catch(e){ return {}; } }
@@ -478,8 +479,8 @@
         writeLogs(readLogs().filter(function(l){ return l.id !== id; }));
         emitLogs();
       },
-      setVitamin: function(key, data){
-        var v = readVit(); v[key] = data; writeVit(v); emitVit();
+      setDose: function(doseId, data){
+        var v = readVit(); v[doseDocId(doseId, todayKey())] = data; writeVit(v); emitVit();
       },
       subscribeLogs: function(cb){ this._logCb = cb; emitLogs(); },
       subscribeVitamins: function(cb){ this._vitCb = cb; emitVit(); }
@@ -490,19 +491,19 @@
 
   function dbStore(db){
     var col = db.collection("logs");
-    var vitCol = db.collection("vitamins");
+    var doseCol = db.collection("doses");
     return {
       synced: true,
       addLog: function(data){ col.add(data).catch(function(){}); },
       deleteLog: function(id){ col.doc(id).delete().catch(function(){}); },
-      setVitamin: function(key, data){ vitCol.doc(key).set(data).catch(function(){}); },
+      setDose: function(doseId, data){ doseCol.doc(doseDocId(doseId, todayKey())).set(data).catch(function(){}); },
       subscribeLogs: function(cb){
         unsubs.push(col.orderBy("at","desc").limit(400).onSnapshot(function(snap){
           cb(snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }));
         }, function(){ cb([]); }));
       },
       subscribeVitamins: function(cb){
-        unsubs.push(vitCol.onSnapshot(function(snap){
+        unsubs.push(doseCol.onSnapshot(function(snap){
           var v = {};
           snap.docs.forEach(function(d){ v[d.id] = d.data(); });
           cb(v);
@@ -601,40 +602,48 @@
     });
   }
 
-  function computeStreak(){
+  function computeDoseStreak(doseId){
     var streak = 0;
     var cursor = new Date();
-    if (!(state.vitamins[todayKey()] || {}).given) cursor.setDate(cursor.getDate()-1);
+    if (!(state.doses[doseDocId(doseId, todayKey())] || {}).given) cursor.setDate(cursor.getDate()-1);
     while (true){
-      var key = dateKey(cursor);
-      if ((state.vitamins[key] || {}).given){ streak++; cursor.setDate(cursor.getDate()-1); }
+      var entry = state.doses[doseDocId(doseId, dateKey(cursor))];
+      if (entry && entry.given){ streak++; cursor.setDate(cursor.getDate()-1); }
       else break;
     }
     return streak;
   }
 
-  function renderVitamin(){
-    var strip = document.getElementById("vitaminStrip");
-    var title = document.getElementById("vitaminTitle");
-    var sub = document.getElementById("vitaminSub");
-    var btn = document.getElementById("vitaminBtn");
-    var today = state.vitamins[todayKey()] || {};
-    var streak = computeStreak();
-    var hour = new Date().getHours();
-    var due = !today.given && hour >= 11;
-
-    strip.classList.toggle("due", due);
-    if (today.given){
-      title.textContent = "Vitamin drops — given today";
-      var whoGave = today.by ? (today.by === "mom" ? "Mom" : "Dad") : "";
-      var t = today.at ? fmtTime(new Date(today.at)) : "";
-      sub.textContent = [whoGave, t].filter(Boolean).join(" · ") + (streak > 0 ? "  ·  " + streak + " day streak" : "");
-      btn.textContent = "Undo";
-    } else {
-      title.textContent = due ? "Vitamin drops — not given yet" : "Vitamin drops";
-      sub.textContent = streak > 0 ? streak + " day streak on the line" : "Tap once he's had his dose";
-      btn.textContent = "Mark given";
-    }
+  function renderDoses(){
+    var list = document.getElementById("dosesList");
+    list.innerHTML = "";
+    DOSE_TYPES.forEach(function(type){
+      var today = state.doses[doseDocId(type.id, todayKey())] || {};
+      var streak = computeDoseStreak(type.id);
+      var hour = new Date().getHours();
+      var due = !today.given && hour >= type.dueHour;
+      var card = document.createElement("div");
+      card.className = "dose" + (due ? " due" : "");
+      var titleText, subText, btnText;
+      if (today.given){
+        titleText = type.label + " — given today";
+        var whoGave = today.by ? (today.by === "mom" ? "Mom" : "Dad") : "";
+        var t = today.at ? fmtTime(new Date(today.at)) : "";
+        subText = [whoGave, t].filter(Boolean).join(" · ") + (streak > 0 ? "  ·  " + streak + " day streak" : "");
+        btnText = "Undo";
+      } else {
+        titleText = due ? (type.label + " — not given yet") : type.label;
+        subText = streak > 0 ? streak + " day streak on the line" : "Tap once it's been given";
+        btnText = "Mark given";
+      }
+      card.innerHTML =
+        '<div class="dose-left"><span class="ddrop"></span><div class="dose-text">' +
+          '<div class="dt-title">' + escapeHtml(titleText) + '</div>' +
+          '<div class="dt-sub">' + escapeHtml(subText) + '</div>' +
+        '</div></div>' +
+        '<button class="btn primary" data-dose="' + type.id + '">' + btnText + '</button>';
+      list.appendChild(card);
+    });
   }
 
   function renderTimeline(){
@@ -692,7 +701,7 @@
     renderBalance();
     renderWindows();
     renderChart();
-    renderVitamin();
+    renderDoses();
     renderTimeline();
   }
 
@@ -781,13 +790,14 @@
       if (window.confirm("Delete this entry?")) store.deleteLog(id);
     });
 
-    document.getElementById("vitaminBtn").addEventListener("click", function(){
-      var key = todayKey();
-      var today = state.vitamins[key] || {};
+    document.getElementById("dosesList").addEventListener("click", function(e){
+      var doseId = e.target.getAttribute && e.target.getAttribute("data-dose");
+      if (!doseId) return;
+      var today = state.doses[doseDocId(doseId, todayKey())] || {};
       if (today.given){
-        store.setVitamin(key, { given:false });
+        store.setDose(doseId, { doseId: doseId, given:false });
       } else {
-        store.setVitamin(key, { given:true, at: new Date().toISOString(), by: getRole() || "mom" });
+        store.setDose(doseId, { doseId: doseId, given:true, at: new Date().toISOString(), by: getRole() || "mom" });
       }
     });
 
@@ -817,7 +827,7 @@
     ensureRolePicked();
 
     state.logs = exampleLogs();
-    state.vitamins = exampleVitamins();
+    state.doses = exampleVitamins();
     state.usingExamples = true;
     document.getElementById("exampleBanner").hidden = false;
     renderAll();
@@ -837,8 +847,8 @@
         });
         store.subscribeVitamins(function(v){
           gotVit = true;
-          state.vitamins = v;
-          renderVitamin();
+          state.doses = v;
+          renderDoses();
         });
       }).catch(function(){ fallbackToLocal(); });
       setTimeout(function(){ if (!store) fallbackToLocal(); }, 4000);
@@ -858,8 +868,8 @@
       renderAll();
     });
     store.subscribeVitamins(function(v){
-      state.vitamins = v;
-      renderVitamin();
+      state.doses = v;
+      renderDoses();
     });
   }
 
