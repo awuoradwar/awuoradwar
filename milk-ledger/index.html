@@ -1,0 +1,875 @@
+<title>Milk Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,440;9..144,540;9..144,600;9..144,680&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --cream: #F8F1E1;
+    --cream-2: #F1E7CE;
+    --ink: #2A2318;
+    --ink-soft: #6B6151;
+    --line: #DCCEA5;
+    --gold: #B8791E;
+    --gold-strong: #965F12;
+    --teal: #2A6D64;
+    --teal-strong: #1F5750;
+    --alert: #A5401F;
+    --alert-bg: #F3DFC9;
+    --card: #FFFCF4;
+    --shadow: 0 1px 0 rgba(42,35,24,0.06);
+    --focus: #7A5A22;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --cream: #1B160E;
+      --cream-2: #241D12;
+      --ink: #F2E7CC;
+      --ink-soft: #B7A98A;
+      --line: #4A3B22;
+      --gold: #E0A94C;
+      --gold-strong: #F0C070;
+      --teal: #5FA79E;
+      --teal-strong: #7BC2B8;
+      --alert: #E08464;
+      --alert-bg: #3A2417;
+      --card: #221B10;
+      --shadow: 0 1px 0 rgba(0,0,0,0.3);
+      --focus: #E0A94C;
+    }
+  }
+  :root[data-theme="dark"]{
+    --cream: #1B160E;
+    --cream-2: #241D12;
+    --ink: #F2E7CC;
+    --ink-soft: #B7A98A;
+    --line: #4A3B22;
+    --gold: #E0A94C;
+    --gold-strong: #F0C070;
+    --teal: #5FA79E;
+    --teal-strong: #7BC2B8;
+    --alert: #E08464;
+    --alert-bg: #3A2417;
+    --card: #221B10;
+    --shadow: 0 1px 0 rgba(0,0,0,0.3);
+    --focus: #E0A94C;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    padding-inline: 18px;
+    padding-block: 22px 60px;
+    max-width: 640px;
+    margin-inline: auto;
+    min-height: 100vh;
+  }
+  h1,h2,h3{ font-family:"Fraunces", Georgia, serif; text-wrap:balance; margin:0; }
+  a{ color:inherit; }
+  button{ font-family:inherit; }
+
+  .top{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:12px; margin-bottom:22px;
+  }
+  .brand{ display:flex; flex-direction:column; gap:2px; }
+  .brand h1{ font-size:1.5rem; font-weight:600; letter-spacing:-0.01em; }
+  .brand .tag{ font-size:0.78rem; color:var(--ink-soft); letter-spacing:0.02em; }
+
+  .role{
+    display:flex; align-items:center; gap:8px; flex-shrink:0;
+  }
+  .role-pill{
+    display:flex; border:1px solid var(--line); border-radius:999px; overflow:hidden;
+    background:var(--card);
+  }
+  .role-pill button{
+    border:none; background:none; padding:7px 13px; font-size:0.82rem; font-weight:600;
+    color:var(--ink-soft); cursor:pointer;
+  }
+  .role-pill button.active{ background:var(--gold); color:#241804; }
+  :root[data-theme="dark"] .role-pill button.active{ color:#1B160E; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .role-pill button.active{ color:#1B160E; } }
+
+  .sync{
+    font-size:0.68rem; letter-spacing:0.03em; text-transform:uppercase;
+    display:flex; align-items:center; gap:5px; color:var(--ink-soft); margin-top:6px;
+  }
+  .sync .dot{ width:6px; height:6px; border-radius:50%; background:var(--ink-soft); }
+  .sync.on .dot{ background:var(--teal); }
+  .sync.off .dot{ background:var(--alert); }
+
+  .example-banner{
+    background:var(--alert-bg); border:1px solid var(--alert); color:var(--alert);
+    border-radius:10px; padding:9px 13px; font-size:0.82rem; margin-bottom:18px;
+  }
+
+  .ledger{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:22px 22px 18px; box-shadow:var(--shadow); margin-bottom:16px;
+  }
+  .ledger .label{ font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); }
+  .balance-row{ display:flex; align-items:baseline; gap:10px; margin-top:6px; flex-wrap:wrap; }
+  .balance{ font-family:"Fraunces"; font-weight:680; font-size:3rem; line-height:1; }
+  .balance.deficit{ color:var(--alert); }
+  .balance.surplus{ color:var(--teal-strong); }
+  .balance-unit{ font-size:1.1rem; color:var(--ink-soft); font-weight:500; }
+  .balance-note{ font-size:0.84rem; color:var(--ink-soft); margin-top:8px; line-height:1.4; }
+  .balance-note b{ color:var(--ink); font-weight:600; }
+
+  .windows{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;
+  }
+  .window-card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:11px 8px; text-align:center;
+  }
+  .window-card .wname{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); }
+  .window-card .wrange{ font-size:0.62rem; color:var(--ink-soft); opacity:0.8; margin-bottom:7px; }
+  .wfig{ display:flex; justify-content:space-between; font-size:0.78rem; padding:1px 0; }
+  .wfig .k{ color:var(--ink-soft); }
+  .wfig.pump .v{ color:var(--gold-strong); font-weight:600; }
+  .wfig.feed .v{ color:var(--teal-strong); font-weight:600; }
+  .wdelta{ margin-top:6px; font-size:0.78rem; font-weight:700; border-top:1px dashed var(--line); padding-top:6px; }
+  .wdelta.pos{ color:var(--teal-strong); }
+  .wdelta.neg{ color:var(--alert); }
+  .wdelta.zero{ color:var(--ink-soft); font-weight:500; }
+
+  @media (max-width:460px){
+    .windows{ grid-template-columns:repeat(2,1fr); }
+  }
+
+  .quickrow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .qbtn{
+    border-radius:14px; border:1px solid transparent; padding:16px 12px; cursor:pointer;
+    font-family:"Fraunces"; font-weight:600; font-size:1.05rem; text-align:left;
+    display:flex; flex-direction:column; gap:2px; transition:transform .08s ease;
+  }
+  .qbtn:active{ transform:scale(0.98); }
+  .qbtn .sub{ font-family:"Inter"; font-weight:500; font-size:0.74rem; opacity:0.85; }
+  .qbtn.pump{ background:var(--gold); color:#241804; }
+  .qbtn.feed{ background:var(--teal); color:#EAF7F3; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .qbtn.pump{ color:#1B160E; } }
+  :root[data-theme="dark"] .qbtn.pump{ color:#1B160E; }
+  .qbtn.open{ outline:2px solid var(--focus); outline-offset:2px; }
+
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:16px; margin:-6px 0 16px; display:none;
+  }
+  .panel.show{ display:block; }
+  .panel h3{ font-size:0.95rem; margin-bottom:10px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
+  .chip{
+    border:1px solid var(--line); background:var(--cream-2); color:var(--ink);
+    border-radius:999px; padding:8px 14px; font-size:0.88rem; font-weight:600; cursor:pointer;
+  }
+  .chip.selected{ background:var(--ink); color:var(--cream); border-color:var(--ink); }
+  .field-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .field{ display:flex; flex-direction:column; gap:4px; flex:1; min-width:130px; }
+  .field label{ font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); }
+  .field input, .field select, .field textarea{
+    border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--cream);
+    color:var(--ink); font-family:inherit; font-size:0.9rem;
+  }
+  .field textarea{ resize:vertical; min-height:38px; }
+  .panel-actions{ display:flex; gap:8px; justify-content:flex-end; }
+  .btn{ border:none; border-radius:9px; padding:9px 16px; font-weight:600; font-size:0.88rem; cursor:pointer; }
+  .btn.primary{ background:var(--ink); color:var(--cream); }
+  .btn.ghost{ background:none; color:var(--ink-soft); }
+
+  .vitamin{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:13px 16px; margin-bottom:16px;
+  }
+  .vitamin.due{ border-color:var(--alert); background:var(--alert-bg); }
+  .vitamin-left{ display:flex; align-items:center; gap:10px; }
+  .vdrop{ width:14px; height:14px; border-radius:0 50% 50% 50%; background:var(--teal); transform:rotate(45deg); flex-shrink:0; }
+  .vitamin.due .vdrop{ background:var(--alert); }
+  .vitamin-text .vt-title{ font-weight:600; font-size:0.92rem; }
+  .vitamin-text .vt-sub{ font-size:0.76rem; color:var(--ink-soft); }
+  .vitamin .btn{ flex-shrink:0; }
+
+  .history-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .history-head h2{ font-size:1rem; }
+  .legend{ display:flex; gap:12px; font-size:0.74rem; color:var(--ink-soft); }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .legend i{ width:9px; height:9px; border-radius:2px; display:inline-block; }
+  .legend i.pump{ background:var(--gold); }
+  .legend i.feed{ background:var(--teal); }
+
+  .chart{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:20px; }
+  .crow{ display:grid; grid-template-columns:34px 1fr 40px; align-items:center; gap:8px; padding:5px 0; }
+  .crow .cday{ font-size:0.72rem; color:var(--ink-soft); }
+  .cbars{ display:flex; flex-direction:column; gap:3px; }
+  .cbar-track{ background:var(--cream-2); border-radius:4px; height:7px; overflow:hidden; }
+  .cbar-fill{ height:100%; border-radius:4px; }
+  .cbar-fill.pump{ background:var(--gold); }
+  .cbar-fill.feed{ background:var(--teal); }
+  .ctotal{ font-size:0.72rem; text-align:right; color:var(--ink-soft); }
+
+  .day-group{ margin-bottom:18px; }
+  .day-label{ font-size:0.78rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft);
+    border-bottom:1px solid var(--line); padding-bottom:5px; margin-bottom:8px; display:flex; justify-content:space-between; }
+  .entry{
+    display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px dashed var(--line);
+  }
+  .entry:last-child{ border-bottom:none; }
+  .badge{
+    width:30px; height:30px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    font-family:"Fraunces"; font-weight:600; font-size:0.82rem;
+  }
+  .badge.pump{ background:var(--gold); color:#241804; }
+  .badge.feed{ background:var(--teal); color:#EAF7F3; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .badge.pump{ color:#1B160E; } }
+  :root[data-theme="dark"] .badge.pump{ color:#1B160E; }
+  .entry-mid{ flex:1; min-width:0; }
+  .entry-top{ display:flex; gap:8px; font-size:0.88rem; font-weight:600; }
+  .entry-sub{ font-size:0.76rem; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .entry-time{ font-size:0.76rem; color:var(--ink-soft); flex-shrink:0; width:56px; text-align:right; }
+  .entry-del{ border:none; background:none; color:var(--ink-soft); cursor:pointer; font-size:1rem; padding:2px 4px; flex-shrink:0; }
+  .empty{ font-size:0.88rem; color:var(--ink-soft); padding:14px 0; }
+
+  .role-overlay{
+    position:fixed; inset:0; background:rgba(20,16,8,0.55); display:flex; align-items:center; justify-content:center;
+    padding:20px; z-index:50;
+  }
+  .role-card{
+    background:var(--card); border-radius:16px; padding:26px 24px; max-width:340px; width:100%;
+    border:1px solid var(--line);
+  }
+  .role-card h2{ font-size:1.25rem; margin-bottom:6px; }
+  .role-card p{ font-size:0.86rem; color:var(--ink-soft); margin:0 0 16px; line-height:1.4; }
+  .role-choice{ display:flex; flex-direction:column; gap:9px; }
+  .role-choice button{
+    border:1px solid var(--line); background:var(--cream-2); border-radius:10px; padding:12px 14px;
+    text-align:left; font-family:"Fraunces"; font-weight:600; font-size:1.02rem; cursor:pointer; color:var(--ink);
+  }
+  .role-choice button .rs{ display:block; font-family:"Inter"; font-weight:400; font-size:0.76rem; color:var(--ink-soft); margin-top:2px; }
+
+  footer{ margin-top:28px; font-size:0.72rem; color:var(--ink-soft); line-height:1.5; text-align:center; }
+  [hidden]{ display:none!important; }
+</style>
+
+<div class="top">
+  <div class="brand">
+    <h1>Milk Ledger</h1>
+    <div class="tag">what's pumped, what's poured, what's left</div>
+    <div class="sync" id="syncStatus"><span class="dot"></span><span id="syncLabel">Connecting…</span></div>
+  </div>
+  <div class="role">
+    <div class="role-pill">
+      <button data-role="mom" id="roleMomBtn">Mom</button>
+      <button data-role="dad" id="roleDadBtn">Dad</button>
+    </div>
+  </div>
+</div>
+
+<div class="example-banner" id="exampleBanner" hidden>
+  Showing example entries while your ledger loads — they'll disappear the moment your real data (or your first log) arrives.
+</div>
+
+<div class="ledger">
+  <div class="label">Stash balance · since you started logging</div>
+  <div class="balance-row">
+    <span class="balance" id="balanceFig">0.0</span>
+    <span class="balance-unit">oz</span>
+  </div>
+  <div class="balance-note" id="balanceNote"></div>
+</div>
+
+<div class="windows" id="windowsGrid"></div>
+
+<div class="quickrow">
+  <button class="qbtn pump" id="openPump">+ Pumped<span class="sub">log a pumping session</span></button>
+  <button class="qbtn feed" id="openFeed">+ Fed baby<span class="sub">log what he drank</span></button>
+</div>
+
+<div class="panel" id="pumpPanel">
+  <h3>Log a pump</h3>
+  <div class="chips" id="pumpChips"></div>
+  <div class="field-row">
+    <div class="field">
+      <label for="pumpAmount">Ounces</label>
+      <input type="number" id="pumpAmount" step="0.25" min="0" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label for="pumpTime">Time</label>
+      <input type="datetime-local" id="pumpTime">
+    </div>
+  </div>
+  <div class="field-row">
+    <div class="field">
+      <label for="pumpNote">Note (optional)</label>
+      <input type="text" id="pumpNote" placeholder="e.g. both sides">
+    </div>
+  </div>
+  <div class="panel-actions">
+    <button class="btn ghost" data-close="pumpPanel">Cancel</button>
+    <button class="btn primary" id="savePump">Save pump</button>
+  </div>
+</div>
+
+<div class="panel" id="feedPanel">
+  <h3>Log a feed</h3>
+  <div class="chips" id="feedChips"></div>
+  <div class="field-row">
+    <div class="field">
+      <label for="feedAmount">Ounces</label>
+      <input type="number" id="feedAmount" step="0.25" min="0" inputmode="decimal">
+    </div>
+    <div class="field">
+      <label for="feedSource">Source</label>
+      <select id="feedSource">
+        <option value="breastmilk">Breastmilk</option>
+        <option value="formula">Formula</option>
+      </select>
+    </div>
+  </div>
+  <div class="field-row">
+    <div class="field">
+      <label for="feedTime">Time</label>
+      <input type="datetime-local" id="feedTime">
+    </div>
+    <div class="field">
+      <label for="feedNote">Note (optional)</label>
+      <input type="text" id="feedNote" placeholder="e.g. finished the bottle">
+    </div>
+  </div>
+  <div class="panel-actions">
+    <button class="btn ghost" data-close="feedPanel">Cancel</button>
+    <button class="btn primary" id="saveFeed">Save feed</button>
+  </div>
+</div>
+
+<div class="vitamin" id="vitaminStrip">
+  <div class="vitamin-left">
+    <span class="vdrop"></span>
+    <div class="vitamin-text">
+      <div class="vt-title" id="vitaminTitle">Vitamin drops</div>
+      <div class="vt-sub" id="vitaminSub">Loading…</div>
+    </div>
+  </div>
+  <button class="btn primary" id="vitaminBtn">Mark given</button>
+</div>
+
+<div class="history-head">
+  <h2>Last 7 days</h2>
+  <div class="legend"><span><i class="pump"></i>Pumped</span><span><i class="feed"></i>Fed</span></div>
+</div>
+<div class="chart" id="chart"></div>
+
+<div class="history-head">
+  <h2>Timeline</h2>
+</div>
+<div id="timeline"></div>
+
+<div class="role-overlay" id="roleOverlay" hidden>
+  <div class="role-card">
+    <h2>Who's logging?</h2>
+    <p>This just labels entries on this device — you can switch anytime from the pill up top.</p>
+    <div class="role-choice">
+      <button data-role="mom">Mom<span class="rs">Usually logging pumps</span></button>
+      <button data-role="dad">Dad<span class="rs">Usually logging feeds at home</span></button>
+    </div>
+  </div>
+</div>
+
+<footer id="footerNote"></footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var WINDOW_LABELS = ["Overnight","Morning","Afternoon","Evening"];
+  var WINDOW_RANGES = ["12–6a","6a–12p","12–6p","6p–12a"];
+  var PUMP_CHIPS = [1,1.5,2,2.5,3,4];
+  var FEED_CHIPS = [1,2,3,4,5];
+
+  var state = { logs: [], vitamins: {}, synced: false, usingExamples: false };
+  var unsubs = [];
+
+  function pad(n){ return String(n).padStart(2,"0"); }
+  function dateKey(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function todayKey(){ return dateKey(new Date()); }
+  function windowIndex(d){
+    var h = d.getHours();
+    if (h < 6) return 0;
+    if (h < 12) return 1;
+    if (h < 18) return 2;
+    return 3;
+  }
+  function fmtOz(n){
+    var v = Math.round(n*100)/100;
+    return (Math.abs(v - Math.round(v)) < 0.001) ? String(Math.round(v)) : v.toFixed(2).replace(/0$/,"");
+  }
+  function fmtTime(d){
+    var h = d.getHours(), m = d.getMinutes();
+    var ap = h >= 12 ? "PM" : "AM";
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + pad(m) + " " + ap;
+  }
+  function fmtDayLabel(key){
+    var todayK = todayKey();
+    var y = new Date(); y.setDate(y.getDate()-1);
+    if (key === todayK) return "Today";
+    if (key === dateKey(y)) return "Yesterday";
+    var d = new Date(key + "T00:00:00");
+    return d.toLocaleDateString(undefined, { weekday:"short", month:"short", day:"numeric" });
+  }
+  function toLocalInputValue(d){
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+  }
+
+  // ---------- role ----------
+  function getRole(){ try { return localStorage.getItem("milkledger_role"); } catch(e){ return null; } }
+  function setRole(r){
+    try { localStorage.setItem("milkledger_role", r); } catch(e){}
+    updateRolePill();
+  }
+  function updateRolePill(){
+    var r = getRole() || "mom";
+    document.getElementById("roleMomBtn").classList.toggle("active", r === "mom");
+    document.getElementById("roleDadBtn").classList.toggle("active", r === "dad");
+  }
+
+  // ---------- example data (shown only until real data resolves) ----------
+  function exampleLogs(){
+    var now = new Date();
+    function at(hoursAgo){ var d = new Date(now.getTime() - hoursAgo*3600000); return d.toISOString(); }
+    return [
+      { id:"ex1", type:"pump", amountOz:3, at: at(14), by:"mom", note:"" },
+      { id:"ex2", type:"feed", amountOz:2.5, at: at(12.5), source:"breastmilk", by:"dad", note:"" },
+      { id:"ex3", type:"pump", amountOz:2.5, at: at(8), by:"mom", note:"before work" },
+      { id:"ex4", type:"feed", amountOz:3, at: at(6), source:"breastmilk", by:"dad", note:"" },
+      { id:"ex5", type:"feed", amountOz:2, at: at(2), source:"formula", by:"dad", note:"topped up" }
+    ];
+  }
+  function exampleVitamins(){
+    var v = {};
+    v[todayKey()] = { given:false };
+    var y = new Date(); y.setDate(y.getDate()-1);
+    v[dateKey(y)] = { given:true, at: y.toISOString(), by:"dad" };
+    return v;
+  }
+
+  // ---------- storage backend: db capability, falling back to localStorage ----------
+  var store = null;
+
+  function localStore(){
+    var LOGS_KEY = "milkledger_logs", VIT_KEY = "milkledger_vitamins";
+    function readLogs(){ try { return JSON.parse(localStorage.getItem(LOGS_KEY) || "[]"); } catch(e){ return []; } }
+    function writeLogs(l){ try { localStorage.setItem(LOGS_KEY, JSON.stringify(l)); } catch(e){} }
+    function readVit(){ try { return JSON.parse(localStorage.getItem(VIT_KEY) || "{}"); } catch(e){ return {}; } }
+    function writeVit(v){ try { localStorage.setItem(VIT_KEY, JSON.stringify(v)); } catch(e){} }
+    return {
+      synced: false,
+      addLog: function(data){
+        var logs = readLogs();
+        var entry = Object.assign({ id: "l" + Date.now() + Math.random().toString(36).slice(2,7) }, data);
+        logs.push(entry);
+        writeLogs(logs);
+        emitLogs();
+      },
+      deleteLog: function(id){
+        writeLogs(readLogs().filter(function(l){ return l.id !== id; }));
+        emitLogs();
+      },
+      setVitamin: function(key, data){
+        var v = readVit(); v[key] = data; writeVit(v); emitVit();
+      },
+      subscribeLogs: function(cb){ this._logCb = cb; emitLogs(); },
+      subscribeVitamins: function(cb){ this._vitCb = cb; emitVit(); }
+    };
+    function emitLogs(){ if (store && store._logCb) store._logCb(readLogs()); }
+    function emitVit(){ if (store && store._vitCb) store._vitCb(readVit()); }
+  }
+
+  function dbStore(db){
+    var col = db.collection("logs");
+    var vitCol = db.collection("vitamins");
+    return {
+      synced: true,
+      addLog: function(data){ col.add(data).catch(function(){}); },
+      deleteLog: function(id){ col.doc(id).delete().catch(function(){}); },
+      setVitamin: function(key, data){ vitCol.doc(key).set(data).catch(function(){}); },
+      subscribeLogs: function(cb){
+        unsubs.push(col.orderBy("at","desc").limit(400).onSnapshot(function(snap){
+          cb(snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }));
+        }, function(){ cb([]); }));
+      },
+      subscribeVitamins: function(cb){
+        unsubs.push(vitCol.onSnapshot(function(snap){
+          var v = {};
+          snap.docs.forEach(function(d){ v[d.id] = d.data(); });
+          cb(v);
+        }, function(){ cb({}); }));
+      }
+    };
+  }
+
+  function setSyncStatus(on){
+    var el = document.getElementById("syncStatus");
+    var label = document.getElementById("syncLabel");
+    el.classList.toggle("on", on);
+    el.classList.toggle("off", !on);
+    label.textContent = on ? "Synced with your partner" : "This device only";
+  }
+
+  // ---------- render ----------
+  function computeDayTotals(logs, key){
+    var pump = 0, feed = 0;
+    logs.forEach(function(l){
+      var d = new Date(l.at);
+      if (dateKey(d) !== key) return;
+      if (l.type === "pump") pump += l.amountOz; else feed += l.amountOz;
+    });
+    return { pump: pump, feed: feed };
+  }
+
+  function renderBalance(){
+    var pump = 0, feed = 0;
+    state.logs.forEach(function(l){ if (l.type === "pump") pump += l.amountOz; else feed += l.amountOz; });
+    var bal = pump - feed;
+    var fig = document.getElementById("balanceFig");
+    var note = document.getElementById("balanceNote");
+    fig.textContent = (bal >= 0 ? "+" : "−") + fmtOz(Math.abs(bal));
+    fig.className = "balance " + (bal >= 0 ? "surplus" : "deficit");
+    if (state.logs.length === 0){
+      note.innerHTML = "No sessions logged yet — your first entry starts the ledger.";
+    } else if (bal >= 0){
+      note.innerHTML = "Pumped <b>" + fmtOz(pump) + " oz</b> total against <b>" + fmtOz(feed) + " oz</b> fed — banking a stash.";
+    } else {
+      note.innerHTML = "Fed <b>" + fmtOz(feed) + " oz</b> total against <b>" + fmtOz(pump) + " oz</b> pumped — drawing down the freezer or topping up.";
+    }
+  }
+
+  function renderWindows(){
+    var grid = document.getElementById("windowsGrid");
+    var today = todayKey();
+    var sums = [[0,0],[0,0],[0,0],[0,0]];
+    state.logs.forEach(function(l){
+      var d = new Date(l.at);
+      if (dateKey(d) !== today) return;
+      var w = windowIndex(d);
+      sums[w][l.type === "pump" ? 0 : 1] += l.amountOz;
+    });
+    grid.innerHTML = "";
+    for (var i=0;i<4;i++){
+      var pump = sums[i][0], feed = sums[i][1], delta = pump - feed;
+      var deltaClass = delta > 0.001 ? "pos" : (delta < -0.001 ? "neg" : "zero");
+      var deltaText = (pump === 0 && feed === 0) ? "—" : ((delta >= 0 ? "+" : "−") + fmtOz(Math.abs(delta)));
+      var card = document.createElement("div");
+      card.className = "window-card";
+      card.innerHTML =
+        '<div class="wname">' + WINDOW_LABELS[i] + '</div>' +
+        '<div class="wrange">' + WINDOW_RANGES[i] + '</div>' +
+        '<div class="wfig pump"><span class="k">Pumped</span><span class="v">' + fmtOz(pump) + '</span></div>' +
+        '<div class="wfig feed"><span class="k">Fed</span><span class="v">' + fmtOz(feed) + '</span></div>' +
+        '<div class="wdelta ' + deltaClass + '">' + deltaText + '</div>';
+      grid.appendChild(card);
+    }
+  }
+
+  function renderChart(){
+    var el = document.getElementById("chart");
+    var days = [];
+    for (var i=6;i>=0;i--){
+      var d = new Date(); d.setDate(d.getDate()-i);
+      days.push(dateKey(d));
+    }
+    var totals = days.map(function(k){ return computeDayTotals(state.logs, k); });
+    var max = 0.1;
+    totals.forEach(function(t){ max = Math.max(max, t.pump, t.feed); });
+    el.innerHTML = "";
+    days.forEach(function(k, idx){
+      var t = totals[idx];
+      var row = document.createElement("div");
+      row.className = "crow";
+      var label = (k === todayKey()) ? "Today" : new Date(k+"T00:00:00").toLocaleDateString(undefined,{weekday:"short"});
+      row.innerHTML =
+        '<div class="cday">' + label + '</div>' +
+        '<div class="cbars">' +
+          '<div class="cbar-track"><div class="cbar-fill pump" style="width:' + Math.round(t.pump/max*100) + '%"></div></div>' +
+          '<div class="cbar-track"><div class="cbar-fill feed" style="width:' + Math.round(t.feed/max*100) + '%"></div></div>' +
+        '</div>' +
+        '<div class="ctotal">' + fmtOz(t.pump) + ' / ' + fmtOz(t.feed) + '</div>';
+      el.appendChild(row);
+    });
+  }
+
+  function computeStreak(){
+    var streak = 0;
+    var cursor = new Date();
+    if (!(state.vitamins[todayKey()] || {}).given) cursor.setDate(cursor.getDate()-1);
+    while (true){
+      var key = dateKey(cursor);
+      if ((state.vitamins[key] || {}).given){ streak++; cursor.setDate(cursor.getDate()-1); }
+      else break;
+    }
+    return streak;
+  }
+
+  function renderVitamin(){
+    var strip = document.getElementById("vitaminStrip");
+    var title = document.getElementById("vitaminTitle");
+    var sub = document.getElementById("vitaminSub");
+    var btn = document.getElementById("vitaminBtn");
+    var today = state.vitamins[todayKey()] || {};
+    var streak = computeStreak();
+    var hour = new Date().getHours();
+    var due = !today.given && hour >= 11;
+
+    strip.classList.toggle("due", due);
+    if (today.given){
+      title.textContent = "Vitamin drops — given today";
+      var whoGave = today.by ? (today.by === "mom" ? "Mom" : "Dad") : "";
+      var t = today.at ? fmtTime(new Date(today.at)) : "";
+      sub.textContent = [whoGave, t].filter(Boolean).join(" · ") + (streak > 0 ? "  ·  " + streak + " day streak" : "");
+      btn.textContent = "Undo";
+    } else {
+      title.textContent = due ? "Vitamin drops — not given yet" : "Vitamin drops";
+      sub.textContent = streak > 0 ? streak + " day streak on the line" : "Tap once he's had his dose";
+      btn.textContent = "Mark given";
+    }
+  }
+
+  function renderTimeline(){
+    var el = document.getElementById("timeline");
+    el.innerHTML = "";
+    if (state.logs.length === 0){
+      el.innerHTML = '<div class="empty">Nothing logged yet. Use the buttons above to add your first pump or feed.</div>';
+      return;
+    }
+    var sorted = state.logs.slice().sort(function(a,b){ return new Date(b.at) - new Date(a.at); });
+    var groups = {};
+    var order = [];
+    sorted.forEach(function(l){
+      var k = dateKey(new Date(l.at));
+      if (!groups[k]){ groups[k] = []; order.push(k); }
+      groups[k].push(l);
+    });
+    order.forEach(function(k){
+      var entries = groups[k];
+      var totals = computeDayTotals(state.logs, k);
+      var wrap = document.createElement("div");
+      wrap.className = "day-group";
+      var head = document.createElement("div");
+      head.className = "day-label";
+      head.innerHTML = "<span>" + fmtDayLabel(k) + "</span><span>" + fmtOz(totals.pump) + " oz pumped · " + fmtOz(totals.feed) + " oz fed</span>";
+      wrap.appendChild(head);
+      entries.forEach(function(l){
+        var row = document.createElement("div");
+        row.className = "entry";
+        var d = new Date(l.at);
+        var who = l.by === "mom" ? "Mom" : "Dad";
+        var detail = l.type === "pump" ? "Pumped" : ("Fed" + (l.source === "formula" ? " · formula" : ""));
+        var noteHtml = l.note ? (" — " + escapeHtml(l.note)) : "";
+        row.innerHTML =
+          '<div class="badge ' + l.type + '">' + fmtOz(l.amountOz) + '</div>' +
+          '<div class="entry-mid">' +
+            '<div class="entry-top">' + detail + '</div>' +
+            '<div class="entry-sub">' + who + noteHtml + '</div>' +
+          '</div>' +
+          '<div class="entry-time">' + fmtTime(d) + '</div>' +
+          '<button class="entry-del" title="Delete" data-del="' + l.id + '">×</button>';
+        wrap.appendChild(row);
+      });
+      el.appendChild(wrap);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c];
+    });
+  }
+
+  function renderAll(){
+    renderBalance();
+    renderWindows();
+    renderChart();
+    renderVitamin();
+    renderTimeline();
+  }
+
+  // ---------- panels ----------
+  function buildChips(container, values, unit, onPick){
+    container.innerHTML = "";
+    values.forEach(function(v){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = v + " " + unit;
+      b.addEventListener("click", function(){ onPick(v, b, container); });
+      container.appendChild(b);
+    });
+  }
+  function selectChip(container, btn, amountInput){
+    Array.prototype.forEach.call(container.children, function(c){ c.classList.remove("selected"); });
+    btn.classList.add("selected");
+    amountInput.value = btn.textContent.split(" ")[0];
+  }
+
+  function openPanel(id){
+    ["pumpPanel","feedPanel"].forEach(function(p){
+      document.getElementById(p).classList.toggle("show", p === id);
+    });
+    document.getElementById("openPump").classList.toggle("open", id === "pumpPanel");
+    document.getElementById("openFeed").classList.toggle("open", id === "feedPanel");
+    if (id === "pumpPanel") document.getElementById("pumpTime").value = toLocalInputValue(new Date());
+    if (id === "feedPanel") document.getElementById("feedTime").value = toLocalInputValue(new Date());
+  }
+  function closePanel(id){
+    document.getElementById(id).classList.remove("show");
+    document.getElementById(id === "pumpPanel" ? "openPump" : "openFeed").classList.remove("open");
+  }
+
+  function wireUi(){
+    document.getElementById("openPump").addEventListener("click", function(){
+      var p = document.getElementById("pumpPanel");
+      p.classList.contains("show") ? closePanel("pumpPanel") : openPanel("pumpPanel");
+    });
+    document.getElementById("openFeed").addEventListener("click", function(){
+      var p = document.getElementById("feedPanel");
+      p.classList.contains("show") ? closePanel("feedPanel") : openPanel("feedPanel");
+    });
+    document.querySelectorAll("[data-close]").forEach(function(b){
+      b.addEventListener("click", function(){ closePanel(b.getAttribute("data-close")); });
+    });
+
+    buildChips(document.getElementById("pumpChips"), PUMP_CHIPS, "oz", function(v,b,c){
+      selectChip(c, b, document.getElementById("pumpAmount"));
+    });
+    buildChips(document.getElementById("feedChips"), FEED_CHIPS, "oz", function(v,b,c){
+      selectChip(c, b, document.getElementById("feedAmount"));
+    });
+
+    document.getElementById("savePump").addEventListener("click", function(){
+      var amt = parseFloat(document.getElementById("pumpAmount").value);
+      if (!amt || amt <= 0){ document.getElementById("pumpAmount").focus(); return; }
+      var timeVal = document.getElementById("pumpTime").value;
+      var at = timeVal ? new Date(timeVal).toISOString() : new Date().toISOString();
+      var note = document.getElementById("pumpNote").value.trim();
+      store.addLog({ type:"pump", amountOz: amt, at: at, by: getRole() || "mom", note: note });
+      document.getElementById("pumpAmount").value = "";
+      document.getElementById("pumpNote").value = "";
+      Array.prototype.forEach.call(document.getElementById("pumpChips").children, function(c){ c.classList.remove("selected"); });
+      closePanel("pumpPanel");
+    });
+
+    document.getElementById("saveFeed").addEventListener("click", function(){
+      var amt = parseFloat(document.getElementById("feedAmount").value);
+      if (!amt || amt <= 0){ document.getElementById("feedAmount").focus(); return; }
+      var timeVal = document.getElementById("feedTime").value;
+      var at = timeVal ? new Date(timeVal).toISOString() : new Date().toISOString();
+      var note = document.getElementById("feedNote").value.trim();
+      var source = document.getElementById("feedSource").value;
+      store.addLog({ type:"feed", amountOz: amt, at: at, by: getRole() || "dad", note: note, source: source });
+      document.getElementById("feedAmount").value = "";
+      document.getElementById("feedNote").value = "";
+      Array.prototype.forEach.call(document.getElementById("feedChips").children, function(c){ c.classList.remove("selected"); });
+      closePanel("feedPanel");
+    });
+
+    document.getElementById("timeline").addEventListener("click", function(e){
+      var id = e.target.getAttribute && e.target.getAttribute("data-del");
+      if (!id || id.indexOf("ex") === 0) return;
+      if (window.confirm("Delete this entry?")) store.deleteLog(id);
+    });
+
+    document.getElementById("vitaminBtn").addEventListener("click", function(){
+      var key = todayKey();
+      var today = state.vitamins[key] || {};
+      if (today.given){
+        store.setVitamin(key, { given:false });
+      } else {
+        store.setVitamin(key, { given:true, at: new Date().toISOString(), by: getRole() || "mom" });
+      }
+    });
+
+    ["roleMomBtn","roleDadBtn"].forEach(function(id){
+      document.getElementById(id).addEventListener("click", function(){
+        setRole(document.getElementById(id).getAttribute("data-role"));
+      });
+    });
+    document.querySelectorAll("#roleOverlay [data-role]").forEach(function(b){
+      b.addEventListener("click", function(){
+        setRole(b.getAttribute("data-role"));
+        document.getElementById("roleOverlay").hidden = true;
+      });
+    });
+  }
+
+  function ensureRolePicked(){
+    if (!getRole()){
+      document.getElementById("roleOverlay").hidden = false;
+    }
+    updateRolePill();
+  }
+
+  // ---------- boot ----------
+  function boot(){
+    wireUi();
+    ensureRolePicked();
+
+    state.logs = exampleLogs();
+    state.vitamins = exampleVitamins();
+    state.usingExamples = true;
+    document.getElementById("exampleBanner").hidden = false;
+    renderAll();
+
+    if (window.claude && typeof window.claude.use === "function"){
+      window.claude.use("db").then(function(db){
+        if (!db){ fallbackToLocal(); return; }
+        store = dbStore(db);
+        setSyncStatus(true);
+        var gotLogs = false, gotVit = false;
+        store.subscribeLogs(function(logs){
+          gotLogs = true;
+          state.usingExamples = false;
+          document.getElementById("exampleBanner").hidden = true;
+          state.logs = logs.map(function(l){ return Object.assign({}, l); });
+          renderAll();
+        });
+        store.subscribeVitamins(function(v){
+          gotVit = true;
+          state.vitamins = v;
+          renderVitamin();
+        });
+      }).catch(function(){ fallbackToLocal(); });
+      setTimeout(function(){ if (!store) fallbackToLocal(); }, 4000);
+    } else {
+      fallbackToLocal();
+    }
+  }
+
+  function fallbackToLocal(){
+    if (store) return;
+    store = localStore();
+    setSyncStatus(false);
+    store.subscribeLogs(function(logs){
+      state.usingExamples = false;
+      document.getElementById("exampleBanner").hidden = true;
+      state.logs = logs;
+      renderAll();
+    });
+    store.subscribeVitamins(function(v){
+      state.vitamins = v;
+      renderVitamin();
+    });
+  }
+
+  document.getElementById("footerNote").textContent =
+    "Live sync works between anyone signed into a Claude account in the same organization as whoever published this page — easiest fix is opening this link while signed into the same account on both phones. Otherwise each device keeps its own local ledger.";
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
