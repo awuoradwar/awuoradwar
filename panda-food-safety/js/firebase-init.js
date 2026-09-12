@@ -23,7 +23,9 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
 import {
-  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
   doc,
   getDoc,
   setDoc,
@@ -45,7 +47,19 @@ import { firebaseConfig, OWNER_EMAIL } from "./firebase-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Without a persistent local cache, every one-time getDocs() call is a
+// brand-new network round trip with nothing to fall back on -- on a
+// real store's flaky/locked-down wifi, these were observed to hang
+// indefinitely (until the app's own 20s timeout) even while an already-
+// open realtime onSnapshot listener (e.g. the notification bell) kept
+// working fine on the same connection. Enabling IndexedDB-backed
+// persistence is Firebase's own documented fix for exactly this: it lets
+// getDocs() serve from the synced local cache instead of only ever
+// waiting on a fresh server round trip, and lets ordinary reads share
+// the same underlying connection health as the realtime listeners that
+// were already proven to work. Single-tab manager: this app is never
+// expected to be open in two tabs of the same origin at once.
+const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }) });
 const storage = getStorage(app);
 
 // Explicit rather than relying on the SDK's default: keeps a signed-in
