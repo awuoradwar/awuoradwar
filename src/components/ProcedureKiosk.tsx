@@ -180,7 +180,7 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
         <button
           type="button"
           onClick={() => setLang((l) => (l === "en" ? "es" : "en"))}
-          className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted hover:border-accent hover:text-accent"
+          className="tap-target shrink-0 rounded-full border-2 border-accent bg-accent px-4 text-sm font-bold text-accent-foreground shadow-sm transition-colors hover:bg-accent-hover"
         >
           {es ? "English" : "Español"}
         </button>
