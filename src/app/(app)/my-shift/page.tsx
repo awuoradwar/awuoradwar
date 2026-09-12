@@ -12,7 +12,6 @@ import {
   incomingHandoffsForTasks,
 } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
-import { getWeekSummary } from "@/lib/services/weekSummaryService";
 import { weekStartOf } from "@/lib/services/recurrenceService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { pendingRequestCountsForTasks } from "@/lib/services/schedulingService";
@@ -163,23 +162,23 @@ export default async function MyShiftPage() {
   }
 
   // OVERDUE still gets computed (so a past-due task never falls through
-  // into THIS_WEEK and reads as an upcoming planning item) but isn't given
-  // its own section below -- Weekly Summary's "Tasks still open" tile is
-  // where a manager reviews backlog, not the daily My Shift screen.
+  // into THIS_WEEK and reads as an upcoming planning item) -- it isn't
+  // given its own section among NOW/TODAY/THIS_WEEK above, but the banner
+  // below (and the Overdue section it links to) surfaces exactly this
+  // bucket, scoped down to this week, instead of leaving it invisible.
   const buckets: Record<Section, typeof tasks> = { NOW: [], OVERDUE: [], TODAY: [], THIS_WEEK: [] };
   for (const task of tasks) {
     buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today, viewerShiftType)].push(task);
   }
 
-  // Last week's tasks-still-open count, from the same tile Weekly Summary
-  // already shows -- once a week's closed, anything left there genuinely
-  // went undone rather than just "still in progress." A rolling this-week
-  // number would double-count with the sections below (which already show
-  // NOW/TODAY/THIS_WEEK), so this deliberately looks one week back instead.
+  // How many of that OVERDUE bucket became due within the CURRENT week --
+  // a running "past due this week" count a manager can act on as the week
+  // happens, rather than only finding out once the week's already over.
+  // Anything overdue from before this week is real backlog too, but isn't
+  // "this week's" problem, so it's left out of this specific count.
   const MISSED_TASKS_BANNER_THRESHOLD = 3;
-  const lastWeekStart = weekStartOf(new Date(new Date(today + "T00:00:00Z").getTime() - 7 * 86400000).toISOString().slice(0, 10));
-  const lastWeekEnd = new Date(new Date(lastWeekStart + "T00:00:00Z").getTime() + 6 * 86400000).toISOString().slice(0, 10);
-  const lastWeekMissed = getWeekSummary(user.storeId, lastWeekStart, lastWeekEnd).tasksStillOpen;
+  const currentWeekStart = weekStartOf(today);
+  const overdueThisWeek = buckets.OVERDUE.filter((t) => t.scheduled_date && t.scheduled_date >= currentWeekStart);
 
   const summary = buildLiveSummary(user.storeId, user.language);
   // Tasks are excluded from "from last shift" since MY SHIFT/TODAY above
@@ -305,18 +304,51 @@ export default async function MyShiftPage() {
         )}
       </div>
 
-      {lastWeekMissed >= MISSED_TASKS_BANNER_THRESHOLD && (
-        <Link
-          href={`/more/weekly-summary?weekStart=${lastWeekStart}`}
+      {overdueThisWeek.length >= MISSED_TASKS_BANNER_THRESHOLD && (
+        <a
+          href="#overdue-tasks"
           className="flex items-center justify-between gap-2 rounded-xl border border-critical/30 bg-critical/5 px-3.5 py-3 text-sm transition-colors hover:bg-critical/10"
         >
           <p className="font-semibold text-critical">
             {user.language === "es"
-              ? `⚠ ${lastWeekMissed} tareas no se completaron la semana pasada`
-              : `⚠ ${lastWeekMissed} tasks weren't completed last week`}
+              ? `⚠ ${overdueThisWeek.length} tareas están atrasadas esta semana`
+              : `⚠ ${overdueThisWeek.length} tasks are past due this week`}
           </p>
-          <span className="shrink-0 text-critical">→</span>
-        </Link>
+          <span className="shrink-0 text-critical">↓</span>
+        </a>
+      )}
+
+      {overdueThisWeek.length > 0 && (
+        <details id="overdue-tasks" className="card overflow-hidden" open>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-3">
+            <div className="min-w-0">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-critical">{user.language === "es" ? "Atrasadas" : "Overdue"}</h2>
+              <p className="text-xs text-muted">
+                {user.language === "es" ? "Vencidas esta semana -- márcalas cuando se terminen" : "Past due this week -- mark them done once they're handled"}
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-semibold text-critical">{overdueThisWeek.length}</span>
+          </summary>
+          <div className="flex flex-col gap-2 border-t border-border p-3">
+            {overdueThisWeek.map((task) => (
+              <TaskCard
+                key={task.id}
+                lang={user.language}
+                task={{
+                  ...task,
+                  blocked: isBlocked(task),
+                  dueLabel: dueLabelFor(task.due_at),
+                  ...supportOf(task.support_ids),
+                  ...handoffOf(task),
+                  pendingRequestCount: pendingRequestCounts.get(task.id) ?? 0,
+                }}
+                managerColors={managerColors}
+                from="/my-shift"
+                endOfDayUrgent={endOfDayUrgent}
+              />
+            ))}
+          </div>
+        </details>
       )}
 
       {todayNotes.length > 0 && (
