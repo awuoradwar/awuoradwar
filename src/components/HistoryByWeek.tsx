@@ -103,6 +103,7 @@ export default function HistoryByWeek<T>({
   emptyLabel,
   storeId,
   groupByDay,
+  countLabel,
 }: {
   items: T[];
   getDate: (item: T) => string | null;
@@ -116,6 +117,12 @@ export default function HistoryByWeek<T>({
   flagWeek?: (items: T[]) => boolean;
   lang: Language;
   emptyLabel: string;
+  /** Tiny caption under the count badge (e.g. "submissions") -- the badge
+   * is always a plain count of `items`, which reads as ambiguous next to a
+   * renderSubtitle that reports a different, domain-specific number (e.g.
+   * incomplete checklist items vs. total submissions). Omit for callers
+   * where the bare count is already self-evident. */
+  countLabel?: string;
   /** Required whenever getDate returns a full timestamp (created_at,
    * trained_at, etc.) rather than an already-store-local "YYYY-MM-DD" --
    * without it, late-evening events get bucketed into the wrong week. */
@@ -142,12 +149,15 @@ export default function HistoryByWeek<T>({
               {renderSubtitle && (
                 <span className={`text-xs ${flagWeek?.(w.items) ? "font-semibold text-critical" : "text-muted"}`}>{renderSubtitle(w.items)}</span>
               )}
-              <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
-                  flagWeek?.(w.items) ? "bg-critical text-white" : "bg-accent text-accent-foreground"
-                }`}
-              >
-                {w.items.length}
+              <span className="flex shrink-0 flex-col items-end gap-0.5">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    flagWeek?.(w.items) ? "bg-critical text-white" : "bg-accent text-accent-foreground"
+                  }`}
+                >
+                  {w.items.length}
+                </span>
+                {countLabel && <span className="text-[10px] font-medium text-muted">{countLabel}</span>}
               </span>
             </span>
           </summary>

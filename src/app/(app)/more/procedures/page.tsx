@@ -16,6 +16,7 @@ import {
   ProcedureSubmission,
 } from "@/lib/services/procedureService";
 import { storeToday } from "@/lib/storeTime";
+import { weekStartOf } from "@/lib/services/recurrenceService";
 import PageHeader from "@/components/PageHeader";
 import ProceduresLinkCard from "@/components/ProceduresLinkCard";
 import ProcedureAreasManager from "@/components/ProcedureAreasManager";
@@ -49,6 +50,22 @@ function weekSubtitle(subs: ProcedureSubmission[], lang: "en" | "es") {
   const incomplete = incompleteItemCount(subs);
   if (incomplete === 0) return lang === "es" ? "Todo completo" : "All complete";
   return lang === "es" ? `${incomplete} sin completar` : `${incomplete} item${incomplete === 1 ? "" : "s"} not completed`;
+}
+
+function hasIncompleteItems(sub: ProcedureSubmission): boolean {
+  const items = JSON.parse(sub.items_json) as Array<{ checked: boolean }>;
+  return items.some((i) => !i.checked);
+}
+
+/** "Fri, Sep 12" -- for a flat list mixing rows from different days (see
+ * ProcedureSubmissionRow's dateLabel prop), where there's no day header to
+ * give that context for free the way the day-grouped Recent Submissions
+ * list has. Built from submitted_date, not created_at -- that's the date
+ * the closing actually counts toward (see the "last night" pickers on the
+ * kiosk), not necessarily when the phone happened to save it. */
+function fmtDayDate(dateStr: string, lang: "en" | "es"): string {
+  const d = new Date(dateStr + "T12:00:00Z");
+  return d.toLocaleDateString(lang === "es" ? "es-MX" : "en-US", { weekday: "short", month: "short", day: "numeric" });
 }
 
 export default async function ProceduresPage() {
@@ -86,6 +103,11 @@ export default async function ProceduresPage() {
   // Done/Pending/Missed state instead of only ever flagging a problem, so
   // a glance at this list says what's actually been covered so far today.
   const doneToday = new Set(getSubmissionsForDate(user.storeId, today).filter((s) => s.shift_type === "CLOSING").map((s) => s.area_id));
+  // Newest first (getRecentSubmissions' own order), so the one that needs
+  // finishing most recently is the first thing a GM sees, not something
+  // they have to open every week's Recent Submissions row to go find.
+  const currentWeekStart = weekStartOf(today);
+  const incompleteThisWeek = submissions.filter((s) => s.submitted_date >= currentWeekStart && hasIncompleteItems(s));
   const stationsList = listActiveAreas(user.storeId);
   const stationsByCategory = (["FOH", "BOH", "PATIO_WINDOWS"] as ProcedureCategory[])
     .map((c) => ({ category: c, areas: stationsList.filter((a) => a.category === c) }))
@@ -161,6 +183,22 @@ export default async function ProceduresPage() {
         </section>
       )}
 
+      {incompleteThisWeek.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-critical">{es ? "Sin completar esta semana" : "Incomplete this week"}</h2>
+          <p className="-mt-1 mb-2 text-xs text-muted">
+            {es
+              ? "Estaciones enviadas con casillas sin marcar -- toca una para ver cuáles."
+              : "Submitted, but with some boxes left unchecked -- tap one to see which."}
+          </p>
+          <div className="flex flex-col gap-2">
+            {incompleteThisWeek.map((s) => (
+              <ProcedureSubmissionRow key={s.id} submission={s} storeId={user.storeId} lang={user.language} canEdit={canManage} dateLabel={fmtDayDate(s.submitted_date, user.language)} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {canManage && (
         <section>
           <details className="card overflow-hidden">
@@ -185,6 +223,7 @@ export default async function ProceduresPage() {
           renderItem={(item) => <ProcedureSubmissionRow submission={item} storeId={user.storeId} lang={user.language} canEdit={canManage} />}
           renderSubtitle={(items) => weekSubtitle(items, user.language)}
           flagWeek={(items) => incompleteItemCount(items) > 0}
+          countLabel={es ? "enviados" : "submissions"}
           groupByDay
           lang={user.language}
           emptyLabel={es ? "Nada enviado todavía." : "Nothing submitted yet."}

@@ -21,6 +21,7 @@ export default function ProcedureSubmissionRow({
   lang,
   compact = false,
   canEdit = false,
+  dateLabel,
 }: {
   submission: ProcedureSubmission;
   storeId: string;
@@ -35,6 +36,12 @@ export default function ProcedureSubmissionRow({
    * feature already requires), and even then only a date correction, not
    * the checklist answers themselves. */
   canEdit?: boolean;
+  /** Pre-formatted day + date (e.g. "Fri, Sep 12") shown in place of the
+   * clock-time subtitle -- for a flat list mixing rows from different days
+   * (the Procedures page's Incomplete This Week list) where there's no
+   * enclosing day header to supply that context the way the day-grouped
+   * Recent Submissions list does. */
+  dateLabel?: string;
 }) {
   const es = lang === "es";
   const items = JSON.parse(submission.items_json) as Array<{
@@ -72,7 +79,15 @@ export default function ProcedureSubmissionRow({
                 {submission.shift_type === "OPENING" ? (es ? "Apertura" : "Opening") : es ? "Cierre" : "Closing"}
               </p>
               <p className="truncate text-xs text-muted">
-                {submission.associate_name} · {submission.area_category && CATEGORY_LABEL[submission.area_category][lang]} · {time}
+                {dateLabel ? (
+                  <>
+                    {dateLabel} · {submission.associate_name}
+                  </>
+                ) : (
+                  <>
+                    {submission.associate_name} · {submission.area_category && CATEGORY_LABEL[submission.area_category][lang]} · {time}
+                  </>
+                )}
               </p>
             </>
           )}
