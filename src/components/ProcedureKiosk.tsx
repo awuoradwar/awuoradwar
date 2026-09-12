@@ -174,9 +174,9 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col px-5 py-6">
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm font-semibold text-muted">{storeName}</p>
+    <div className="mx-auto flex min-h-dvh w-full min-w-0 max-w-md flex-col px-5 py-6">
+      <div className="mb-6 flex min-w-0 items-center justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-semibold text-muted">{storeName}</p>
         <button
           type="button"
           onClick={() => setLang((l) => (l === "en" ? "es" : "en"))}
