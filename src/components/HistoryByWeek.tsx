@@ -139,7 +139,9 @@ export default function HistoryByWeek<T>({
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-accent/10 px-3 py-2.5">
             <span className="text-sm font-bold uppercase tracking-wide text-accent">{fmtWeekRange(w.weekStart, w.weekEnd, locale)}</span>
             <span className="flex shrink-0 items-center gap-2">
-              {renderSubtitle && <span className="text-xs text-muted">{renderSubtitle(w.items)}</span>}
+              {renderSubtitle && (
+                <span className={`text-xs ${flagWeek?.(w.items) ? "font-semibold text-critical" : "text-muted"}`}>{renderSubtitle(w.items)}</span>
+              )}
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold ${
                   flagWeek?.(w.items) ? "bg-critical text-white" : "bg-accent text-accent-foreground"
