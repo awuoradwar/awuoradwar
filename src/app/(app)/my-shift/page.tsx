@@ -12,6 +12,8 @@ import {
   incomingHandoffsForTasks,
 } from "@/lib/services/taskService";
 import { getTodayShift } from "@/lib/services/shiftService";
+import { getWeekSummary } from "@/lib/services/weekSummaryService";
+import { weekStartOf } from "@/lib/services/recurrenceService";
 import { getShiftTypeForUserToday } from "@/lib/services/scheduleService";
 import { pendingRequestCountsForTasks } from "@/lib/services/schedulingService";
 import { buildLiveSummary } from "@/lib/services/handoffService";
@@ -169,6 +171,16 @@ export default async function MyShiftPage() {
     buckets[computeSection(task, user.id, todayShift?.pic_user_id ?? null, now, today, viewerShiftType)].push(task);
   }
 
+  // Last week's tasks-still-open count, from the same tile Weekly Summary
+  // already shows -- once a week's closed, anything left there genuinely
+  // went undone rather than just "still in progress." A rolling this-week
+  // number would double-count with the sections below (which already show
+  // NOW/TODAY/THIS_WEEK), so this deliberately looks one week back instead.
+  const MISSED_TASKS_BANNER_THRESHOLD = 3;
+  const lastWeekStart = weekStartOf(new Date(new Date(today + "T00:00:00Z").getTime() - 7 * 86400000).toISOString().slice(0, 10));
+  const lastWeekEnd = new Date(new Date(lastWeekStart + "T00:00:00Z").getTime() + 6 * 86400000).toISOString().slice(0, 10);
+  const lastWeekMissed = getWeekSummary(user.storeId, lastWeekStart, lastWeekEnd).tasksStillOpen;
+
   const summary = buildLiveSummary(user.storeId, user.language);
   // Tasks are excluded from "from last shift" since MY SHIFT/TODAY above
   // already cover every open task, and cleaning gets its own actionable
@@ -292,6 +304,20 @@ export default async function MyShiftPage() {
           </a>
         )}
       </div>
+
+      {lastWeekMissed >= MISSED_TASKS_BANNER_THRESHOLD && (
+        <Link
+          href={`/more/weekly-summary?weekStart=${lastWeekStart}`}
+          className="flex items-center justify-between gap-2 rounded-xl border border-critical/30 bg-critical/5 px-3.5 py-3 text-sm transition-colors hover:bg-critical/10"
+        >
+          <p className="font-semibold text-critical">
+            {user.language === "es"
+              ? `⚠ ${lastWeekMissed} tareas no se completaron la semana pasada`
+              : `⚠ ${lastWeekMissed} tasks weren't completed last week`}
+          </p>
+          <span className="shrink-0 text-critical">→</span>
+        </Link>
+      )}
 
       {todayNotes.length > 0 && (
         <SectionCard
