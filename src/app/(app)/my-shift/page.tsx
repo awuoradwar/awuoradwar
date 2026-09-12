@@ -331,12 +331,19 @@ export default async function MyShiftPage() {
         // close anything) sitting above its own always-open section; now
         // the alarming state IS the summary itself, so tapping it actually
         // does what tapping it looks like it should do.
+        //
+        // Always starts collapsed: this section re-renders fresh on every
+        // visit to this page (a full navigation, or reopening the app), so
+        // an `open` computed from the current count would force itself back
+        // open every single time regardless of a manager closing it a
+        // moment earlier -- the alarming summary line is visible either
+        // way, so forcing the list itself open isn't needed to make the
+        // point.
         <details
           id="overdue-tasks"
           className={`overflow-hidden rounded-xl ${
             overdueThisWeek.length >= MISSED_TASKS_BANNER_THRESHOLD ? "border border-critical/30 bg-critical/5" : "card"
           }`}
-          open={overdueThisWeek.length >= MISSED_TASKS_BANNER_THRESHOLD}
         >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-3 text-sm">
             <div className="min-w-0">
