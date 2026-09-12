@@ -27,16 +27,17 @@ const openingSubmittedAt = { toDate: () => new Date("2026-09-01T13:15:00Z") };
 
   // First time this exact hash is seen for store 1644 / item 16 -> not a
   // duplicate, and it registers the hash for future comparisons.
-  const first = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-01", "opening", openingSubmittedAt, "sub1");
+  const first = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-01", "opening", openingSubmittedAt, "sub1", "yes");
   check(first === null, "The first time a photo's hash is seen, it's not flagged as a duplicate");
 
   // Same store, same item, SAME hash, a DIFFERENT submission -> duplicate.
-  const second = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-08", "midday", { toDate: () => new Date("2026-09-08T18:00:00Z") }, "sub2");
+  const second = await checkDuplicate(db, "1644", "16", "hash-abc", "2026-09-08", "midday", { toDate: () => new Date("2026-09-08T18:00:00Z") }, "sub2", "yes");
   check(second !== null && second.reason === "duplicate", `The same hash reused in a later submission IS flagged as a duplicate (got ${JSON.stringify(second)})`);
   check(second.duplicateOfDate === "2026-09-01", `Reports the date of the ORIGINAL photo, not the duplicate (got ${second.duplicateOfDate})`);
   check(second.duplicateOfShift === "opening", `Reports which SHIFT the original came from -- needed to make sense of a duplicate flagged on the very same date as the original (got ${second.duplicateOfShift})`);
   check(second.duplicateOfSubmittedAt === openingSubmittedAt, `Reports the exact moment the original was submitted -- "same day" alone isn't precise enough (got ${JSON.stringify(second.duplicateOfSubmittedAt)})`);
   check(second.duplicateOfSubmissionId === "sub1", `Reports which submission the original came from (got ${second.duplicateOfSubmissionId})`);
+  check(second.associateAnswer === "yes", `Reports the associate's own answer for THIS submission -- lets the UI distinguish a compliant "Yes" flagged only for a photo-evidence problem from an actual "No" violation (got ${JSON.stringify(second.associateAnswer)})`);
 
   // Re-processing the SAME submission again (e.g. a retried trigger) must
   // not flag itself as a duplicate of itself.

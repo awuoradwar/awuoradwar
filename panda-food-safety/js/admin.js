@@ -682,6 +682,16 @@ function renderAiFlagsButtonContent(btn) {
   btn.innerHTML = `🔔${unresolvedAiFlagsCount > 0 ? `<span class="badge-count">${count}</span>` : ""}`;
 }
 
+// An AI-flagged item only counts as "critical" when the associate's own
+// answer was actually a violation ("No") -- a High Risk item that was
+// otherwise answered "Yes" and merely has a photo-evidence problem
+// (reused, wrong, or unreadable photo) is a documentation issue, not a
+// food-safety violation, and shouldn't wear the same alarm styling as
+// one that genuinely failed.
+function isFlagCritical(flag) {
+  return flag.associateAnswer === "no" && flag.item.risk === "high";
+}
+
 // One flag's row inside a date/store group -- no store or date label of
 // its own since both are already established by the group headers it
 // lives under; just the item, its risk, who/what shift, and why it was
@@ -689,10 +699,10 @@ function renderAiFlagsButtonContent(btn) {
 function aiFlagRowHtml(flag) {
   const item = flag.item;
   return `
-  <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}" data-flag-row="${flag.id}">
+  <div class="detail-row ${isFlagCritical(flag) ? "detail-row-critical" : ""}" data-flag-row="${flag.id}">
     <div class="detail-row-main">
       <span class="detail-item-text">${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
-      <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
+      <span class="detail-row-badges">${flag.associateAnswer === "no" ? repeatViolationBadgesHtml(item.risk) : ""}</span>
     </div>
     <div class="history-card-meta">${flag.shift ? `${escapeHtml(t("shift_" + flag.shift))} · ` : ""}${escapeHtml(flag.conductedBy)}</div>
     ${flagReasonDetailHtml(flag)}
@@ -713,7 +723,7 @@ function formatFlagDateLabel(dateStr) {
 // different dates, each expanding independently).
 function aiFlagsStoreSubGroupHtml(date, group, expandedStores) {
   const key = `${date}__${group.storeNumber}`;
-  const hasCritical = group.flags.some((f) => f.item.risk === "high");
+  const hasCritical = group.flags.some((f) => isFlagCritical(f));
   const isExpanded = expandedStores.has(key);
   return `
   <div class="section-block" style="margin-bottom:8px;">
@@ -740,7 +750,7 @@ function aiFlagsStoreSubGroupHtml(date, group, expandedStores) {
 function aiFlagsDateGroupsHtml(dateGroups, expandedDates, expandedStores) {
   return dateGroups
     .map((dateGroup) => {
-      const hasCritical = dateGroup.flags.some((f) => f.item.risk === "high");
+      const hasCritical = dateGroup.flags.some((f) => isFlagCritical(f));
       const isExpanded = expandedDates.has(dateGroup.date);
       const byStore = {};
       dateGroup.flags.forEach((f) => (byStore[f.storeNumber] ||= []).push(f));
@@ -749,8 +759,8 @@ function aiFlagsDateGroupsHtml(dateGroups, expandedDates, expandedStores) {
       const storeGroups = Object.entries(byStore)
         .map(([storeNumber, storeFlags]) => ({ storeNumber, store: storesCache.find((s) => s.number === storeNumber), flags: storeFlags }))
         .sort((a, b) => {
-          const aHasCritical = a.flags.some((f) => f.item.risk === "high");
-          const bHasCritical = b.flags.some((f) => f.item.risk === "high");
+          const aHasCritical = a.flags.some((f) => isFlagCritical(f));
+          const bHasCritical = b.flags.some((f) => isFlagCritical(f));
           if (aHasCritical !== bHasCritical) return aHasCritical ? -1 : 1;
           return b.flags.length - a.flags.length || Number(a.storeNumber) - Number(b.storeNumber);
         });
@@ -933,13 +943,14 @@ function renderAiFlagDetailModal(record, itemFlags) {
     .map((flag) => {
       const item = findItemDefinitionById(flag.itemId) || { id: flag.itemId, en: `#${flag.itemId}`, es: `#${flag.itemId}`, risk: "medium" };
       const a = record.answers?.[flag.itemId] || {};
-      const badgeClass = a.value === "yes" ? "badge-success" : a.value === "no" ? "badge-danger" : "badge-neutral";
-      const badgeLabel = a.value === "yes" ? t("yes") : a.value === "no" ? t("no") : t("na");
+      const isNo = a.value === "no";
+      const badgeClass = a.value === "yes" ? "badge-success" : isNo ? "badge-danger" : "badge-neutral";
+      const badgeLabel = a.value === "yes" ? t("yes") : isNo ? t("no") : t("na");
       return `
-        <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}" id="detail-row-${item.id}">
+        <div class="detail-row ${isNo && item.risk === "high" ? "detail-row-critical" : ""}" id="detail-row-${item.id}">
           <div class="detail-row-main">
             <span class="detail-item-text">${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
-            <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}<span class="badge ${badgeClass}">${badgeLabel}</span></span>
+            <span class="detail-row-badges">${isNo ? repeatViolationBadgesHtml(item.risk) : ""}<span class="badge ${badgeClass}">${badgeLabel}</span></span>
           </div>
           <div class="detail-row-body">
             ${a.photoUrl ? `<img class="photo-thumb" src="${a.photoUrl}" alt="" data-lightbox="${a.photoUrl}" />` : ""}
@@ -1803,11 +1814,12 @@ async function renderWeeklyReportTab() {
             .map((flag) => {
               const item = findItemDefinitionById(flag.itemId) || { id: flag.itemId, en: `#${flag.itemId}`, es: `#${flag.itemId}`, risk: "medium" };
               const store = storesCache.find((s) => s.number === flag.storeNumber);
+              const isNo = flag.associateAnswer === "no";
               return `
-            <div class="detail-row ${item.risk === "high" ? "detail-row-critical" : ""}">
+            <div class="detail-row ${isNo && item.risk === "high" ? "detail-row-critical" : ""}">
               <div class="detail-row-main">
                 <span class="detail-item-text">${escapeHtml(storeLabel(flag.storeNumber, store?.name))} — ${!String(item.id).startsWith("custom-") ? `${item.id}. ` : ""}${escapeHtml(tf(item))}</span>
-                <span class="detail-row-badges">${repeatViolationBadgesHtml(item.risk)}</span>
+                <span class="detail-row-badges">${isNo ? repeatViolationBadgesHtml(item.risk) : ""}</span>
               </div>
               <div class="history-card-meta">${escapeHtml(flag.date)}${flag.shift ? ` · ${escapeHtml(t("shift_" + flag.shift))}` : ""} · ${escapeHtml(flag.conductedBy)}</div>
               ${flagReasonDetailHtml(flag)}

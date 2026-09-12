@@ -57,6 +57,7 @@ function check(cond, msg) {
 {
   const r = evaluateTempReading("16", "yes", { readable: false, temperatureF: null, confidence: "low", thermometerVisible: false });
   check(r.reason === "wrongPhoto", `A photo with no thermometer in frame at all is tagged "wrongPhoto", distinct from a merely unclear one (got ${JSON.stringify(r.reason)})`);
+  check(r.associateAnswer === "yes", `An unreadable/wrongPhoto result still reports the associate's own answer -- lets the UI tell a compliant "Yes" flagged only for a photo-evidence problem apart from an actual "No" violation (got ${JSON.stringify(r.associateAnswer)})`);
 }
 
 // A readable, agreeing photo has reason: null -- stored for the audit

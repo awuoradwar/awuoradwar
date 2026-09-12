@@ -29,7 +29,7 @@ function evaluateTempReading(itemId, associateAnswer, reading) {
   if (!check) return null;
   if (!reading || !reading.readable || typeof reading.temperatureF !== "number") {
     const reason = reading && reading.thermometerVisible === false ? "wrongPhoto" : "unreadable";
-    return { itemId, readable: false, reason, mismatch: false };
+    return { itemId, readable: false, reason, mismatch: false, associateAnswer };
   }
   const computedPass = thresholdPasses(reading.temperatureF, itemId);
   const associatePass = associateAnswer === "yes";
