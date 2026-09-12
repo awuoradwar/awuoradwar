@@ -274,6 +274,17 @@ export default async function MyShiftPage() {
   // which renders in the server process's own timezone (UTC in
   // production), not the store's, silently showing the wrong due time.
   const dueLabelFor = (dueAt: string | null) => (dueAt ? formatStoreDateTime(user.storeId, dueAt, locale, { hour: "numeric", minute: "2-digit" }) : null);
+  // Every other TaskCard list here is same-day (NOW/TODAY) or already
+  // grouped under its own day header (THIS_WEEK), so a bare time is enough
+  // -- but Overdue spans several different days at once (two tasks named
+  // the same thing on different days are otherwise indistinguishable), so
+  // this leads with the day it was actually due.
+  const overdueDueLabelFor = (task: { scheduled_date: string | null; due_at: string | null }) => {
+    const time = dueLabelFor(task.due_at);
+    if (!task.scheduled_date) return time;
+    const day = dayLabel(task.scheduled_date, user.language);
+    return time ? `${day} · ${time}` : day;
+  };
   // Last stretch of the store's day (store-local, not the server's) -- open
   // tasks in NOW/TODAY flip red here so they don't quietly slip into
   // tomorrow unnoticed. 21 = 9pm, three hours' warning before midnight.
@@ -337,7 +348,7 @@ export default async function MyShiftPage() {
                 task={{
                   ...task,
                   blocked: isBlocked(task),
-                  dueLabel: dueLabelFor(task.due_at),
+                  dueLabel: overdueDueLabelFor(task),
                   ...supportOf(task.support_ids),
                   ...handoffOf(task),
                   pendingRequestCount: pendingRequestCounts.get(task.id) ?? 0,
