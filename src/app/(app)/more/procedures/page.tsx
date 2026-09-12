@@ -13,6 +13,7 @@ import {
   getMissedAreasForDate,
   getSubmissionsForDate,
   ProcedureCategory,
+  ProcedureSubmission,
 } from "@/lib/services/procedureService";
 import { storeToday } from "@/lib/storeTime";
 import PageHeader from "@/components/PageHeader";
@@ -30,6 +31,25 @@ const CATEGORY_LABEL: Record<ProcedureCategory, { en: string; es: string }> = {
   BOH: { en: "Back of House", es: "Área de Cocina" },
   PATIO_WINDOWS: { en: "Patio & Windows", es: "Patio y Ventanas" },
 };
+
+/** Sums unchecked checklist items across a week's submissions -- a station
+ * that got submitted at 4/5 or 5/6 still leaves real work undone even
+ * though it's not "missed" outright, and that shouldn't only surface by
+ * opening every row one at a time. */
+function incompleteItemCount(subs: ProcedureSubmission[]): number {
+  let incomplete = 0;
+  for (const s of subs) {
+    const items = JSON.parse(s.items_json) as Array<{ checked: boolean }>;
+    incomplete += items.filter((i) => !i.checked).length;
+  }
+  return incomplete;
+}
+
+function weekSubtitle(subs: ProcedureSubmission[], lang: "en" | "es") {
+  const incomplete = incompleteItemCount(subs);
+  if (incomplete === 0) return lang === "es" ? "Todo completo" : "All complete";
+  return lang === "es" ? `${incomplete} sin completar` : `${incomplete} item${incomplete === 1 ? "" : "s"} not completed`;
+}
 
 export default async function ProceduresPage() {
   const user = await getCurrentUser();
@@ -163,6 +183,8 @@ export default async function ProceduresPage() {
           keyOf={(item) => item.id}
           storeId={user.storeId}
           renderItem={(item) => <ProcedureSubmissionRow submission={item} storeId={user.storeId} lang={user.language} canEdit={canManage} />}
+          renderSubtitle={(items) => weekSubtitle(items, user.language)}
+          flagWeek={(items) => incompleteItemCount(items) > 0}
           groupByDay
           lang={user.language}
           emptyLabel={es ? "Nada enviado todavía." : "Nothing submitted yet."}
