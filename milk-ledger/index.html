@@ -13,6 +13,8 @@
     --gold-strong: #965F12;
     --teal: #2A6D64;
     --teal-strong: #1F5750;
+    --nurse: #B06B87;
+    --nurse-strong: #7A3D57;
     --alert: #A5401F;
     --alert-bg: #F3DFC9;
     --card: #FFFCF4;
@@ -30,6 +32,8 @@
       --gold-strong: #F0C070;
       --teal: #5FA79E;
       --teal-strong: #7BC2B8;
+      --nurse: #D99BB4;
+      --nurse-strong: #E8B7CC;
       --alert: #E08464;
       --alert-bg: #3A2417;
       --card: #221B10;
@@ -47,6 +51,8 @@
     --gold-strong: #F0C070;
     --teal: #5FA79E;
     --teal-strong: #7BC2B8;
+    --nurse: #D99BB4;
+    --nurse-strong: #E8B7CC;
     --alert: #E08464;
     --alert-bg: #3A2417;
     --card: #221B10;
@@ -132,6 +138,7 @@
   .wfig .k{ color:var(--ink-soft); }
   .wfig.pump .v{ color:var(--gold-strong); font-weight:600; }
   .wfig.feed .v{ color:var(--teal-strong); font-weight:600; }
+  .wfig.nurse .v{ color:var(--nurse-strong); font-weight:600; }
   .wdelta{ margin-top:6px; font-size:0.78rem; font-weight:700; border-top:1px dashed var(--line); padding-top:6px; }
   .wdelta.pos{ color:var(--teal-strong); }
   .wdelta.neg{ color:var(--alert); }
@@ -141,7 +148,8 @@
     .windows{ grid-template-columns:repeat(2,1fr); }
   }
 
-  .quickrow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .quickrow{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+  @media (max-width:520px){ .quickrow{ grid-template-columns:1fr; } }
   .qbtn{
     border-radius:14px; border:1px solid transparent; padding:16px 12px; cursor:pointer;
     font-family:"Fraunces"; font-weight:600; font-size:1.05rem; text-align:left;
@@ -151,8 +159,10 @@
   .qbtn .sub{ font-family:"Inter"; font-weight:500; font-size:0.74rem; opacity:0.85; }
   .qbtn.pump{ background:var(--gold); color:#241804; }
   .qbtn.feed{ background:var(--teal); color:#EAF7F3; }
-  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .qbtn.pump{ color:#1B160E; } }
+  .qbtn.nurse{ background:var(--nurse); color:#2E1621; }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .qbtn.pump{ color:#1B160E; } :root:not([data-theme="light"]) .qbtn.nurse{ color:#2E1621; } }
   :root[data-theme="dark"] .qbtn.pump{ color:#1B160E; }
+  :root[data-theme="dark"] .qbtn.nurse{ color:#2E1621; }
   .qbtn.open{ outline:2px solid var(--focus); outline-offset:2px; }
 
   .panel{
@@ -201,6 +211,7 @@
   .legend i{ width:9px; height:9px; border-radius:2px; display:inline-block; }
   .legend i.pump{ background:var(--gold); }
   .legend i.feed{ background:var(--teal); }
+  .legend i.nurse{ background:var(--nurse); }
 
   .chart{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:20px; }
   .crow{ display:grid; grid-template-columns:34px 1fr 40px; align-items:center; gap:8px; padding:5px 0; }
@@ -225,6 +236,7 @@
   }
   .badge.pump{ background:var(--gold); color:#241804; }
   .badge.feed{ background:var(--teal); color:#EAF7F3; }
+  .badge.nurse{ background:var(--nurse); color:#2E1621; }
   @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .badge.pump{ color:#1B160E; } }
   :root[data-theme="dark"] .badge.pump{ color:#1B160E; }
   .entry-mid{ flex:1; min-width:0; }
@@ -287,6 +299,7 @@
 <div class="quickrow">
   <button class="qbtn pump" id="openPump">+ Pumped<span class="sub">log a pumping session</span></button>
   <button class="qbtn feed" id="openFeed">+ Fed baby<span class="sub">log what he drank</span></button>
+  <button class="qbtn nurse" id="openNurse">+ Nursed<span class="sub">log a direct feed</span></button>
 </div>
 
 <div class="panel" id="pumpPanel">
@@ -346,12 +359,45 @@
   </div>
 </div>
 
+<div class="panel" id="nursePanel">
+  <h3>Log a direct feed</h3>
+  <div class="chips" id="nurseChips"></div>
+  <div class="field-row">
+    <div class="field">
+      <label for="nurseMinutes">Minutes</label>
+      <input type="number" id="nurseMinutes" step="1" min="0" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label for="nurseSide">Side</label>
+      <select id="nurseSide">
+        <option value="left">Left</option>
+        <option value="right">Right</option>
+        <option value="both">Both</option>
+      </select>
+    </div>
+  </div>
+  <div class="field-row">
+    <div class="field">
+      <label for="nurseTime">Time</label>
+      <input type="datetime-local" id="nurseTime">
+    </div>
+    <div class="field">
+      <label for="nurseNote">Note (optional)</label>
+      <input type="text" id="nurseNote" placeholder="e.g. fell asleep partway">
+    </div>
+  </div>
+  <div class="panel-actions">
+    <button class="btn ghost" data-close="nursePanel">Cancel</button>
+    <button class="btn primary" id="saveNurse">Save</button>
+  </div>
+</div>
+
 <div class="history-head"><h2>Daily doses</h2></div>
 <div class="doses-list" id="dosesList"></div>
 
 <div class="history-head">
   <h2>Last 7 days</h2>
-  <div class="legend"><span><i class="pump"></i>Pumped</span><span><i class="feed"></i>Fed</span></div>
+  <div class="legend"><span><i class="pump"></i>Pumped</span><span><i class="feed"></i>Fed</span><span><i class="nurse"></i>Direct</span></div>
 </div>
 <div class="chart" id="chart"></div>
 
@@ -381,6 +427,7 @@
   var WINDOW_RANGES = ["12–6a","6a–12p","12–6p","6p–12a"];
   var PUMP_CHIPS = [1,1.5,2,2.5,3,4];
   var FEED_CHIPS = [1,2,3,4,5];
+  var NURSE_CHIPS = [5,10,15,20,30];
 
   // Daily doses this app tracks — add another entry here (vitamin, reflux
   // medicine, probiotic, ...) and it shows up as its own card automatically.
@@ -446,7 +493,8 @@
       { id:"ex2", type:"feed", amountOz:2.5, at: at(12.5), source:"breastmilk", by:"dad", note:"" },
       { id:"ex3", type:"pump", amountOz:2.5, at: at(8), by:"mom", note:"before work" },
       { id:"ex4", type:"feed", amountOz:3, at: at(6), source:"breastmilk", by:"dad", note:"" },
-      { id:"ex5", type:"feed", amountOz:2, at: at(2), source:"formula", by:"dad", note:"topped up" }
+      { id:"ex5", type:"feed", amountOz:2, at: at(2), source:"formula", by:"dad", note:"topped up" },
+      { id:"ex6", type:"nurse", minutes:15, side:"both", at: at(20), by:"mom", note:"home this morning" }
     ];
   }
   function exampleVitamins(){
@@ -522,18 +570,23 @@
 
   // ---------- render ----------
   function computeDayTotals(logs, key){
-    var pump = 0, feed = 0;
+    var pump = 0, feed = 0, nurseMin = 0;
     logs.forEach(function(l){
       var d = new Date(l.at);
       if (dateKey(d) !== key) return;
-      if (l.type === "pump") pump += l.amountOz; else feed += l.amountOz;
+      if (l.type === "pump") pump += l.amountOz;
+      else if (l.type === "feed") feed += l.amountOz;
+      else if (l.type === "nurse") nurseMin += (l.minutes || 0);
     });
-    return { pump: pump, feed: feed };
+    return { pump: pump, feed: feed, nurseMin: nurseMin };
   }
 
   function renderBalance(){
     var pump = 0, feed = 0;
-    state.logs.forEach(function(l){ if (l.type === "pump") pump += l.amountOz; else feed += l.amountOz; });
+    state.logs.forEach(function(l){
+      if (l.type === "pump") pump += l.amountOz;
+      else if (l.type === "feed") feed += l.amountOz;
+    });
     var bal = pump - feed;
     var fig = document.getElementById("balanceFig");
     var note = document.getElementById("balanceNote");
@@ -546,21 +599,27 @@
     } else {
       note.innerHTML = "Fed <b>" + fmtOz(feed) + " oz</b> total against <b>" + fmtOz(pump) + " oz</b> pumped — drawing down the freezer or topping up.";
     }
+    var todayNurse = computeDayTotals(state.logs, todayKey()).nurseMin;
+    if (todayNurse > 0){
+      note.innerHTML += " Plus " + Math.round(todayNurse) + "m nursing directly today — not counted in this balance.";
+    }
   }
 
   function renderWindows(){
     var grid = document.getElementById("windowsGrid");
     var today = todayKey();
-    var sums = [[0,0],[0,0],[0,0],[0,0]];
+    var sums = [[0,0,0],[0,0,0],[0,0,0],[0,0,0]];
     state.logs.forEach(function(l){
       var d = new Date(l.at);
       if (dateKey(d) !== today) return;
       var w = windowIndex(d);
-      sums[w][l.type === "pump" ? 0 : 1] += l.amountOz;
+      if (l.type === "pump") sums[w][0] += l.amountOz;
+      else if (l.type === "feed") sums[w][1] += l.amountOz;
+      else if (l.type === "nurse") sums[w][2] += (l.minutes || 0);
     });
     grid.innerHTML = "";
     for (var i=0;i<4;i++){
-      var pump = sums[i][0], feed = sums[i][1], delta = pump - feed;
+      var pump = sums[i][0], feed = sums[i][1], nurseMin = sums[i][2], delta = pump - feed;
       var deltaClass = delta > 0.001 ? "pos" : (delta < -0.001 ? "neg" : "zero");
       var deltaText = (pump === 0 && feed === 0) ? "—" : ((delta >= 0 ? "+" : "−") + fmtOz(Math.abs(delta)));
       var card = document.createElement("div");
@@ -570,6 +629,7 @@
         '<div class="wrange">' + WINDOW_RANGES[i] + '</div>' +
         '<div class="wfig pump"><span class="k">Pumped</span><span class="v">' + fmtOz(pump) + '</span></div>' +
         '<div class="wfig feed"><span class="k">Fed</span><span class="v">' + fmtOz(feed) + '</span></div>' +
+        (nurseMin > 0 ? '<div class="wfig nurse"><span class="k">Nursed</span><span class="v">' + Math.round(nurseMin) + 'm</span></div>' : '') +
         '<div class="wdelta ' + deltaClass + '">' + deltaText + '</div>';
       grid.appendChild(card);
     }
@@ -597,7 +657,7 @@
           '<div class="cbar-track"><div class="cbar-fill pump" style="width:' + Math.round(t.pump/max*100) + '%"></div></div>' +
           '<div class="cbar-track"><div class="cbar-fill feed" style="width:' + Math.round(t.feed/max*100) + '%"></div></div>' +
         '</div>' +
-        '<div class="ctotal">' + fmtOz(t.pump) + ' / ' + fmtOz(t.feed) + '</div>';
+        '<div class="ctotal">' + fmtOz(t.pump) + ' / ' + fmtOz(t.feed) + (t.nurseMin > 0 ? ' · ' + Math.round(t.nurseMin) + 'm' : '') + '</div>';
       el.appendChild(row);
     });
   }
@@ -650,7 +710,7 @@
     var el = document.getElementById("timeline");
     el.innerHTML = "";
     if (state.logs.length === 0){
-      el.innerHTML = '<div class="empty">Nothing logged yet. Use the buttons above to add your first pump or feed.</div>';
+      el.innerHTML = '<div class="empty">Nothing logged yet. Use the buttons above to add your first pump, feed, or nursing session.</div>';
       return;
     }
     var sorted = state.logs.slice().sort(function(a,b){ return new Date(b.at) - new Date(a.at); });
@@ -668,17 +728,22 @@
       wrap.className = "day-group";
       var head = document.createElement("div");
       head.className = "day-label";
-      head.innerHTML = "<span>" + fmtDayLabel(k) + "</span><span>" + fmtOz(totals.pump) + " oz pumped · " + fmtOz(totals.feed) + " oz fed</span>";
+      var headText = fmtOz(totals.pump) + " oz pumped · " + fmtOz(totals.feed) + " oz fed";
+      if (totals.nurseMin > 0) headText += " · " + Math.round(totals.nurseMin) + "m direct";
+      head.innerHTML = "<span>" + fmtDayLabel(k) + "</span><span>" + headText + "</span>";
       wrap.appendChild(head);
       entries.forEach(function(l){
         var row = document.createElement("div");
         row.className = "entry";
         var d = new Date(l.at);
         var who = l.by === "mom" ? "Mom" : "Dad";
-        var detail = l.type === "pump" ? "Pumped" : ("Fed" + (l.source === "formula" ? " · formula" : ""));
+        var detail, badgeText;
+        if (l.type === "pump"){ detail = "Pumped"; badgeText = fmtOz(l.amountOz); }
+        else if (l.type === "feed"){ detail = "Fed" + (l.source === "formula" ? " · formula" : ""); badgeText = fmtOz(l.amountOz); }
+        else { detail = "Nursed" + (l.side ? " · " + l.side : ""); badgeText = (l.minutes || 0) + "m"; }
         var noteHtml = l.note ? (" — " + escapeHtml(l.note)) : "";
         row.innerHTML =
-          '<div class="badge ' + l.type + '">' + fmtOz(l.amountOz) + '</div>' +
+          '<div class="badge ' + l.type + '">' + badgeText + '</div>' +
           '<div class="entry-mid">' +
             '<div class="entry-top">' + detail + '</div>' +
             '<div class="entry-sub">' + who + noteHtml + '</div>' +
@@ -723,18 +788,18 @@
     amountInput.value = btn.textContent.split(" ")[0];
   }
 
+  var PANEL_OPENERS = { pumpPanel: "openPump", feedPanel: "openFeed", nursePanel: "openNurse" };
+  var PANEL_TIME_FIELDS = { pumpPanel: "pumpTime", feedPanel: "feedTime", nursePanel: "nurseTime" };
   function openPanel(id){
-    ["pumpPanel","feedPanel"].forEach(function(p){
+    Object.keys(PANEL_OPENERS).forEach(function(p){
       document.getElementById(p).classList.toggle("show", p === id);
+      document.getElementById(PANEL_OPENERS[p]).classList.toggle("open", p === id);
     });
-    document.getElementById("openPump").classList.toggle("open", id === "pumpPanel");
-    document.getElementById("openFeed").classList.toggle("open", id === "feedPanel");
-    if (id === "pumpPanel") document.getElementById("pumpTime").value = toLocalInputValue(new Date());
-    if (id === "feedPanel") document.getElementById("feedTime").value = toLocalInputValue(new Date());
+    document.getElementById(PANEL_TIME_FIELDS[id]).value = toLocalInputValue(new Date());
   }
   function closePanel(id){
     document.getElementById(id).classList.remove("show");
-    document.getElementById(id === "pumpPanel" ? "openPump" : "openFeed").classList.remove("open");
+    document.getElementById(PANEL_OPENERS[id]).classList.remove("open");
   }
 
   function wireUi(){
@@ -746,6 +811,10 @@
       var p = document.getElementById("feedPanel");
       p.classList.contains("show") ? closePanel("feedPanel") : openPanel("feedPanel");
     });
+    document.getElementById("openNurse").addEventListener("click", function(){
+      var p = document.getElementById("nursePanel");
+      p.classList.contains("show") ? closePanel("nursePanel") : openPanel("nursePanel");
+    });
     document.querySelectorAll("[data-close]").forEach(function(b){
       b.addEventListener("click", function(){ closePanel(b.getAttribute("data-close")); });
     });
@@ -755,6 +824,9 @@
     });
     buildChips(document.getElementById("feedChips"), FEED_CHIPS, "oz", function(v,b,c){
       selectChip(c, b, document.getElementById("feedAmount"));
+    });
+    buildChips(document.getElementById("nurseChips"), NURSE_CHIPS, "min", function(v,b,c){
+      selectChip(c, b, document.getElementById("nurseMinutes"));
     });
 
     document.getElementById("savePump").addEventListener("click", function(){
@@ -782,6 +854,20 @@
       document.getElementById("feedNote").value = "";
       Array.prototype.forEach.call(document.getElementById("feedChips").children, function(c){ c.classList.remove("selected"); });
       closePanel("feedPanel");
+    });
+
+    document.getElementById("saveNurse").addEventListener("click", function(){
+      var mins = parseFloat(document.getElementById("nurseMinutes").value);
+      if (!mins || mins <= 0){ document.getElementById("nurseMinutes").focus(); return; }
+      var timeVal = document.getElementById("nurseTime").value;
+      var at = timeVal ? new Date(timeVal).toISOString() : new Date().toISOString();
+      var note = document.getElementById("nurseNote").value.trim();
+      var side = document.getElementById("nurseSide").value;
+      store.addLog({ type:"nurse", minutes: mins, at: at, by: getRole() || "mom", note: note, side: side });
+      document.getElementById("nurseMinutes").value = "";
+      document.getElementById("nurseNote").value = "";
+      Array.prototype.forEach.call(document.getElementById("nurseChips").children, function(c){ c.classList.remove("selected"); });
+      closePanel("nursePanel");
     });
 
     document.getElementById("timeline").addEventListener("click", function(e){
