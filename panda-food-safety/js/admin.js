@@ -1477,11 +1477,16 @@ function flagReasonDetailHtml(flag) {
           <div>${escapeHtml(t("aiFlagAnsweredLabel", { answer: flag.associateAnswer === "yes" ? t("yes") : t("no") }))}</div>`;
 }
 
-// storeNumber -> itemId -> { item, count, dates: [] } -- how many times
-// each item was flagged "no" at each store, across a set of submission
-// docs. Shared between the Repeat Violations tab (per-store threshold)
-// and the Weekly Report (which also needs the cross-store view of the
-// same counts), so the counting logic only lives in one place.
+// storeNumber -> itemId -> { item, count, dates: [], occurrences: [] } --
+// how many times each item was flagged "no" at each store, across a set
+// of submission docs. `occurrences` (date/shift/conductedBy/note/
+// submissionId per instance) is what lets the Repeat Violations tab
+// drill into exactly which visits made up the count -- `dates` stays a
+// separate flat array since that's still all the Weekly Report/the
+// tab's own summary line need. Shared between the Repeat Violations tab
+// (per-store threshold) and the Weekly Report (which also needs the
+// cross-store view of the same counts), so the counting logic only
+// lives in one place.
 function buildItemNoCounts(submissionDataList) {
   const byStore = {};
   submissionDataList.forEach((data) => {
@@ -1491,9 +1496,10 @@ function buildItemNoCounts(submissionDataList) {
       const a = data.answers[id];
       if (a?.value !== "no") continue;
       const item = findItemDefinitionById(id) || { id, en: `#${id}`, es: `#${id}`, category: "other", risk: "medium" };
-      const entry = (bucket[id] ||= { item, count: 0, dates: [] });
+      const entry = (bucket[id] ||= { item, count: 0, dates: [], occurrences: [] });
       entry.count += 1;
       entry.dates.push(data.date);
+      entry.occurrences.push({ date: data.date, shift: data.shift ?? null, conductedBy: data.conductedBy, note: a.note ?? null, submissionId: data.id ?? null });
     }
   });
   return byStore;
@@ -1513,7 +1519,8 @@ async function renderRepeatViolationsTab() {
     return;
   }
 
-  const byStore = buildItemNoCounts(snap.docs.map((d) => d.data()));
+  const submissions = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const byStore = buildItemNoCounts(submissions);
 
   const storeRows = storesCache
     .map((s) => {
@@ -1542,16 +1549,29 @@ async function renderRepeatViolationsTab() {
       <div class="card">
         <div class="detail-section-title" style="margin-top:0;">${escapeHtml(storeLabel(store.number, store.name))}</div>
         ${items
-          .map(
-            (entry) => `
-          <div class="detail-row ${entry.item.risk === "high" ? "detail-row-critical" : ""}">
+          .map((entry) => {
+            const rowKey = `${store.number}-${entry.item.id}`;
+            return `
+          <div class="detail-row ${entry.item.risk === "high" ? "detail-row-critical" : ""}" data-toggle-detail="${escapeHtml(rowKey)}">
             <div class="detail-row-main">
               <span class="detail-item-text">${!String(entry.item.id).startsWith("custom-") ? `${entry.item.id}. ` : ""}${escapeHtml(tf(entry.item))}</span>
               <span class="detail-row-badges">${repeatViolationBadgesHtml(entry.item.risk)}<span class="badge badge-neutral">${entry.count}×</span></span>
             </div>
             <div class="history-card-meta">${escapeHtml(categoryLabel(entry.item.category, lang))} · ${entry.dates.map((dt) => escapeHtml(dt)).join(", ")}</div>
-          </div>`
-          )
+            <div class="detail-row-body collapsed" id="repeat-body-${escapeHtml(rowKey)}">
+              ${entry.occurrences
+                .map(
+                  (occ) => `
+                <div style="border-top:1px solid var(--border); padding-top:8px; margin-top:8px;">
+                  <div class="history-card-meta">${escapeHtml(occ.date)}${occ.shift ? ` · ${escapeHtml(t("shift_" + occ.shift))}` : ""} · ${escapeHtml(occ.conductedBy)}</div>
+                  ${occ.note ? `<div class="detail-note" data-translatable data-note-text="${escapeHtml(occ.note)}"><span class="detail-note-label">${t("noteLabel")}:</span> ${escapeHtml(occ.note)}<div class="detail-note-translation" hidden></div></div>` : ""}
+                  ${occ.submissionId ? `<button type="button" class="btn btn-sm btn-secondary" style="margin-top:6px;" data-view-repeat-submission="${escapeHtml(occ.submissionId)}">${t("viewDetail")}</button>` : ""}
+                </div>`
+                )
+                .join("")}
+            </div>
+          </div>`;
+          })
           .join("")}
       </div>`
       )
@@ -1566,6 +1586,30 @@ async function renderRepeatViolationsTab() {
     if (repeatViolationsOffset === 0) return;
     repeatViolationsOffset -= 1;
     renderRepeatViolationsTab();
+  });
+
+  content.querySelectorAll("[data-toggle-detail]").forEach((row) => {
+    // The View button inside stops propagation before this ever fires,
+    // so this only reacts to a tap on the row itself.
+    row.addEventListener("click", () => {
+      content.querySelector(`#repeat-body-${CSS.escape(row.dataset.toggleDetail)}`)?.classList.toggle("collapsed");
+    });
+  });
+  content.querySelectorAll("[data-view-repeat-submission]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const record = submissions.find((s) => s.id === btn.dataset.viewRepeatSubmission);
+      if (!record) return;
+      const originalLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = t("loadingButton");
+      try {
+        await openHistoryRecord(record);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    });
   });
 }
 
