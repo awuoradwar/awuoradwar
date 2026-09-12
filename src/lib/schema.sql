@@ -385,6 +385,9 @@ CREATE TABLE IF NOT EXISTS procedure_areas (
   skip_missed_flag INTEGER NOT NULL DEFAULT 0, -- 1 for a station that's only
   -- occasionally needed (e.g. Prep on a slow night) -- an unsubmitted day
   -- never shows the "missed" warning other stations get
+  two_associates INTEGER NOT NULL DEFAULT 0, -- 1 for a station two people
+  -- split the list on (e.g. Cooks) -- shows a second name field and
+  -- per-item attribution; every other station only ever asks for one name
   created_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL
 );

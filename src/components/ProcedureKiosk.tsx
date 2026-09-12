@@ -99,10 +99,10 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   // ProcedureShiftType value (not a literal sprinkled through submit/JSX) so
   // opening support can come back later by turning this into a picker again.
   const shiftType: ProcedureShiftType = "CLOSING";
-  // Two name fields always show -- most stations only ever fill in the
-  // first, and leaving the second blank keeps items as plain checkboxes.
-  // Filling both (stations like Cooks where two people split the list)
-  // switches items to per-person chips so it's clear who did what.
+  // A second name field only shows for a two_associates station (Cooks) --
+  // that's the only one two people typically split the list on, and it
+  // switches items to per-person chips so it's clear who did what. Every
+  // other station only ever asks for one name.
   const [names, setNames] = useState<[string, string]>(["", ""]);
   const [checkedBy, setCheckedBy] = useState<Record<string, string | undefined>>({});
   const [notes, setNotes] = useState("");
@@ -115,8 +115,9 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
   // built out yet -- so the kiosk skips straight from picking a station to
   // its closing checklist instead of also asking opening-vs-closing.
   const items: ProcedureItem[] = area ? itemsByAreaShift[`${area.id}:${shiftType}`] || [] : [];
-  const activeNames = names.map((n) => n.trim()).filter(Boolean);
-  const multiAssociate = activeNames.length >= 2;
+  const twoAssociateStation = !!area?.two_associates;
+  const activeNames = (twoAssociateStation ? names : [names[0]]).map((n) => n.trim()).filter(Boolean);
+  const multiAssociate = twoAssociateStation && activeNames.length >= 2;
   const allChecked = items.length > 0 && items.every((i) => checkedBy[i.id]);
   const uncheckedCount = items.filter((i) => !checkedBy[i.id]).length;
 
@@ -275,19 +276,29 @@ export default function ProcedureKiosk({ token, storeName, areas, itemsByAreaShi
             </div>
           )}
           <div className="mb-4 flex flex-col gap-2">
-            <p className="text-sm font-medium">{es ? "Nombre(s)" : "Name(s)"}</p>
+            <p className="text-sm font-medium">{twoAssociateStation ? (es ? "Nombre(s)" : "Name(s)") : es ? "Nombre" : "Name"}</p>
             <input
               value={names[0]}
               onChange={(e) => setNames((prev) => [e.target.value, prev[1]])}
-              placeholder={es ? `Primer ${singularize(areaLabel(area))}` : `First ${singularize(area.name)}`}
+              placeholder={
+                twoAssociateStation
+                  ? es
+                    ? `Primer ${singularize(areaLabel(area))}`
+                    : `First ${singularize(area.name)}`
+                  : es
+                    ? "Tu nombre"
+                    : "Your name"
+              }
               className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
             />
-            <input
-              value={names[1]}
-              onChange={(e) => setNames((prev) => [prev[0], e.target.value])}
-              placeholder={es ? `Segundo ${singularize(areaLabel(area))}` : `Second ${singularize(area.name)}`}
-              className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
-            />
+            {twoAssociateStation && (
+              <input
+                value={names[1]}
+                onChange={(e) => setNames((prev) => [prev[0], e.target.value])}
+                placeholder={es ? `Segundo ${singularize(areaLabel(area))}` : `Second ${singularize(area.name)}`}
+                className="tap-target rounded-xl border border-border bg-card px-3.5 text-base outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/15"
+              />
+            )}
           </div>
           {items.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted">

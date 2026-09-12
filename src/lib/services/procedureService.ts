@@ -25,6 +25,10 @@ export interface ProcedureArea {
    * getMissedAreasForDate's "missed" flag the way every other station's
    * does. */
   skip_missed_flag: number;
+  /** Station two people split the list on (e.g. Cooks) -- the kiosk shows a
+   * second name field and per-item attribution for it; every other station
+   * only ever asks for one name. */
+  two_associates: number;
   created_at: string;
 }
 
@@ -109,7 +113,7 @@ export function regenerateProceduresToken(storeId: string, actor: SessionUser): 
 
 // --- Areas ---------------------------------------------------------------
 
-const AREA_COLUMNS = "id, store_id, name, name_es, category, sort_order, active, skip_missed_flag, created_at";
+const AREA_COLUMNS = "id, store_id, name, name_es, category, sort_order, active, skip_missed_flag, two_associates, created_at";
 
 export function listActiveAreas(storeId: string): ProcedureArea[] {
   const db = getDb();

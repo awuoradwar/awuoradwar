@@ -88,6 +88,7 @@ function createConnection(): Database.Database {
   ensureColumn(db, "procedure_items", "section_es", "section_es TEXT");
   ensureColumn(db, "procedure_areas", "name_es", "name_es TEXT");
   ensureColumn(db, "procedure_areas", "skip_missed_flag", "skip_missed_flag INTEGER NOT NULL DEFAULT 0");
+  ensureColumn(db, "procedure_areas", "two_associates", "two_associates INTEGER NOT NULL DEFAULT 0");
   relaxWasteLogPriceRequired(db);
   migrateLegacyTrainingPositions(db);
   backfillCurrentGemFromLatestPeriod(db);
@@ -101,6 +102,7 @@ function createConnection(): Database.Database {
   mergeDrinkStationRefreshers(db);
   backfillAreaNameTranslations(db);
   backfillSectionTranslations(db);
+  backfillTwoAssociatesFlag(db);
   return db;
 }
 
@@ -239,10 +241,14 @@ const FOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClos
   },
 ];
 
-const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClosingItem[]; skipMissedFlag?: boolean }> = [
+const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClosingItem[]; skipMissedFlag?: boolean; twoAssociates?: boolean }> = [
   {
     name: "Cooks",
     nameEs: "Cocineros",
+    // The one BOH station two people typically split the list on -- shows
+    // a second name field on the kiosk and per-item attribution. Every
+    // other station only ever asks for one name.
+    twoAssociates: true,
     items: [
       { en: "Woks and the hood (left side) are cleaned", es: "Los woks y la campana (lado izquierdo) están limpios" },
       { en: "Prep cooler is cleaned", es: "El prep cooler está limpio" },
@@ -327,14 +333,14 @@ const BOH_CLOSING_STATIONS: Array<{ name: string; nameEs: string; items: FohClos
 function seedClosingProcedures(
   db: Database.Database,
   category: ClosingCategory,
-  stations: Array<{ name: string; nameEs: string; items: FohClosingItem[]; skipMissedFlag?: boolean }>
+  stations: Array<{ name: string; nameEs: string; items: FohClosingItem[]; skipMissedFlag?: boolean; twoAssociates?: boolean }>
 ) {
   const stores = db.prepare(`SELECT id FROM stores`).all() as Array<{ id: string }>;
   if (stores.length === 0) return;
 
   const areaExists = db.prepare(`SELECT 1 FROM procedure_areas WHERE store_id = ? AND category = ? AND name = ?`);
   const insertArea = db.prepare(
-    `INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, skip_missed_flag, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+    `INSERT INTO procedure_areas (id, store_id, name, name_es, category, sort_order, active, skip_missed_flag, two_associates, created_at) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
   );
   const insertItem = db.prepare(
     `INSERT INTO procedure_items (id, area_id, shift_type, text, text_es, sort_order, active, created_at) VALUES (?, ?, 'CLOSING', ?, ?, ?, 1, ?)`
@@ -345,12 +351,20 @@ function seedClosingProcedures(
       if (areaExists.get(store.id, category, station.name)) return;
       const areaId = randomUUID();
       const now = new Date().toISOString();
-      insertArea.run(areaId, store.id, station.name, station.nameEs, category, areaIndex, station.skipMissedFlag ? 1 : 0, now);
+      insertArea.run(areaId, store.id, station.name, station.nameEs, category, areaIndex, station.skipMissedFlag ? 1 : 0, station.twoAssociates ? 1 : 0, now);
       station.items.forEach((item, itemIndex) => {
         insertItem.run(randomUUID(), areaId, item.en, item.es, itemIndex, now);
       });
     });
   }
+}
+
+/** seedClosingProcedures only inserts a station when it's missing, so a
+ * store that already had "Cooks" seeded before two_associates existed never
+ * gets the flag set by that path. One-time, idempotent: matches by name/
+ * category, only touches rows still at the column's default. */
+function backfillTwoAssociatesFlag(db: Database.Database) {
+  db.prepare(`UPDATE procedure_areas SET two_associates = 1 WHERE category = 'BOH' AND name = 'Cooks' AND two_associates = 0`).run();
 }
 
 /** seedClosingProcedures originally inserted FOH items with no Spanish text
