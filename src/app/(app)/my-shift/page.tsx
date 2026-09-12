@@ -324,28 +324,34 @@ export default async function MyShiftPage() {
         )}
       </div>
 
-      {overdueThisWeek.length >= MISSED_TASKS_BANNER_THRESHOLD && (
-        <a
-          href="#overdue-tasks"
-          className="flex items-center justify-between gap-2 rounded-xl border border-critical/30 bg-critical/5 px-3.5 py-3 text-sm transition-colors hover:bg-critical/10"
-        >
-          <p className="font-semibold text-critical">
-            {user.language === "es"
-              ? `⚠ ${overdueThisWeek.length} tareas están atrasadas esta semana`
-              : `⚠ ${overdueThisWeek.length} tasks are past due this week`}
-          </p>
-          <span className="shrink-0 text-critical">↓</span>
-        </a>
-      )}
-
       {overdueThisWeek.length > 0 && (
-        <details id="overdue-tasks" className="card overflow-hidden" open>
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-3">
+        // A tap anywhere on this row toggles it open/closed -- native
+        // details/summary behavior. This used to be a separate red banner
+        // (a plain #anchor link, which only jumps the page -- it can't
+        // close anything) sitting above its own always-open section; now
+        // the alarming state IS the summary itself, so tapping it actually
+        // does what tapping it looks like it should do.
+        <details
+          id="overdue-tasks"
+          className={`overflow-hidden rounded-xl ${
+            overdueThisWeek.length >= MISSED_TASKS_BANNER_THRESHOLD ? "border border-critical/30 bg-critical/5" : "card"
+          }`}
+          open={overdueThisWeek.length >= MISSED_TASKS_BANNER_THRESHOLD}
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3.5 py-3 text-sm">
             <div className="min-w-0">
               <h2 className="text-xs font-bold uppercase tracking-wide text-critical">{user.language === "es" ? "Atrasadas" : "Overdue"}</h2>
-              <p className="text-xs text-muted">
-                {user.language === "es" ? "Vencidas esta semana -- márcalas cuando se terminen" : "Past due this week -- mark them done once they're handled"}
-              </p>
+              {overdueThisWeek.length >= MISSED_TASKS_BANNER_THRESHOLD ? (
+                <p className="font-semibold text-critical">
+                  {user.language === "es"
+                    ? `⚠ ${overdueThisWeek.length} tareas están atrasadas esta semana`
+                    : `⚠ ${overdueThisWeek.length} tasks are past due this week`}
+                </p>
+              ) : (
+                <p className="text-xs text-muted">
+                  {user.language === "es" ? "Vencidas esta semana -- márcalas cuando se terminen" : "Past due this week -- mark them done once they're handled"}
+                </p>
+              )}
             </div>
             <span className="shrink-0 text-xs font-semibold text-critical">{overdueThisWeek.length}</span>
           </summary>
