@@ -1,6 +1,6 @@
-# Milk Ledger
+# M.I.L.K
 
-A shared pumping/feeding tracker for two caregivers on different schedules — one pumps at work, the other feeds at home, and neither happens at the same moment. The app doesn't try to pair individual sessions; instead it treats every pump as a deposit and every feed as a withdrawal against a running "stash balance," and buckets today's activity into four dayparts (overnight / morning / afternoon / evening) so a same-range comparison is still meaningful even when the exact times don't line up.
+**M**easured **I**ntake, **L**edger **K**eeper — a shared pumping/feeding tracker for two caregivers on different schedules — one pumps at work, the other feeds at home, and neither happens at the same moment. The app doesn't try to pair individual sessions; instead it treats every pump as a deposit and every feed as a withdrawal against a running "stash balance," and buckets today's activity into four dayparts (overnight / morning / afternoon / evening) so a same-range comparison is still meaningful even when the exact times don't line up.
 
 **Live app:** https://claude.ai/code/artifact/901ee16a-759e-4c59-917b-68563d6136dd
 
